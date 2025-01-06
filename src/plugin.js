@@ -145,17 +145,20 @@ class VR extends Plugin {
         this.options_.sphereDetail
       );
 
-      let uvs = geometry.faceVertexUvs[ 0 ];
+      let uvAttribute = geometry.getAttribute("uv");
+      if (uvAttribute) {
+        for (let i = 0; i < uvAttribute.count; i++) {
+          let u = uvAttribute.getX(i);
+          let v = uvAttribute.getY(i);
 
-      for (let i = 0; i < uvs.length; i++) {
-        for (let j = 0; j < 3; j++) {
           if (projection === '360_LR') {
-            uvs[ i ][ j ].x *= 0.5;
+            uvAttribute.setX(i, u * 0.5);
           } else {
-            uvs[ i ][ j ].y *= 0.5;
-            uvs[ i ][ j ].y += 0.5;
+            uvAttribute.setY(i, v * 0.5 + 0.5);
           }
         }
+
+        uvAttribute.needsUpdate = true;
       }
 
       this.movieGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
