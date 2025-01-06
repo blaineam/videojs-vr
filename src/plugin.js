@@ -145,11 +145,12 @@ class VR extends Plugin {
         this.options_.sphereDetail
       );
 
-      let uvAttribute = geometry.getAttribute("uv");
+      let uvAttribute = geometry.getAttribute('uv');
+
       if (uvAttribute) {
         for (let i = 0; i < uvAttribute.count; i++) {
-          let u = uvAttribute.getX(i);
-          let v = uvAttribute.getY(i);
+          const u = uvAttribute.getX(i);
+          const v = uvAttribute.getY(i);
 
           if (projection === '360_LR') {
             uvAttribute.setX(i, u * 0.5);
@@ -161,7 +162,7 @@ class VR extends Plugin {
         uvAttribute.needsUpdate = true;
       }
 
-      this.movieGeometry = geometry
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
@@ -178,11 +179,11 @@ class VR extends Plugin {
         this.options_.sphereDetail
       );
 
-      uvAttribute = geometry.getAttribute("uv");
+      uvAttribute = geometry.getAttribute('uv');
       if (uvAttribute) {
         for (let i = 0; i < uvAttribute.count; i++) {
-          let u = uvAttribute.getX(i);
-          let v = uvAttribute.getY(i);
+          const u = uvAttribute.getX(i);
+          const v = uvAttribute.getY(i);
 
           if (projection === '360_LR') {
             uvAttribute.setX(i, u * 0.5);
@@ -194,7 +195,7 @@ class VR extends Plugin {
         uvAttribute.needsUpdate = true;
       }
 
-      this.movieGeometry = geometry
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
@@ -253,16 +254,18 @@ class VR extends Plugin {
       // Left eye view
       geometry.scale(-1, 1, 1);
 
-      let uvAttribute = geometry.getAttribute("uv");
+      let uvAttribute = geometry.getAttribute('uv');
+
       if (projection !== '180_MONO') {
         for (let i = 0; i < uvAttribute.count; i++) {
-          const u = uvAttribute.getX(i); 
+          const u = uvAttribute.getX(i);
+
           uvAttribute.setX(i, u * 0.5);
         }
         uvAttribute.needsUpdate = true;
       }
 
-      this.movieGeometry = geometry
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture,
         overdraw: true
@@ -282,14 +285,15 @@ class VR extends Plugin {
       );
       geometry.scale(-1, 1, 1);
 
-      uvAttribute = geometry.getAttribute("uv");
+      uvAttribute = geometry.getAttribute('uv');
       for (let i = 0; i < uvAttribute.count; i++) {
-        const u = uvAttribute.getX(i); 
+        const u = uvAttribute.getX(i);
+
         uvAttribute.setX(i, u * 0.5 + 0.5);
       }
       uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = geometry
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture,
         overdraw: true
@@ -377,26 +381,20 @@ void main() {
             vector.x = vector.x / height * (height - contCorrect * 2) + contCorrect / height;
           }
         }
-        let uvs = [];
+        const uvs = [];
 
         uvs.push(...right[2].toArray(), ...right[1].toArray(), ...right[3].toArray());
         uvs.push(...right[1].toArray(), ...right[0].toArray(), ...right[3].toArray());
-        
         uvs.push(...left[2].toArray(), ...left[1].toArray(), ...left[3].toArray());
         uvs.push(...left[1].toArray(), ...left[0].toArray(), ...left[3].toArray());
-        
         uvs.push(...top[2].toArray(), ...top[1].toArray(), ...top[3].toArray());
         uvs.push(...top[1].toArray(), ...top[0].toArray(), ...top[3].toArray());
-        
         uvs.push(...bottom[2].toArray(), ...bottom[1].toArray(), ...bottom[3].toArray());
         uvs.push(...bottom[1].toArray(), ...bottom[0].toArray(), ...bottom[3].toArray());
-        
         uvs.push(...front[2].toArray(), ...front[1].toArray(), ...front[3].toArray());
         uvs.push(...front[1].toArray(), ...front[0].toArray(), ...front[3].toArray());
-        
         uvs.push(...back[2].toArray(), ...back[1].toArray(), ...back[3].toArray());
         uvs.push(...back[1].toArray(), ...back[0].toArray(), ...back[3].toArray());
-        
         this.movieGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
 
         this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
