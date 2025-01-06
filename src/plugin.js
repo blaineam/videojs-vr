@@ -161,7 +161,7 @@ class VR extends Plugin {
         uvAttribute.needsUpdate = true;
       }
 
-      this.movieGeometry = geometry.toBufferGeometry();
+      this.movieGeometry = geometry
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
