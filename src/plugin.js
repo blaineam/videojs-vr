@@ -705,7 +705,9 @@ void main() {
     this.reset();
 
     this.camera = new THREE.PerspectiveCamera(70, this.player_.currentWidth() / this.player_.currentHeight(), 1, 2000);
-    this.orbitcontrols = new DeviceOrientationControls(this.camera);
+    if (isSecureContext) {
+      this.orbitcontrols = new DeviceOrientationControls(this.camera);
+    }
     this.camera.layers.enable(1);
 
     // Store vector representing the direction in which the camera is looking, in world space.
@@ -752,20 +754,22 @@ void main() {
       powerPreference: 'high-performance'
     });
 
-    const webglContext = this.renderer.getContext('webgl');
-    const oldTexImage2D = webglContext.texImage2D;
+    if(isSecureContext) {
+      const webglContext = this.renderer.getContext('webgl');
+      const oldTexImage2D = webglContext.texImage2D;
 
-    /* this is a workaround since threejs uses try catch */
-    webglContext.texImage2D = (...args) => {
-      try {
-        return oldTexImage2D.apply(webglContext, args);
-      } catch (e) {
-        this.reset();
-        this.player_.pause();
-        this.triggerError_({code: 'web-vr-hls-cors-not-supported', dismiss: false});
-        throw new Error(e);
-      }
-    };
+      /* this is a workaround since threejs uses try catch */
+      webglContext.texImage2D = (...args) => {
+        try {
+          return oldTexImage2D.apply(webglContext, args);
+        } catch (e) {
+          this.reset();
+          this.player_.pause();
+          this.triggerError_({code: 'web-vr-hls-cors-not-supported', dismiss: false});
+          throw new Error(e);
+        }
+      };
+    }
 
     this.renderer.setSize(this.player_.currentWidth(), this.player_.currentHeight(), false);
 
@@ -794,7 +798,7 @@ void main() {
     }
 
     // Detect WebXR is supported
-    if (window.navigator.xr) {
+    if (window.isSecureContext && window.navigator.xr) {
       this.log('WebXR is supported');
       window.navigator.xr.isSessionSupported('immersive-vr').then((supportsImmersiveVR) => {
         if (supportsImmersiveVR) {
@@ -893,13 +897,15 @@ void main() {
       typeof window.DeviceMotionEvent.requestPermission === 'function') {
       const self = this;
 
-      window.DeviceMotionEvent.requestPermission().then(response => {
-        if (response === 'granted') {
-          window.addEventListener('deviceorientation', (event) => {
-            self.onDeviceOrientationChange(event.beta, event.gamma, event.alpha);
-          });
-        }
-      });
+      if (isSecureContext) {
+        window.DeviceMotionEvent.requestPermission().then(response => {
+          if (response === 'granted') {
+            window.addEventListener('deviceorientation', (event) => {
+              self.onDeviceOrientationChange(event.beta, event.gamma, event.alpha);
+            });
+          }
+        });
+      }
     }
 
     this.initialized_ = true;
