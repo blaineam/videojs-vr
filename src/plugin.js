@@ -656,7 +656,7 @@ void main() {
     }
 
     this.animationFrameId_ = this.requestAnimationFrame(this.animate_);
-    if (this.orbitcontrols.update()) {
+    if (isSecureContext && this.orbitcontrols.update()) {
       this.renderer.render(this.scene, this.camera);
       if (this.webVREffect) {
         this.webVREffect.isPresenting = false;
@@ -891,20 +891,22 @@ void main() {
     window.addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
     window.addEventListener('pointerdown', this.handleUserActive_, true);
 
-    // For iOS we need permission for the device orientation data, this will pop up an 'Allow'
-    // eslint-disable-next-line
-    if (typeof window.DeviceMotionEvent === 'function' &&
-      typeof window.DeviceMotionEvent.requestPermission === 'function') {
-      const self = this;
+    if (isSecureContext) {
+      // For iOS we need permission for the device orientation data, this will pop up an 'Allow'
+      // eslint-disable-next-line
+      if (typeof window.DeviceMotionEvent === 'function' &&
+        typeof window.DeviceMotionEvent.requestPermission === 'function') {
+        const self = this;
 
-      if (isSecureContext) {
-        window.DeviceMotionEvent.requestPermission().then(response => {
-          if (response === 'granted') {
-            window.addEventListener('deviceorientation', (event) => {
-              self.onDeviceOrientationChange(event.beta, event.gamma, event.alpha);
-            });
-          }
-        });
+        if (isSecureContext) {
+          window.DeviceMotionEvent.requestPermission().then(response => {
+            if (response === 'granted') {
+              window.addEventListener('deviceorientation', (event) => {
+                self.onDeviceOrientationChange(event.beta, event.gamma, event.alpha);
+              });
+            }
+          });
+        }
       }
     }
 
