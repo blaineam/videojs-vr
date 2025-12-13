@@ -1118,8 +1118,23 @@ void main() {
         this.trigger('vr-exit');
       },
       onOrientationChange: (euler) => {
-        if (this.controls3d && this.controls3d.setOrientationOffset) {
-          this.controls3d.setOrientationOffset(euler);
+        // Apply rotation to video mesh for real-time visual feedback
+        if (this.movieScreen) {
+          // Create quaternion from euler angles
+          const offsetQuat = new THREE.Quaternion().setFromEuler(euler);
+
+          // Get the base rotation (initial orientation)
+          const baseQuat = new THREE.Quaternion();
+          if (this.movieScreen.userData.baseQuaternion) {
+            baseQuat.copy(this.movieScreen.userData.baseQuaternion);
+          } else {
+            // Store initial quaternion on first use
+            this.movieScreen.userData.baseQuaternion = this.movieScreen.quaternion.clone();
+            baseQuat.copy(this.movieScreen.quaternion);
+          }
+
+          // Apply offset rotation on top of base rotation
+          this.movieScreen.quaternion.copy(baseQuat).multiply(offsetQuat);
         }
         this.trigger('vr-orientation-change', euler);
       }

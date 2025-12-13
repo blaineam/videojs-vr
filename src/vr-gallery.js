@@ -23,6 +23,10 @@ class VRGallery {
     this.scrollPosition = 0;
     this.maxScroll = 0;
 
+    // Clipping region for thumbnail overflow
+    this.clipMinY = 0;
+    this.clipMaxY = 0;
+
     // Media items
     this.mediaItems = [];
     this.thumbnailMeshes = [];
@@ -72,7 +76,9 @@ class VRGallery {
     });
 
     this.galleryFrame = new THREE.Mesh(frameGeometry, frameMaterial);
-    this.galleryFrame.position.set(0, 0.3, -this.galleryDistance);
+    // Position gallery bottom edge just above HUD controls (HUD at y=3.5, height=0.6, so top ~3.8)
+    // Gallery bottom should be at ~4.0, so y = 4.0 + frameHeight/2 = 4.0 + frameHeight/2
+    this.galleryFrame.position.set(0, 4.0 + frameHeight / 2, -this.galleryDistance);
     this.galleryGroup.add(this.galleryFrame);
 
     // Frame border with glow effect
@@ -136,6 +142,12 @@ class VRGallery {
 
     this.frameWidth = frameWidth;
     this.frameHeight = frameHeight;
+
+    // Set clipping bounds for thumbnail visibility (in local gallery frame coordinates)
+    // Thumbnails will be culled if they're outside this vertical range
+    const viewHeight = this.visibleRows * (this.thumbnailHeight + this.thumbnailSpacing);
+    this.clipMinY = -viewHeight / 2 - 0.1; // Add small margin
+    this.clipMaxY = viewHeight / 2 + 0.1;
   }
 
   createCloseButton() {
@@ -627,6 +639,15 @@ class VRGallery {
 
     // Make gallery face the camera
     this.galleryGroup.quaternion.copy(this.camera.quaternion);
+
+    // Clip thumbnails outside visible area
+    this.thumbnailMeshes.forEach((thumbnail, index) => {
+      if (thumbnail) {
+        const thumbnailY = thumbnail.position.y + this.scrollPosition;
+        const visible = thumbnailY >= this.clipMinY && thumbnailY <= this.clipMaxY;
+        thumbnail.visible = visible;
+      }
+    });
   }
 
   dispose() {

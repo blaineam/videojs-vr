@@ -334,8 +334,8 @@ class VRHUD {
     const handleGroup = new THREE.Group();
     handleGroup.name = 'orientation-handle';
 
-    // Handle background
-    const handleGeometry = new THREE.PlaneGeometry(0.3, 0.3);
+    // Handle background (same size as other buttons: 0.12x0.12)
+    const handleGeometry = new THREE.PlaneGeometry(0.12, 0.12);
     const handleMaterial = new THREE.MeshBasicMaterial({
       color: 0x2a2a4a,
       opacity: 0.8,
@@ -345,10 +345,11 @@ class VRHUD {
     const handleMesh = new THREE.Mesh(handleGeometry, handleMaterial);
     handleMesh.userData.interactive = true;
     handleMesh.userData.type = 'orientation-handle';
+    handleMesh.userData.baseColor = 0x2a2a4a;
     handleGroup.add(handleMesh);
 
-    // Compass-like indicator
-    const compassGeometry = new THREE.RingGeometry(0.08, 0.1, 32);
+    // Compass-like indicator (scaled down to fit button size)
+    const compassGeometry = new THREE.RingGeometry(0.032, 0.04, 32);
     const compassMaterial = new THREE.MeshBasicMaterial({
       color: 0x00ffff,
       opacity: 0.6,
@@ -358,11 +359,11 @@ class VRHUD {
     compass.position.z = 0.001;
     handleGroup.add(compass);
 
-    // Direction indicator
+    // Direction indicator (scaled down)
     const arrowShape = new THREE.Shape();
-    arrowShape.moveTo(0, 0.06);
-    arrowShape.lineTo(-0.02, 0.02);
-    arrowShape.lineTo(0.02, 0.02);
+    arrowShape.moveTo(0, 0.024);
+    arrowShape.lineTo(-0.008, 0.008);
+    arrowShape.lineTo(0.008, 0.008);
     arrowShape.closePath();
 
     const arrowGeometry = new THREE.ShapeGeometry(arrowShape);
@@ -374,27 +375,6 @@ class VRHUD {
     this.orientationArrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
     this.orientationArrow.position.z = 0.002;
     handleGroup.add(this.orientationArrow);
-
-    // Label
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 32;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#aaaaaa';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('DRAG TO ADJUST', 64, 16);
-
-    const labelTexture = new THREE.CanvasTexture(canvas);
-    const labelMaterial = new THREE.MeshBasicMaterial({
-      map: labelTexture,
-      transparent: true
-    });
-    const labelGeometry = new THREE.PlaneGeometry(0.25, 0.06);
-    const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
-    labelMesh.position.set(0, -0.18, 0.001);
-    handleGroup.add(labelMesh);
 
     handleGroup.position.set(0.9, 0, 0.01); // Move to right side to avoid overlap with exit button
     this.controlPanel.add(handleGroup);
