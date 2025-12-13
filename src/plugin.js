@@ -10,6 +10,8 @@ import OrbitOrientationContols from './orbit-orientation-controls.js';
 import * as utils from './utils';
 import CanvasPlayerControls from './canvas-player-controls';
 import OmnitoneController from './omnitone-controller';
+import VRHUD from './vr-hud';
+import VRGallery from './vr-gallery';
 
 // import controls so they get regisetered with videojs
 import './cardboard-button';
@@ -23,7 +25,20 @@ const defaults = {
   omnitoneOptions: {},
   projection: 'AUTO',
   sphereDetail: 32,
-  disableTogglePlay: false
+  disableTogglePlay: false,
+  // New VR HUD options
+  enableVRHUD: true,
+  enableVRGallery: true,
+  showHUDOnStart: true,
+  hudAutoHideDelay: 5000, // ms before HUD auto-hides (0 to disable)
+  // Callbacks for navigation
+  onNext: null,
+  onPrevious: null,
+  onMediaSelect: null,
+  onGallery: null,
+  onExit: null,
+  // Media items for gallery
+  mediaItems: []
 };
 
 const errors = {
@@ -129,7 +144,7 @@ class VR extends Plugin {
       return this.changeProjection_('NONE');
     } else if (projection === '360') {
       this.movieGeometry = new THREE.SphereBufferGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
+      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       this.movieScreen.position.set(position.x, position.y, position.z);
@@ -138,28 +153,29 @@ class VR extends Plugin {
       this.movieScreen.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
-      // Left eye view
-      let geometry = new THREE.SphereGeometry(
+      // Left eye view - use SphereBufferGeometry and modify UVs directly
+      let geometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
       );
 
-      let uvs = geometry.faceVertexUvs[ 0 ];
+      // Get UV attribute from buffer geometry
+      let uvAttribute = geometry.getAttribute('uv');
+      let uvArray = uvAttribute.array;
 
-      for (let i = 0; i < uvs.length; i++) {
-        for (let j = 0; j < 3; j++) {
-          if (projection === '360_LR') {
-            uvs[ i ][ j ].x *= 0.5;
-          } else {
-            uvs[ i ][ j ].y *= 0.5;
-            uvs[ i ][ j ].y += 0.5;
-          }
+      // Modify UVs for left eye
+      for (let i = 0; i < uvArray.length; i += 2) {
+        if (projection === '360_LR') {
+          uvArray[i] *= 0.5; // x coordinate
+        } else {
+          uvArray[i + 1] = uvArray[i + 1] * 0.5 + 0.5; // y coordinate
         }
       }
+      uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
+      this.movieGeometry = geometry;
+      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       this.movieScreen.scale.x = -1;
@@ -168,28 +184,29 @@ class VR extends Plugin {
       this.movieScreen.layers.set(1);
       this.scene.add(this.movieScreen);
 
-      // Right eye view
-      geometry = new THREE.SphereGeometry(
+      // Right eye view - use SphereBufferGeometry and modify UVs directly
+      geometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
       );
 
-      uvs = geometry.faceVertexUvs[ 0 ];
+      // Get UV attribute from buffer geometry
+      uvAttribute = geometry.getAttribute('uv');
+      uvArray = uvAttribute.array;
 
-      for (let i = 0; i < uvs.length; i++) {
-        for (let j = 0; j < 3; j++) {
-          if (projection === '360_LR') {
-            uvs[ i ][ j ].x *= 0.5;
-            uvs[ i ][ j ].x += 0.5;
-          } else {
-            uvs[ i ][ j ].y *= 0.5;
-          }
+      // Modify UVs for right eye
+      for (let i = 0; i < uvArray.length; i += 2) {
+        if (projection === '360_LR') {
+          uvArray[i] = uvArray[i] * 0.5 + 0.5; // x coordinate
+        } else {
+          uvArray[i + 1] *= 0.5; // y coordinate
         }
       }
+      uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
+      this.movieGeometry = geometry;
+      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       this.movieScreen.scale.x = -1;
@@ -198,9 +215,11 @@ class VR extends Plugin {
       this.movieScreen.layers.set(2);
       this.scene.add(this.movieScreen);
     } else if (projection === '360_CUBE') {
-      this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, overdraw: true, side: THREE.BackSide });
+      // Use BoxBufferGeometry instead of deprecated BoxGeometry
+      this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
+      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
+      // Define UV coordinates for each face
       const left = [new THREE.Vector2(0, 0.5), new THREE.Vector2(0.333, 0.5), new THREE.Vector2(0.333, 1), new THREE.Vector2(0, 1)];
       const right = [new THREE.Vector2(0.333, 0.5), new THREE.Vector2(0.666, 0.5), new THREE.Vector2(0.666, 1), new THREE.Vector2(0.333, 1)];
       const top = [new THREE.Vector2(0.666, 0.5), new THREE.Vector2(1, 0.5), new THREE.Vector2(1, 1), new THREE.Vector2(0.666, 1)];
@@ -208,25 +227,31 @@ class VR extends Plugin {
       const front = [new THREE.Vector2(0.333, 0), new THREE.Vector2(0.666, 0), new THREE.Vector2(0.666, 0.5), new THREE.Vector2(0.333, 0.5)];
       const back = [new THREE.Vector2(0.666, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 0.5), new THREE.Vector2(0.666, 0.5)];
 
-      this.movieGeometry.faceVertexUvs[0] = [];
+      // BoxBufferGeometry has 24 vertices (4 per face, 6 faces)
+      // UV attribute has 48 values (2 per vertex)
+      // Face order in BoxBufferGeometry: +X, -X, +Y, -Y, +Z, -Z (right, left, top, bottom, front, back)
+      const uvAttribute = this.movieGeometry.getAttribute('uv');
+      const uvArray = uvAttribute.array;
 
-      this.movieGeometry.faceVertexUvs[0][0] = [ right[2], right[1], right[3] ];
-      this.movieGeometry.faceVertexUvs[0][1] = [ right[1], right[0], right[3] ];
+      // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
+      const setFaceUVs = (faceIndex, corners) => {
+        const baseIdx = faceIndex * 8;
+        // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+        uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
+        uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
+        uvArray[baseIdx + 4] = corners[0].x; uvArray[baseIdx + 5] = corners[0].y;
+        uvArray[baseIdx + 6] = corners[1].x; uvArray[baseIdx + 7] = corners[1].y;
+      };
 
-      this.movieGeometry.faceVertexUvs[0][2] = [ left[2], left[1], left[3] ];
-      this.movieGeometry.faceVertexUvs[0][3] = [ left[1], left[0], left[3] ];
+      // Set UVs for each face
+      setFaceUVs(0, right);   // +X face
+      setFaceUVs(1, left);    // -X face
+      setFaceUVs(2, top);     // +Y face
+      setFaceUVs(3, bottom);  // -Y face
+      setFaceUVs(4, front);   // +Z face
+      setFaceUVs(5, back);    // -Z face
 
-      this.movieGeometry.faceVertexUvs[0][4] = [ top[2], top[1], top[3] ];
-      this.movieGeometry.faceVertexUvs[0][5] = [ top[1], top[0], top[3] ];
-
-      this.movieGeometry.faceVertexUvs[0][6] = [ bottom[2], bottom[1], bottom[3] ];
-      this.movieGeometry.faceVertexUvs[0][7] = [ bottom[1], bottom[0], bottom[3] ];
-
-      this.movieGeometry.faceVertexUvs[0][8] = [ front[2], front[1], front[3] ];
-      this.movieGeometry.faceVertexUvs[0][9] = [ front[1], front[0], front[3] ];
-
-      this.movieGeometry.faceVertexUvs[0][10] = [ back[2], back[1], back[3] ];
-      this.movieGeometry.faceVertexUvs[0][11] = [ back[1], back[0], back[3] ];
+      uvAttribute.needsUpdate = true;
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       this.movieScreen.position.set(position.x, position.y, position.z);
@@ -234,58 +259,62 @@ class VR extends Plugin {
 
       this.scene.add(this.movieScreen);
     } else if (projection === '180' || projection === '180_LR' || projection === '180_MONO') {
-      let geometry = new THREE.SphereGeometry(
+      // Left eye view - use SphereBufferGeometry with phiStart and phiLength for 180 degrees
+      let geometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
-        Math.PI,
-        Math.PI
+        Math.PI,  // phiStart
+        Math.PI   // phiLength
       );
 
-      // Left eye view
+      // Scale to flip for inside viewing
       geometry.scale(-1, 1, 1);
-      let uvs = geometry.faceVertexUvs[0];
 
+      // Get UV attribute from buffer geometry
+      let uvAttribute = geometry.getAttribute('uv');
+      let uvArray = uvAttribute.array;
+
+      // Modify UVs for left eye (only if not mono)
       if (projection !== '180_MONO') {
-        for (let i = 0; i < uvs.length; i++) {
-          for (let j = 0; j < 3; j++) {
-            uvs[i][j].x *= 0.5;
-          }
+        for (let i = 0; i < uvArray.length; i += 2) {
+          uvArray[i] *= 0.5; // x coordinate
         }
+        uvAttribute.needsUpdate = true;
       }
 
-      this.movieGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({
-        map: this.videoTexture,
-        overdraw: true
+        map: this.videoTexture
       });
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       // display in left eye only
       this.movieScreen.layers.set(1);
       this.scene.add(this.movieScreen);
 
-      // Right eye view
-      geometry = new THREE.SphereGeometry(
+      // Right eye view - use SphereBufferGeometry
+      geometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
-        Math.PI,
-        Math.PI
+        Math.PI,  // phiStart
+        Math.PI   // phiLength
       );
       geometry.scale(-1, 1, 1);
-      uvs = geometry.faceVertexUvs[0];
 
-      for (let i = 0; i < uvs.length; i++) {
-        for (let j = 0; j < 3; j++) {
-          uvs[i][j].x *= 0.5;
-          uvs[i][j].x += 0.5;
-        }
+      // Get UV attribute from buffer geometry
+      uvAttribute = geometry.getAttribute('uv');
+      uvArray = uvAttribute.array;
+
+      // Modify UVs for right eye
+      for (let i = 0; i < uvArray.length; i += 2) {
+        uvArray[i] = uvArray[i] * 0.5 + 0.5; // x coordinate
       }
+      uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = new THREE.BufferGeometry().fromGeometry(geometry);
+      this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({
-        map: this.videoTexture,
-        overdraw: true
+        map: this.videoTexture
       });
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
       // display in right eye only
@@ -297,9 +326,10 @@ class VR extends Plugin {
         // we truncate the 2-pixel-wide strips on all discontinuous edges,
         const contCorrect = 2;
 
-        this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
+        // Use BoxBufferGeometry instead of deprecated BoxGeometry
+        this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
         this.movieMaterial = new THREE.ShaderMaterial({
-          overdraw: true, side: THREE.BackSide,
+          side: THREE.BackSide,
           uniforms: {
             mapped: {value: this.videoTexture},
             mapMatrix: {value: mapMatrix},
@@ -371,25 +401,29 @@ void main() {
           }
         }
 
-        this.movieGeometry.faceVertexUvs[0] = [];
+        // Set UVs using BufferGeometry API
+        const uvAttribute = this.movieGeometry.getAttribute('uv');
+        const uvArray = uvAttribute.array;
 
-        this.movieGeometry.faceVertexUvs[0][0] = [ right[2], right[1], right[3] ];
-        this.movieGeometry.faceVertexUvs[0][1] = [ right[1], right[0], right[3] ];
+        // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
+        const setFaceUVs = (faceIndex, corners) => {
+          const baseIdx = faceIndex * 8;
+          // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+          uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
+          uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
+          uvArray[baseIdx + 4] = corners[0].x; uvArray[baseIdx + 5] = corners[0].y;
+          uvArray[baseIdx + 6] = corners[1].x; uvArray[baseIdx + 7] = corners[1].y;
+        };
 
-        this.movieGeometry.faceVertexUvs[0][2] = [ left[2], left[1], left[3] ];
-        this.movieGeometry.faceVertexUvs[0][3] = [ left[1], left[0], left[3] ];
+        // Set UVs for each face - EAC has different face mapping
+        setFaceUVs(0, right);   // +X face
+        setFaceUVs(1, left);    // -X face
+        setFaceUVs(2, top);     // +Y face
+        setFaceUVs(3, bottom);  // -Y face
+        setFaceUVs(4, front);   // +Z face
+        setFaceUVs(5, back);    // -Z face
 
-        this.movieGeometry.faceVertexUvs[0][4] = [ top[2], top[1], top[3] ];
-        this.movieGeometry.faceVertexUvs[0][5] = [ top[1], top[0], top[3] ];
-
-        this.movieGeometry.faceVertexUvs[0][6] = [ bottom[2], bottom[1], bottom[3] ];
-        this.movieGeometry.faceVertexUvs[0][7] = [ bottom[1], bottom[0], bottom[3] ];
-
-        this.movieGeometry.faceVertexUvs[0][8] = [ front[2], front[1], front[3] ];
-        this.movieGeometry.faceVertexUvs[0][9] = [ front[1], front[0], front[3] ];
-
-        this.movieGeometry.faceVertexUvs[0][10] = [ back[2], back[1], back[3] ];
-        this.movieGeometry.faceVertexUvs[0][11] = [ back[1], back[0], back[3] ];
+        uvAttribute.needsUpdate = true;
 
         this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
         this.movieScreen.position.set(position.x, position.y, position.z);
@@ -424,6 +458,58 @@ void main() {
         this.movieScreen.layers.set(2);
         this.scene.add(this.movieScreen);
       }
+    } else if (projection === 'SBS_MONO') {
+      // SBS_MONO: Show only left half of SBS video, centered with aspect-fill
+      const distance = 3;
+
+      // Get video dimensions - left half only
+      const video = this.getVideoEl_();
+      const videoWidth = video.videoWidth / 2; // Left half width
+      const videoHeight = video.videoHeight;
+      const videoAspect = videoWidth / videoHeight;
+
+      // Calculate viewport dimensions at distance
+      const fov = this.camera.fov * Math.PI / 180;
+      const viewportHeight = 2 * distance * Math.tan(fov / 2);
+      const viewportWidth = viewportHeight * this.camera.aspect;
+      const viewportAspect = viewportWidth / viewportHeight;
+
+      // Aspect fill: scale to fill viewport while maintaining aspect ratio
+      let planeWidth, planeHeight;
+      if (videoAspect > viewportAspect) {
+        // Video is wider - fit to height
+        planeHeight = viewportHeight;
+        planeWidth = viewportHeight * videoAspect;
+      } else {
+        // Video is taller - fit to width
+        planeWidth = viewportWidth;
+        planeHeight = viewportWidth / videoAspect;
+      }
+
+      this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+
+      // Map UVs to left half of video only (U: 0 to 0.5)
+      const uvAttribute = this.movieGeometry.getAttribute('uv');
+      const uvArray = uvAttribute.array;
+      for (let i = 0; i < uvArray.length; i += 2) {
+        uvArray[i] *= 0.5; // Left half only
+      }
+      uvAttribute.needsUpdate = true;
+
+      this.movieMaterial = new THREE.MeshBasicMaterial({
+        map: this.videoTexture,
+        side: THREE.FrontSide
+      });
+
+      this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
+      this.movieScreen.position.set(0, 0, -distance);
+
+      this.movieScreen.layers.enable(0);
+      this.movieScreen.layers.enable(1);
+      this.movieScreen.layers.enable(2);
+
+      this.scene.add(this.movieScreen);
+      this.sbsMonoActive_ = true;
     }
 
     this.currentProjection_ = projection;
@@ -546,7 +632,7 @@ void main() {
     }
   }
 
-  animate_() {
+  animate_(timestamp, xrFrame) {
     if (!this.initialized_) {
       return;
     }
@@ -556,11 +642,28 @@ void main() {
       }
     }
 
-    this.controls3d.update();
+    // Only update controls if they exist
+    if (this.controls3d) {
+      this.controls3d.update();
+    }
     if (this.omniController) {
       this.omniController.update(this.camera);
     }
-    this.effect.render(this.scene, this.camera);
+
+    // Update VR HUD and Gallery
+    if (this.vrHUD) {
+      this.vrHUD.update();
+    }
+    if (this.vrGallery) {
+      this.vrGallery.update();
+    }
+
+    // For WebXR, use the renderer directly; for legacy, use VREffect
+    if (this.webXRSupported_ && this.renderer.xr.isPresenting) {
+      this.renderer.render(this.scene, this.camera);
+    } else {
+      this.effect.render(this.scene, this.camera);
+    }
 
     if (window.navigator.getGamepads) {
       // Grab all gamepads
@@ -585,7 +688,10 @@ void main() {
     }
     this.camera.getWorldDirection(this.cameraVector);
 
-    this.animationFrameId_ = this.requestAnimationFrame(this.animate_);
+    // If using setAnimationLoop (WebXR), don't call requestAnimationFrame manually
+    if (!this.useSetAnimationLoop_) {
+      this.animationFrameId_ = this.requestAnimationFrame(this.animate_);
+    }
   }
 
   handleResize_() {
@@ -630,6 +736,44 @@ void main() {
     this.videoTexture.magFilter = THREE.LinearFilter;
     this.videoTexture.format = THREE.RGBFormat;
 
+    // Handle poster image - show poster until video starts playing
+    this.posterTexture = null;
+    this.usingPoster = false;
+    const posterUrl = this.player_.poster();
+
+    if (posterUrl && !this.player_.hasStarted()) {
+      // Load poster image as texture
+      const textureLoader = new THREE.TextureLoader();
+      textureLoader.load(
+        posterUrl,
+        (texture) => {
+          this.posterTexture = texture;
+          this.posterTexture.minFilter = THREE.LinearFilter;
+          this.posterTexture.magFilter = THREE.LinearFilter;
+          this.usingPoster = true;
+
+          // Update material to use poster
+          if (this.movieMaterial && this.movieMaterial.map !== this.posterTexture) {
+            this.movieMaterial.map = this.posterTexture;
+            this.movieMaterial.needsUpdate = true;
+          }
+        },
+        undefined,
+        (error) => {
+          this.log('Failed to load poster image:', error);
+        }
+      );
+
+      // Switch to video texture when video starts playing
+      this.player_.one('playing', () => {
+        if (this.usingPoster && this.movieMaterial) {
+          this.movieMaterial.map = this.videoTexture;
+          this.movieMaterial.needsUpdate = true;
+          this.usingPoster = false;
+        }
+      });
+    }
+
     this.changeProjection_(this.currentProjection_);
 
     if (this.currentProjection_ === 'NONE') {
@@ -637,6 +781,9 @@ void main() {
       this.reset();
       return;
     }
+
+    // SBS_MONO uses the 3D renderer with a flat plane, so it continues with normal init
+    // The changeProjection_ method handles creating the proper geometry with UV mapping
 
     this.player_.removeChild('BigPlayButton');
     this.player_.addChild('BigVrPlayButton', {}, this.bigPlayButtonIndex_);
@@ -692,11 +839,76 @@ void main() {
     const videoElStyle = this.getVideoEl_().style;
 
     this.player_.el().insertBefore(this.renderedCanvas, this.player_.el().firstChild);
+
+    // Hide video and show canvas for 3D rendering (including SBS_MONO which now uses 3D renderer)
     videoElStyle.zIndex = '-1';
     videoElStyle.opacity = '0';
 
-    if (window.navigator.getVRDisplays) {
-      this.log('is supported, getting vr displays');
+    // Check for WebXR support first (modern API), then fall back to legacy WebVR
+    const hasWebXR = navigator.xr && navigator.xr.isSessionSupported;
+    const hasWebVR = window.navigator.getVRDisplays;
+
+    const initializeControls = () => {
+      // Skip orbit controls for SBS_MONO - it's a flat plane view with fixed camera
+      if (!this.controls3d && this.currentProjection_ !== 'SBS_MONO') {
+        this.log('no HMD found Using Orbit & Orientation Controls');
+        const options = {
+          camera: this.camera,
+          canvas: this.renderedCanvas,
+          // check if its a half sphere view projection
+          halfView: this.currentProjection_.indexOf('180') === 0,
+          orientation: videojs.browser.IS_IOS || videojs.browser.IS_ANDROID || false
+        };
+
+        if (this.options_.motionControls === false) {
+          options.orientation = false;
+        }
+
+        this.controls3d = new OrbitOrientationContols(options);
+        this.canvasPlayerControls = new CanvasPlayerControls(this.player_, this.renderedCanvas, this.options_);
+      } else if (this.currentProjection_ === 'SBS_MONO') {
+        this.log('SBS_MONO mode: flat plane view, no orbit controls needed');
+      }
+
+      // Initialize VR HUD if enabled
+      if (this.options_.enableVRHUD) {
+        this.initVRHUD_();
+      }
+
+      // Initialize VR Gallery if enabled
+      if (this.options_.enableVRGallery) {
+        this.initVRGallery_();
+      }
+
+      // Use setAnimationLoop for WebXR compatibility
+      if (this.webXRSupported_) {
+        this.useSetAnimationLoop_ = true;
+        this.renderer.setAnimationLoop(this.animate_);
+      } else {
+        this.useSetAnimationLoop_ = false;
+        this.animationFrameId_ = this.requestAnimationFrame(this.animate_);
+      }
+    };
+
+    if (hasWebXR) {
+      this.log('WebXR is supported, checking for immersive-vr session support');
+      navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+        if (supported) {
+          this.log('WebXR immersive-vr is supported, adding cardboard button');
+          this.addCardboardButton_();
+          this.webXRSupported_ = true;
+          // Enable WebXR on THREE.js renderer
+          this.renderer.xr.enabled = true;
+        } else {
+          this.log('WebXR immersive-vr not supported on this device');
+        }
+        initializeControls();
+      }).catch((err) => {
+        this.log('WebXR check failed:', err);
+        initializeControls();
+      });
+    } else if (hasWebVR) {
+      this.log('Legacy WebVR is supported, getting vr displays');
       window.navigator.getVRDisplays().then((displays) => {
         if (displays.length > 0) {
           this.log('Displays found', displays);
@@ -714,31 +926,14 @@ void main() {
             this.controls3d = new VRControls(this.camera);
           }
         }
-
-        if (!this.controls3d) {
-          this.log('no HMD found Using Orbit & Orientation Controls');
-          const options = {
-            camera: this.camera,
-            canvas: this.renderedCanvas,
-            // check if its a half sphere view projection
-            halfView: this.currentProjection_.indexOf('180') === 0,
-            orientation: videojs.browser.IS_IOS || videojs.browser.IS_ANDROID || false
-          };
-
-          if (this.options_.motionControls === false) {
-            options.orientation = false;
-          }
-
-          this.controls3d = new OrbitOrientationContols(options);
-          this.canvasPlayerControls = new CanvasPlayerControls(this.player_, this.renderedCanvas, this.options_);
-        }
-
-        this.animationFrameId_ = this.requestAnimationFrame(this.animate_);
+        initializeControls();
       });
     } else if (window.navigator.getVRDevices) {
       this.triggerError_({code: 'web-vr-out-of-date', dismiss: false});
+      initializeControls();
     } else {
-      this.triggerError_({code: 'web-vr-not-supported', dismiss: false});
+      this.log('No WebXR or WebVR support detected');
+      initializeControls();
     }
 
     if (this.options_.omnitone) {
@@ -781,6 +976,11 @@ void main() {
       return;
     }
 
+    // Clear SBS_MONO flag if active (3D cleanup is handled by scene removal below)
+    if (this.sbsMonoActive_) {
+      this.sbsMonoActive_ = false;
+    }
+
     if (this.omniController) {
       this.omniController.off('audiocontext-suspended');
       this.omniController.dispose();
@@ -795,6 +995,17 @@ void main() {
     if (this.canvasPlayerControls) {
       this.canvasPlayerControls.dispose();
       this.canvasPlayerControls = null;
+    }
+
+    // Dispose VR HUD and Gallery
+    if (this.vrHUD) {
+      this.vrHUD.dispose();
+      this.vrHUD = null;
+    }
+
+    if (this.vrGallery) {
+      this.vrGallery.dispose();
+      this.vrGallery = null;
     }
 
     if (this.effect) {
@@ -845,11 +1056,237 @@ void main() {
       this.renderedCanvas.parentNode.removeChild(this.renderedCanvas);
     }
 
+    // Stop the animation loop
+    if (this.useSetAnimationLoop_ && this.renderer) {
+      this.renderer.setAnimationLoop(null);
+    }
     if (this.animationFrameId_) {
       this.cancelAnimationFrame(this.animationFrameId_);
     }
 
+    // End any active XR session
+    if (this.xrSession_) {
+      this.xrSession_.end().catch(() => {});
+      this.xrSession_ = null;
+    }
+
     this.initialized_ = false;
+  }
+
+  /**
+   * Initialize VR HUD with controls
+   */
+  initVRHUD_() {
+    this.vrHUD = new VRHUD({
+      player: this.player_,
+      scene: this.scene,
+      camera: this.camera,
+      renderer: this.renderer,
+      onNext: () => {
+        if (this.options_.onNext) {
+          this.options_.onNext();
+        }
+        this.trigger('vr-next');
+      },
+      onPrevious: () => {
+        if (this.options_.onPrevious) {
+          this.options_.onPrevious();
+        }
+        this.trigger('vr-previous');
+      },
+      onGallery: () => {
+        if (this.vrGallery) {
+          this.vrGallery.toggle();
+        }
+        if (this.options_.onGallery) {
+          this.options_.onGallery();
+        }
+        this.trigger('vr-gallery');
+      },
+      onExit: () => {
+        if (this.options_.onExit) {
+          this.options_.onExit();
+        }
+        this.trigger('vr-exit');
+      },
+      onOrientationChange: (euler) => {
+        if (this.controls3d && this.controls3d.setOrientationOffset) {
+          this.controls3d.setOrientationOffset(euler);
+        }
+        this.trigger('vr-orientation-change', euler);
+      }
+    });
+
+    // Show HUD on start if configured
+    if (this.options_.showHUDOnStart) {
+      this.vrHUD.show();
+    }
+
+    // Auto-hide HUD after delay if configured
+    if (this.options_.hudAutoHideDelay > 0) {
+      this.setupHUDAutoHide_();
+    }
+
+    this.log('VR HUD initialized');
+  }
+
+  /**
+   * Initialize VR Gallery
+   */
+  initVRGallery_() {
+    this.vrGallery = new VRGallery({
+      scene: this.scene,
+      camera: this.camera,
+      renderer: this.renderer,
+      onMediaSelect: (item, index) => {
+        if (this.options_.onMediaSelect) {
+          this.options_.onMediaSelect(item, index);
+        }
+        this.trigger('vr-media-select', {item, index});
+      }
+    });
+
+    // Set initial media items if provided
+    if (this.options_.mediaItems && this.options_.mediaItems.length > 0) {
+      this.vrGallery.setMediaItems(this.options_.mediaItems);
+    }
+
+    this.log('VR Gallery initialized');
+  }
+
+  /**
+   * Setup auto-hide for HUD
+   */
+  setupHUDAutoHide_() {
+    let hideTimer = null;
+
+    const resetTimer = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+      }
+      if (this.vrHUD && !this.vrHUD.isVisible) {
+        this.vrHUD.show();
+      }
+      hideTimer = setTimeout(() => {
+        if (this.vrHUD) {
+          this.vrHUD.hide();
+        }
+      }, this.options_.hudAutoHideDelay);
+    };
+
+    // Reset timer on user activity
+    this.on(this.player_, 'playing', resetTimer);
+    this.on(this.player_, 'pause', () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+      }
+      if (this.vrHUD) {
+        this.vrHUD.show();
+      }
+    });
+
+    if (this.renderedCanvas) {
+      this.renderedCanvas.addEventListener('mousemove', resetTimer);
+      this.renderedCanvas.addEventListener('click', resetTimer);
+    }
+  }
+
+  /**
+   * Show the VR HUD
+   */
+  showHUD() {
+    if (this.vrHUD) {
+      this.vrHUD.show();
+    }
+  }
+
+  /**
+   * Hide the VR HUD
+   */
+  hideHUD() {
+    if (this.vrHUD) {
+      this.vrHUD.hide();
+    }
+  }
+
+  /**
+   * Toggle the VR HUD visibility
+   */
+  toggleHUD() {
+    if (this.vrHUD) {
+      this.vrHUD.toggle();
+    }
+  }
+
+  /**
+   * Show the VR Gallery
+   */
+  showGallery() {
+    if (this.vrGallery) {
+      this.vrGallery.show();
+    }
+  }
+
+  /**
+   * Hide the VR Gallery
+   */
+  hideGallery() {
+    if (this.vrGallery) {
+      this.vrGallery.hide();
+    }
+  }
+
+  /**
+   * Toggle the VR Gallery visibility
+   */
+  toggleGallery() {
+    if (this.vrGallery) {
+      this.vrGallery.toggle();
+    }
+  }
+
+  /**
+   * Set media items for the gallery
+   * @param {Array} items - Array of media items with thumbnail, title, url, etc.
+   */
+  setGalleryItems(items) {
+    if (this.vrGallery) {
+      this.vrGallery.setMediaItems(items);
+    }
+  }
+
+  /**
+   * Set orientation offset for lying down viewing, etc.
+   * @param {Object|THREE.Euler} offset - Orientation offset {x, y, z} or Euler
+   */
+  setOrientationOffset(offset) {
+    if (this.controls3d && this.controls3d.setOrientationOffset) {
+      this.controls3d.setOrientationOffset(offset);
+    }
+    if (this.vrHUD) {
+      this.vrHUD.setOrientationOffset(offset);
+    }
+  }
+
+  /**
+   * Reset orientation offset to default
+   */
+  resetOrientationOffset() {
+    if (this.controls3d && this.controls3d.resetOrientationOffset) {
+      this.controls3d.resetOrientationOffset();
+    }
+    if (this.vrHUD) {
+      this.vrHUD.setOrientationOffset({x: 0, y: 0, z: 0});
+    }
+  }
+
+  /**
+   * Recenter the VR view to current head position
+   */
+  recenter() {
+    if (this.controls3d && this.controls3d.recenter) {
+      this.controls3d.recenter();
+    }
   }
 
   dispose() {

@@ -97,8 +97,40 @@ class CardboardButton extends Button {
       if (!this.player_.hasStarted() && videojs.browser.IS_ANDROID) {
         this.player_.play();
       }
-      window.dispatchEvent(new window.Event('vrdisplayactivate'));
+
+      // Check for WebXR support first
+      const vr = this.player_.vr();
+      if (vr && vr.webXRSupported_ && navigator.xr) {
+        // Use WebXR
+        navigator.xr.requestSession('immersive-vr', {
+          optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+        }).then((session) => {
+          vr.renderer.xr.setSession(session);
+          vr.xrSession_ = session;
+          this.active_ = true;
+
+          session.addEventListener('end', () => {
+            vr.xrSession_ = null;
+            this.active_ = false;
+            window.dispatchEvent(new window.Event('vrdisplaydeactivate'));
+          });
+
+          window.dispatchEvent(new window.Event('vrdisplayactivate'));
+        }).catch((err) => {
+          console.error('Failed to start WebXR session:', err);
+          // Fall back to legacy VR display activation
+          window.dispatchEvent(new window.Event('vrdisplayactivate'));
+        });
+      } else {
+        // Legacy WebVR activation
+        window.dispatchEvent(new window.Event('vrdisplayactivate'));
+      }
     } else {
+      // Deactivate
+      const vr = this.player_.vr();
+      if (vr && vr.xrSession_) {
+        vr.xrSession_.end().catch(() => {});
+      }
       window.dispatchEvent(new window.Event('vrdisplaydeactivate'));
     }
   }

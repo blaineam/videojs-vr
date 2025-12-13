@@ -41,7 +41,8 @@ export const validProjections = [
   'equirectangular',
   '180',
   '180_LR',
-  '180_MONO'
+  '180_MONO',
+  'SBS_MONO'
 ];
 
 export const getInternalProjectionName = function(projection) {
