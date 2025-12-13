@@ -51,7 +51,6 @@ class VRHUD {
     this.createControlPanel();
     this.createScrubBar();
     this.createNavigationButtons();
-    this.createOrientationHandle();
 
     this.scene.add(this.hudGroup);
 
@@ -149,7 +148,7 @@ class VRHUD {
     this.controlPanel = new THREE.Mesh(panelGeometry, panelMaterial);
     this.controlPanel.name = 'control-panel';
     this.controlPanel.position.set(0, 0, 0); // HUD group is positioned, panel is at origin within group
-    this.controlPanel.rotation.x = -Math.PI / 6; // Tilt panel down ~30 degrees to face camera like a screen
+    // No rotation - panel is vertical like a wall facing the camera
 
     // Panel border/glow
     const borderGeometry = new THREE.PlaneGeometry(panelWidth + 0.02, panelHeight + 0.02);
@@ -263,9 +262,13 @@ class VRHUD {
     this.nextBtn = this.createButton('⏭', 0.25, -0.15, 'next');
     buttonGroup.add(this.nextBtn);
 
-    // Orientation reset button (moved left for better spacing from orientation handle)
+    // Orientation reset button
     this.orientResetBtn = this.createButton('⟲', 0.5, -0.15, 'reset-orientation');
     buttonGroup.add(this.orientResetBtn);
+
+    // Orientation drag handle - aligned in row with other buttons
+    this.orientDragBtn = this.createButton('✋', 0.75, -0.15, 'orientation-handle');
+    buttonGroup.add(this.orientDragBtn);
 
     this.controlPanel.add(buttonGroup);
   }
@@ -327,60 +330,6 @@ class VRHUD {
     this.interactiveElements.push(btnMesh);
 
     return btnGroup;
-  }
-
-  createOrientationHandle() {
-    // Orientation adjustment handle (drag to rotate view)
-    const handleGroup = new THREE.Group();
-    handleGroup.name = 'orientation-handle';
-
-    // Handle background (same size as other buttons: 0.12x0.12)
-    const handleGeometry = new THREE.PlaneGeometry(0.12, 0.12);
-    const handleMaterial = new THREE.MeshBasicMaterial({
-      color: 0x2a2a4a,
-      opacity: 0.8,
-      transparent: true
-    });
-
-    const handleMesh = new THREE.Mesh(handleGeometry, handleMaterial);
-    handleMesh.userData.interactive = true;
-    handleMesh.userData.type = 'orientation-handle';
-    handleMesh.userData.baseColor = 0x2a2a4a;
-    handleGroup.add(handleMesh);
-
-    // Compass-like indicator (scaled down to fit button size)
-    const compassGeometry = new THREE.RingGeometry(0.032, 0.04, 32);
-    const compassMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.6,
-      transparent: true
-    });
-    const compass = new THREE.Mesh(compassGeometry, compassMaterial);
-    compass.position.z = 0.001;
-    handleGroup.add(compass);
-
-    // Direction indicator (scaled down)
-    const arrowShape = new THREE.Shape();
-    arrowShape.moveTo(0, 0.024);
-    arrowShape.lineTo(-0.008, 0.008);
-    arrowShape.lineTo(0.008, 0.008);
-    arrowShape.closePath();
-
-    const arrowGeometry = new THREE.ShapeGeometry(arrowShape);
-    const arrowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff6600,
-      opacity: 0.9,
-      transparent: true
-    });
-    this.orientationArrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-    this.orientationArrow.position.z = 0.002;
-    handleGroup.add(this.orientationArrow);
-
-    handleGroup.position.set(0.9, 0, 0.01); // Move to right side to avoid overlap with exit button
-    this.controlPanel.add(handleGroup);
-
-    this.interactiveElements.push(handleMesh);
-    this.orientationHandle = handleGroup;
   }
 
   setupInteraction() {
@@ -573,9 +522,6 @@ class VRHUD {
         this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
 
         this.onOrientationChange(this.orientationOffset);
-
-        // Update arrow rotation
-        this.orientationArrow.rotation.z = -this.orientationOffset.y;
       }
     }
 
@@ -645,9 +591,6 @@ class VRHUD {
         this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
 
         this.onOrientationChange(this.orientationOffset);
-
-        // Update arrow rotation
-        this.orientationArrow.rotation.z = -this.orientationOffset.y;
       }
       return;
     }
@@ -750,7 +693,6 @@ class VRHUD {
       case 'reset-orientation':
         this.orientationOffset.set(0, 0, 0);
         this.onOrientationChange(this.orientationOffset);
-        this.orientationArrow.rotation.z = 0;
         break;
 
       case 'scrub':
@@ -876,8 +818,8 @@ class VRHUD {
 
     this.hudGroup.position.copy(this.camera.position);
     this.hudGroup.position.addScaledVector(cameraDirection, this.hudDistance);
-    // HUD at eye level (slightly below for comfort with the 30-degree tilt)
-    this.hudGroup.position.y = this.camera.position.y - 0.2;
+    // HUD at eye level (vertical like a wall)
+    this.hudGroup.position.y = this.camera.position.y;
 
     // Make HUD face the camera
     this.hudGroup.quaternion.copy(this.camera.quaternion);
@@ -1000,7 +942,6 @@ class VRHUD {
 
   setOrientationOffset(euler) {
     this.orientationOffset.copy(euler);
-    this.orientationArrow.rotation.z = -euler.y;
   }
 
   getOrientationOffset() {

@@ -1118,24 +1118,28 @@ void main() {
         this.trigger('vr-exit');
       },
       onOrientationChange: (euler) => {
-        // Apply rotation to video mesh for real-time visual feedback
-        if (this.movieScreen) {
-          // Create quaternion from euler angles
-          const offsetQuat = new THREE.Quaternion().setFromEuler(euler);
+        // Apply rotation to ALL video meshes for real-time visual feedback
+        // In stereo modes (360_LR, 180_LR), there are separate meshes for each eye
+        const offsetQuat = new THREE.Quaternion().setFromEuler(euler);
 
-          // Get the base rotation (initial orientation)
-          const baseQuat = new THREE.Quaternion();
-          if (this.movieScreen.userData.baseQuaternion) {
-            baseQuat.copy(this.movieScreen.userData.baseQuaternion);
-          } else {
-            // Store initial quaternion on first use
-            this.movieScreen.userData.baseQuaternion = this.movieScreen.quaternion.clone();
-            baseQuat.copy(this.movieScreen.quaternion);
+        // Find all video screen meshes in the scene
+        this.scene.traverse((object) => {
+          if (object.isMesh && object.material && object.material.map === this.videoTexture) {
+            // Get the base rotation (initial orientation)
+            const baseQuat = new THREE.Quaternion();
+            if (object.userData.baseQuaternion) {
+              baseQuat.copy(object.userData.baseQuaternion);
+            } else {
+              // Store initial quaternion on first use
+              object.userData.baseQuaternion = object.quaternion.clone();
+              baseQuat.copy(object.quaternion);
+            }
+
+            // Apply offset rotation on top of base rotation
+            object.quaternion.copy(baseQuat).multiply(offsetQuat);
           }
+        });
 
-          // Apply offset rotation on top of base rotation
-          this.movieScreen.quaternion.copy(baseQuat).multiply(offsetQuat);
-        }
         this.trigger('vr-orientation-change', euler);
       }
     });
