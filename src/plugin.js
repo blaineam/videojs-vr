@@ -459,7 +459,7 @@ void main() {
         this.scene.add(this.movieScreen);
       }
     } else if (projection === 'SBS_MONO') {
-      // SBS_MONO: Show only left half of SBS video, centered with aspect-fill
+      // SBS_MONO: Show only left half of SBS video, centered and fully visible
       const distance = 3;
 
       // Get video dimensions - left half only
@@ -474,16 +474,16 @@ void main() {
       const viewportWidth = viewportHeight * this.camera.aspect;
       const viewportAspect = viewportWidth / viewportHeight;
 
-      // Aspect fill: scale to fill viewport while maintaining aspect ratio
+      // Aspect fit: scale to fit inside viewport while maintaining aspect ratio
       let planeWidth, planeHeight;
       if (videoAspect > viewportAspect) {
-        // Video is wider - fit to height
-        planeHeight = viewportHeight;
-        planeWidth = viewportHeight * videoAspect;
-      } else {
-        // Video is taller - fit to width
+        // Video is wider - fit to width
         planeWidth = viewportWidth;
         planeHeight = viewportWidth / videoAspect;
+      } else {
+        // Video is taller - fit to height
+        planeHeight = viewportHeight;
+        planeWidth = viewportHeight * videoAspect;
       }
 
       this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
