@@ -61,7 +61,7 @@ const VREffect = function ( renderer, onError ) {
 
 	var scope = this;
 
-	var rendererSize = renderer.getSize();
+	var rendererSize = renderer.getSize(new THREE.Vector2());
 	var rendererUpdateStyle = false;
 	var rendererPixelRatio = renderer.getPixelRatio();
 
@@ -124,7 +124,7 @@ const VREffect = function ( renderer, onError ) {
 			if ( ! wasPresenting ) {
 
 				rendererPixelRatio = renderer.getPixelRatio();
-				rendererSize = renderer.getSize();
+				rendererSize = renderer.getSize(new THREE.Vector2());
 
 				renderer.setPixelRatio( 1 );
 				renderer.setSize( eyeWidth * 2, eyeHeight, false );
@@ -256,7 +256,7 @@ const VREffect = function ( renderer, onError ) {
 
 			// When rendering we don't care what the recommended size is, only what the actual size
 			// of the backbuffer is.
-			var size = renderer.getSize();
+			var size = renderer.getSize(new THREE.Vector2());
 			var layers = vrDisplay.getLayers();
 			var leftBounds;
 			var rightBounds;

@@ -21,8 +21,8 @@ class VRHUD {
 
     // HUD configuration
     this.hudDistance = 4; // Distance from camera
-    this.hudHeight = -0.15; // Lower third of field of view when looking straight ahead
-    this.hudScale = 0.003;
+    this.hudHeight = 0.8; // Raised up so user doesn't look at floor (was -0.15)
+    this.hudScale = 0.008; // Increased for readability (was 0.003)
     this.autoHideDelay = 10000; // Auto-hide after 10 seconds of inactivity
 
     // Interaction state
