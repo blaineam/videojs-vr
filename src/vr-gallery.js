@@ -12,6 +12,7 @@ class VRGallery {
 
     // Callbacks
     this.onMediaSelect = options.onMediaSelect || (() => {});
+    this.getSrc = options.getSrc || null; // Function to resolve resource paths to blob URLs
 
     // Gallery configuration
     this.galleryDistance = 3.5;
@@ -373,7 +374,7 @@ class VRGallery {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
-  loadThumbnailTexture(url, mesh) {
+  async loadThumbnailTexture(url, mesh) {
     // Check cache first
     if (this.loadedTextures.has(url)) {
       mesh.material.map = this.loadedTextures.get(url);
@@ -381,25 +382,35 @@ class VRGallery {
       return;
     }
 
-    const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
-
-    loader.load(
-      url,
-      (texture) => {
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-
-        this.loadedTextures.set(url, texture);
-
-        mesh.material.map = texture;
-        mesh.material.needsUpdate = true;
-      },
-      undefined,
-      (error) => {
-        console.warn('Failed to load thumbnail:', url, error);
+    try {
+      // Use getSrc to resolve the path to a blob URL if available
+      let resolvedUrl = url;
+      if (this.getSrc && typeof this.getSrc === 'function') {
+        resolvedUrl = await this.getSrc(url, 'high');
       }
-    );
+
+      const loader = new THREE.TextureLoader();
+      loader.crossOrigin = 'anonymous';
+
+      loader.load(
+        resolvedUrl,
+        (texture) => {
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+
+          this.loadedTextures.set(url, texture);
+
+          mesh.material.map = texture;
+          mesh.material.needsUpdate = true;
+        },
+        undefined,
+        (error) => {
+          console.warn('Failed to load thumbnail:', url, error);
+        }
+      );
+    } catch (error) {
+      console.warn('Failed to resolve thumbnail path:', url, error);
+    }
   }
 
   setMediaItems(items) {

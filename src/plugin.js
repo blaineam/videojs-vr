@@ -1157,10 +1157,17 @@ void main() {
    * Initialize VR Gallery
    */
   initVRGallery_() {
+    // Get getSrc function from options or window.medcrypt
+    let getSrcFunc = this.options_.getSrc;
+    if (!getSrcFunc && typeof window !== 'undefined' && window.medcrypt && window.medcrypt.getSrc) {
+      getSrcFunc = window.medcrypt.getSrc.bind(window.medcrypt);
+    }
+
     this.vrGallery = new VRGallery({
       scene: this.scene,
       camera: this.camera,
       renderer: this.renderer,
+      getSrc: getSrcFunc,
       onMediaSelect: (item, index) => {
         if (this.options_.onMediaSelect) {
           this.options_.onMediaSelect(item, index);
