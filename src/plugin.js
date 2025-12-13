@@ -1087,6 +1087,9 @@ void main() {
       scene: this.scene,
       camera: this.camera,
       renderer: this.renderer,
+      hudHeight: this.options_.hudHeight,
+      hudScale: this.options_.hudScale,
+      hudDistance: this.options_.hudDistance,
       onNext: () => {
         if (this.options_.onNext) {
           this.options_.onNext();

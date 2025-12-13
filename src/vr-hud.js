@@ -19,11 +19,11 @@ class VRHUD {
     this.onGallery = options.onGallery || (() => {});
     this.onExit = options.onExit || (() => {});
 
-    // HUD configuration
-    this.hudDistance = 4; // Distance from camera
-    this.hudHeight = 1.5; // Much higher - nearly eye level (was -0.15)
-    this.hudScale = 0.015; // 5x original size for readability (was 0.003)
-    this.autoHideDelay = 10000; // Auto-hide after 10 seconds of inactivity
+    // HUD configuration (can be overridden by options)
+    this.hudDistance = options.hudDistance !== undefined ? options.hudDistance : 4;
+    this.hudHeight = options.hudHeight !== undefined ? options.hudHeight : 1.5;
+    this.hudScale = options.hudScale !== undefined ? options.hudScale : 0.015;
+    this.autoHideDelay = options.autoHideDelay !== undefined ? options.autoHideDelay : 10000;
 
     // Interaction state
     this.isVisible = false; // Start hidden, only show in WebXR
