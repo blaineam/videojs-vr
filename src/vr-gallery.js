@@ -28,6 +28,11 @@ class VRGallery {
     this.clipMinY = 0;
     this.clipMaxY = 0;
 
+    // Track failed loads to prevent infinite retries
+    this.failedLoads = new Map(); // url -> retry count
+    this.maxRetries = 3;
+    this.getSrcTimeout = 10000; // 10 second timeout
+
     // Media items
     this.mediaItems = [];
     this.thumbnailMeshes = [];
@@ -382,6 +387,13 @@ class VRGallery {
       return;
     }
 
+    // Check if we've exceeded retry limit
+    const retryCount = this.failedLoads.get(url) || 0;
+    if (retryCount >= this.maxRetries) {
+      console.warn(`[VR Gallery] Max retries (${this.maxRetries}) exceeded for thumbnail:`, url);
+      return;
+    }
+
     try {
       // Use getSrc to resolve the path to a blob URL if available
       // Lazy lookup: check for window.medcrypt.getSrc at load time if not provided
@@ -394,8 +406,23 @@ class VRGallery {
       let resolvedUrl = url;
       if (getSrcFunc && typeof getSrcFunc === 'function') {
         console.log('[VR Gallery] Resolving thumbnail path:', url);
-        resolvedUrl = await getSrcFunc(url, 'high');
-        console.log('[VR Gallery] Resolved to:', resolvedUrl);
+
+        // Add timeout to getSrc call
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getSrc timeout')), this.getSrcTimeout)
+        );
+
+        try {
+          resolvedUrl = await Promise.race([
+            getSrcFunc(url, 'high'),
+            timeoutPromise
+          ]);
+          console.log('[VR Gallery] Resolved to:', resolvedUrl);
+        } catch (timeoutError) {
+          console.warn('[VR Gallery] getSrc timed out for:', url);
+          this.failedLoads.set(url, retryCount + 1);
+          return;
+        }
       } else {
         console.warn('[VR Gallery] getSrc not available, using raw URL:', url);
       }
@@ -411,16 +438,21 @@ class VRGallery {
 
           this.loadedTextures.set(url, texture);
 
+          // Clear failed count on success
+          this.failedLoads.delete(url);
+
           mesh.material.map = texture;
           mesh.material.needsUpdate = true;
         },
         undefined,
         (error) => {
           console.warn('Failed to load thumbnail:', url, '(resolved:', resolvedUrl, ')', error);
+          this.failedLoads.set(url, retryCount + 1);
         }
       );
     } catch (error) {
       console.warn('Failed to resolve thumbnail path:', url, error);
+      this.failedLoads.set(url, retryCount + 1);
     }
   }
 
