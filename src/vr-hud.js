@@ -870,13 +870,14 @@ class VRHUD {
     this.updateCursor();
 
     // Make HUD follow camera at constant distance
-    // Position HUD in front of camera at fixed distance
+    // Position HUD in front of camera at fixed distance at eye level
     const cameraDirection = new THREE.Vector3(0, 0, -1);
     cameraDirection.applyQuaternion(this.camera.quaternion);
 
     this.hudGroup.position.copy(this.camera.position);
     this.hudGroup.position.addScaledVector(cameraDirection, this.hudDistance);
-    this.hudGroup.position.y = this.camera.position.y + this.hudHeight;
+    // HUD at eye level (slightly below for comfort with the 30-degree tilt)
+    this.hudGroup.position.y = this.camera.position.y - 0.2;
 
     // Make HUD face the camera
     this.hudGroup.quaternion.copy(this.camera.quaternion);
