@@ -60,6 +60,8 @@ class VRHUD {
     this.onSelect = this.onSelect.bind(this);
     this.onSelectStart = this.onSelectStart.bind(this);
     this.onSelectEnd = this.onSelectEnd.bind(this);
+    this.onSqueezeStart = this.onSqueezeStart.bind(this);
+    this.onSqueezeEnd = this.onSqueezeEnd.bind(this);
     this.onXRSessionStart = this.onXRSessionStart.bind(this);
     this.onXRSessionEnd = this.onXRSessionEnd.bind(this);
 
