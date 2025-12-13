@@ -509,6 +509,11 @@ void main() {
       this.movieScreen.layers.enable(2);
 
       this.scene.add(this.movieScreen);
+
+      // Reset camera rotation to look straight ahead at centered plane
+      this.camera.rotation.set(0, 0, 0);
+      this.camera.lookAt(0, 0, -distance);
+
       this.sbsMonoActive_ = true;
     }
 
