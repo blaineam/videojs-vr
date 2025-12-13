@@ -1161,6 +1161,11 @@ void main() {
     let getSrcFunc = this.options_.getSrc;
     if (!getSrcFunc && typeof window !== 'undefined' && window.medcrypt && window.medcrypt.getSrc) {
       getSrcFunc = window.medcrypt.getSrc.bind(window.medcrypt);
+      console.log('[VR Plugin] Using window.medcrypt.getSrc for gallery');
+    } else if (getSrcFunc) {
+      console.log('[VR Plugin] Using provided getSrc for gallery');
+    } else {
+      console.warn('[VR Plugin] No getSrc function available for gallery!');
     }
 
     this.vrGallery = new VRGallery({

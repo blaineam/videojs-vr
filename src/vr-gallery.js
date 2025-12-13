@@ -386,7 +386,11 @@ class VRGallery {
       // Use getSrc to resolve the path to a blob URL if available
       let resolvedUrl = url;
       if (this.getSrc && typeof this.getSrc === 'function') {
+        console.log('[VR Gallery] Resolving thumbnail path:', url);
         resolvedUrl = await this.getSrc(url, 'high');
+        console.log('[VR Gallery] Resolved to:', resolvedUrl);
+      } else {
+        console.warn('[VR Gallery] getSrc not available, using raw URL:', url);
       }
 
       const loader = new THREE.TextureLoader();
@@ -405,7 +409,7 @@ class VRGallery {
         },
         undefined,
         (error) => {
-          console.warn('Failed to load thumbnail:', url, error);
+          console.warn('Failed to load thumbnail:', url, '(resolved:', resolvedUrl, ')', error);
         }
       );
     } catch (error) {
