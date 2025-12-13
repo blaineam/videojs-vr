@@ -649,8 +649,45 @@ class VRHUD {
     this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
     this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-    const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+    // Handle ongoing orientation dragging
+    if (this.isDraggingOrientation) {
+      const intersects = this.raycaster.intersectObjects([this.controlPanel]);
+      if (intersects.length > 0) {
+        const currentPoint = intersects[0].point;
+        const delta = currentPoint.clone().sub(this.dragStartPoint);
 
+        // Update orientation offset based on controller movement
+        this.orientationOffset.x = this.dragStartRotation.x + delta.y * 3;
+        this.orientationOffset.y = this.dragStartRotation.y - delta.x * 3;
+
+        // Clamp vertical rotation
+        this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
+
+        this.onOrientationChange(this.orientationOffset);
+
+        // Update arrow rotation
+        this.orientationArrow.rotation.z = -this.orientationOffset.y;
+      }
+      return;
+    }
+
+    // Handle ongoing scrub dragging
+    if (this.isDraggingScrub) {
+      const intersects = this.raycaster.intersectObjects([this.scrubTrack]);
+      if (intersects.length > 0) {
+        const localPoint = this.scrubTrack.worldToLocal(intersects[0].point.clone());
+        const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
+        const clampedProgress = Math.max(0, Math.min(1, progress));
+
+        if (this.player.duration()) {
+          this.player.currentTime(this.player.duration() * clampedProgress);
+        }
+      }
+      return;
+    }
+
+    // Regular button clicks
+    const intersects = this.raycaster.intersectObjects(this.interactiveElements);
     if (intersects.length > 0) {
       this.handleInteraction(intersects[0].object, intersects[0].point);
     }
