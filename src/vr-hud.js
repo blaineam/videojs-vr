@@ -262,8 +262,8 @@ class VRHUD {
     this.nextBtn = this.createButton('⏭', 0.25, -0.15, 'next');
     buttonGroup.add(this.nextBtn);
 
-    // Orientation reset button
-    this.orientResetBtn = this.createButton('⟲', 0.7, -0.15, 'reset-orientation');
+    // Orientation reset button (moved left for better spacing from orientation handle)
+    this.orientResetBtn = this.createButton('⟲', 0.5, -0.15, 'reset-orientation');
     buttonGroup.add(this.orientResetBtn);
 
     this.controlPanel.add(buttonGroup);
