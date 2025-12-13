@@ -186,18 +186,18 @@ class VRHUD {
     this.scrubTrack.userData.type = 'scrub';
     scrubGroup.add(this.scrubTrack);
 
-    // Progress fill
-    const progressGeometry = new THREE.PlaneGeometry(0.01, trackHeight - 0.01);
-    const progressMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 1
-    });
-
-    this.scrubProgress = new THREE.Mesh(progressGeometry, progressMaterial);
-    this.scrubProgress.name = 'scrub-progress';
-    this.scrubProgress.position.x = -trackWidth / 2;
-    this.scrubProgress.position.z = 0.001;
-    scrubGroup.add(this.scrubProgress);
+    // Progress fill (removed - user wants only white circle, not blue bar)
+    // const progressGeometry = new THREE.PlaneGeometry(0.01, trackHeight - 0.01);
+    // const progressMaterial = new THREE.MeshBasicMaterial({
+    //   color: 0x00ffff,
+    //   opacity: 1
+    // });
+    //
+    // this.scrubProgress = new THREE.Mesh(progressGeometry, progressMaterial);
+    // this.scrubProgress.name = 'scrub-progress';
+    // this.scrubProgress.position.x = -trackWidth / 2;
+    // this.scrubProgress.position.z = 0.001;
+    // scrubGroup.add(this.scrubProgress);
 
     // Scrub handle
     const handleGeometry = new THREE.CircleGeometry(0.06, 16);
@@ -834,10 +834,10 @@ class VRHUD {
     const duration = this.player.duration() || 1;
     const progress = currentTime / duration;
 
-    // Update progress bar width
+    // Update progress bar width (removed - no blue bar)
     const progressWidth = this.scrubTrackWidth * progress;
-    this.scrubProgress.scale.x = Math.max(0.01, progressWidth);
-    this.scrubProgress.position.x = -this.scrubTrackWidth / 2 + progressWidth / 2;
+    // this.scrubProgress.scale.x = Math.max(0.01, progressWidth);
+    // this.scrubProgress.position.x = -this.scrubTrackWidth / 2 + progressWidth / 2;
 
     // Update handle position
     this.scrubHandle.position.x = -this.scrubTrackWidth / 2 + progressWidth;
