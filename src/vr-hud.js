@@ -149,6 +149,7 @@ class VRHUD {
     this.controlPanel = new THREE.Mesh(panelGeometry, panelMaterial);
     this.controlPanel.name = 'control-panel';
     this.controlPanel.position.set(0, this.hudHeight, -this.hudDistance);
+    this.controlPanel.rotation.x = -Math.PI / 6; // Tilt panel down ~30 degrees to face camera like a screen
 
     // Panel border/glow
     const borderGeometry = new THREE.PlaneGeometry(panelWidth + 0.02, panelHeight + 0.02);
