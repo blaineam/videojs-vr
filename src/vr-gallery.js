@@ -384,10 +384,17 @@ class VRGallery {
 
     try {
       // Use getSrc to resolve the path to a blob URL if available
+      // Lazy lookup: check for window.medcrypt.getSrc at load time if not provided
+      let getSrcFunc = this.getSrc;
+      if (!getSrcFunc && typeof window !== 'undefined' && window.medcrypt && window.medcrypt.getSrc) {
+        getSrcFunc = window.medcrypt.getSrc.bind(window.medcrypt);
+        console.log('[VR Gallery] Found window.medcrypt.getSrc at load time');
+      }
+
       let resolvedUrl = url;
-      if (this.getSrc && typeof this.getSrc === 'function') {
+      if (getSrcFunc && typeof getSrcFunc === 'function') {
         console.log('[VR Gallery] Resolving thumbnail path:', url);
-        resolvedUrl = await this.getSrc(url, 'high');
+        resolvedUrl = await getSrcFunc(url, 'high');
         console.log('[VR Gallery] Resolved to:', resolvedUrl);
       } else {
         console.warn('[VR Gallery] getSrc not available, using raw URL:', url);
