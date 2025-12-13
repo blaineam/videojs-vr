@@ -148,7 +148,7 @@ class VRHUD {
 
     this.controlPanel = new THREE.Mesh(panelGeometry, panelMaterial);
     this.controlPanel.name = 'control-panel';
-    this.controlPanel.position.set(0, this.hudHeight, -this.hudDistance);
+    this.controlPanel.position.set(0, 0, 0); // HUD group is positioned, panel is at origin within group
     this.controlPanel.rotation.x = -Math.PI / 6; // Tilt panel down ~30 degrees to face camera like a screen
 
     // Panel border/glow
@@ -868,6 +868,15 @@ class VRHUD {
     this.updateScrubBar();
     this.updateTimeDisplay();
     this.updateCursor();
+
+    // Make HUD follow camera at constant distance
+    // Position HUD in front of camera at fixed distance
+    const cameraDirection = new THREE.Vector3(0, 0, -1);
+    cameraDirection.applyQuaternion(this.camera.quaternion);
+
+    this.hudGroup.position.copy(this.camera.position);
+    this.hudGroup.position.addScaledVector(cameraDirection, this.hudDistance);
+    this.hudGroup.position.y = this.camera.position.y + this.hudHeight;
 
     // Make HUD face the camera
     this.hudGroup.quaternion.copy(this.camera.quaternion);
