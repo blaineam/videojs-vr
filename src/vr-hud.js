@@ -31,6 +31,16 @@ class VRHUD {
     this.hideTimeout = null;
     this.isDraggingOrientation = false;
     this.isDraggingScrub = false;
+    this.isBButtonHeld = false; // B button for orientation drag
+    this.bButtonDragStart = null; // Controller direction when B started
+
+    // Joystick state
+    this.lastJoystickSeek = 0; // Throttle joystick seek
+    this.joystickSeekSpeed = 5; // Seconds to seek per joystick input
+    this.joystickScrollSpeed = 0.5; // Gallery scroll speed multiplier
+
+    // VR Gallery reference (set by plugin)
+    this.vrGallery = null;
 
     // Orientation offset (for lying down viewing)
     this.orientationOffset = new THREE.Euler(0, 0, 0);
@@ -580,6 +590,7 @@ class VRHUD {
     this.isDraggingOrientation = false;
     this.isDraggingScrub = false;
     this.draggingController = null;
+    this.dragStartDirection = null; // Clear the start direction for orientation drag
     // Restart auto-hide timer after interaction ends
     this.resetAutoHideTimer();
   }
@@ -818,6 +829,9 @@ class VRHUD {
   }
 
   update() {
+    // Poll gamepad inputs (joysticks, buttons)
+    this.pollGamepads();
+
     // Always update controller rays even when HUD is hidden (so user can see where they're pointing)
     this.updateControllerRays();
 
@@ -870,28 +884,40 @@ class VRHUD {
     this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
     this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-    // Handle orientation dragging - project ray onto HUD plane even if not hitting it directly
+    // Handle orientation dragging with 1:1 cursor tracking
     if (this.isDraggingOrientation) {
-      // Create a plane at the HUD position facing the camera
-      const hudPlane = new THREE.Plane();
-      const hudNormal = new THREE.Vector3(0, 0, 1);
-      hudNormal.applyQuaternion(this.hudGroup.quaternion);
-      hudPlane.setFromNormalAndCoplanarPoint(hudNormal, this.hudGroup.position);
+      // Get current controller direction
+      const currentDirection = this.raycaster.ray.direction.clone().normalize();
 
-      // Intersect ray with HUD plane
-      const intersection = new THREE.Vector3();
-      if (this.raycaster.ray.intersectPlane(hudPlane, intersection)) {
-        const delta = intersection.clone().sub(this.dragStartPoint);
-
-        // Update orientation offset based on controller movement
-        this.orientationOffset.x = this.dragStartRotation.x + delta.y * 3;
-        this.orientationOffset.y = this.dragStartRotation.y - delta.x * 3;
-
-        // Clamp vertical rotation
-        this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
-
-        this.onOrientationChange(this.orientationOffset);
+      // If we don't have a start direction yet, store it
+      if (!this.dragStartDirection) {
+        this.dragStartDirection = currentDirection.clone();
+        this.dragStartRotation = this.orientationOffset.clone();
       }
+
+      const startDir = this.dragStartDirection;
+      const currDir = currentDirection;
+
+      // Project both directions onto the horizontal plane for yaw
+      const startHorizontal = new THREE.Vector3(startDir.x, 0, startDir.z).normalize();
+      const currHorizontal = new THREE.Vector3(currDir.x, 0, currDir.z).normalize();
+
+      // Calculate yaw difference (rotation around Y axis)
+      let yawDiff = Math.atan2(currHorizontal.x, currHorizontal.z) - Math.atan2(startHorizontal.x, startHorizontal.z);
+
+      // Calculate pitch difference (rotation around X axis)
+      const startPitch = Math.asin(Math.max(-1, Math.min(1, startDir.y)));
+      const currPitch = Math.asin(Math.max(-1, Math.min(1, currDir.y)));
+      let pitchDiff = currPitch - startPitch;
+
+      // Apply 1:1 mapping - controller movement directly controls orientation
+      this.orientationOffset.y = this.dragStartRotation.y - yawDiff;
+      this.orientationOffset.x = this.dragStartRotation.x + pitchDiff;
+
+      // Clamp vertical rotation
+      this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
+
+      this.onOrientationChange(this.orientationOffset);
     }
 
     // Handle scrub dragging - project onto scrub track plane
@@ -967,6 +993,132 @@ class VRHUD {
         ray.geometry.setFromPoints(points);
         ray.material.opacity = 0.3;
       }
+    }
+  }
+
+  pollGamepads() {
+    if (!this.isInXRSession) return;
+
+    const session = this.renderer.xr.getSession();
+    if (!session) return;
+
+    const now = Date.now();
+
+    // Get gamepads from XR input sources
+    for (const source of session.inputSources) {
+      if (!source.gamepad) continue;
+
+      const gamepad = source.gamepad;
+      const axes = gamepad.axes;
+      const buttons = gamepad.buttons;
+
+      // Thumbstick: axes[2] = X (left/right), axes[3] = Y (up/down)
+      // For Quest controllers, left stick might be axes[0,1], right axes[2,3]
+      const thumbstickX = axes.length > 2 ? axes[2] : (axes.length > 0 ? axes[0] : 0);
+      const thumbstickY = axes.length > 3 ? axes[3] : (axes.length > 1 ? axes[1] : 0);
+
+      // Joystick left/right - video seek (with throttling)
+      if (Math.abs(thumbstickX) > 0.5 && now - this.lastJoystickSeek > 200) {
+        const seekAmount = thumbstickX * this.joystickSeekSpeed;
+        const newTime = Math.max(0, Math.min(
+          this.player.duration() || 0,
+          (this.player.currentTime() || 0) + seekAmount
+        ));
+        this.player.currentTime(newTime);
+        this.lastJoystickSeek = now;
+        this.resetAutoHideTimer();
+      }
+
+      // Joystick up/down - gallery scroll
+      if (Math.abs(thumbstickY) > 0.3 && this.vrGallery && this.vrGallery.isVisible) {
+        // Invert Y so pushing up scrolls up
+        this.vrGallery.scroll(-thumbstickY * this.joystickScrollSpeed);
+        this.resetAutoHideTimer();
+      }
+
+      // A button (index 4 on Quest) - Play/Pause
+      // Button layout: 0=trigger, 1=squeeze, 2=?, 3=thumbstick press, 4=A/X, 5=B/Y
+      const aButtonIndex = 4;
+      if (buttons.length > aButtonIndex) {
+        const aButton = buttons[aButtonIndex];
+        if (aButton.pressed && !this.aButtonWasPressed) {
+          // A button just pressed - toggle play/pause
+          if (this.player.paused()) {
+            this.player.play();
+          } else {
+            this.player.pause();
+          }
+          this.resetAutoHideTimer();
+        }
+        this.aButtonWasPressed = aButton.pressed;
+      }
+
+      // B button (index 5 on Quest) - Hold for orientation drag
+      const bButtonIndex = 5;
+      if (buttons.length > bButtonIndex) {
+        const bButton = buttons[bButtonIndex];
+
+        if (bButton.pressed && !this.isBButtonHeld) {
+          // B button just pressed - start orientation drag
+          this.isBButtonHeld = true;
+          this.bButtonController = source.gripSpace ? this.renderer.xr.getController(
+            Array.from(session.inputSources).indexOf(source)
+          ) : null;
+
+          // Store the initial controller direction for 1:1 tracking
+          if (this.bButtonController) {
+            const tempMatrix = new THREE.Matrix4();
+            tempMatrix.identity().extractRotation(this.bButtonController.matrixWorld);
+            this.bButtonStartDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix);
+            this.bButtonStartOrientation = this.orientationOffset.clone();
+          }
+
+          // Cancel auto-hide while dragging
+          if (this.hideTimeout) {
+            clearTimeout(this.hideTimeout);
+            this.hideTimeout = null;
+          }
+        } else if (!bButton.pressed && this.isBButtonHeld) {
+          // B button released
+          this.isBButtonHeld = false;
+          this.bButtonController = null;
+          this.bButtonStartDirection = null;
+          this.resetAutoHideTimer();
+        }
+      }
+    }
+
+    // Handle B button orientation drag with 1:1 cursor tracking
+    if (this.isBButtonHeld && this.bButtonController && this.bButtonStartDirection) {
+      const tempMatrix = new THREE.Matrix4();
+      tempMatrix.identity().extractRotation(this.bButtonController.matrixWorld);
+      const currentDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix);
+
+      // Calculate angular difference from start direction
+      // Use dot product to get angle, cross product for axis
+      const startDir = this.bButtonStartDirection.clone().normalize();
+      const currDir = currentDirection.clone().normalize();
+
+      // Project both directions onto the horizontal plane for yaw
+      const startHorizontal = new THREE.Vector3(startDir.x, 0, startDir.z).normalize();
+      const currHorizontal = new THREE.Vector3(currDir.x, 0, currDir.z).normalize();
+
+      // Calculate yaw difference (rotation around Y axis)
+      let yawDiff = Math.atan2(currHorizontal.x, currHorizontal.z) - Math.atan2(startHorizontal.x, startHorizontal.z);
+
+      // Calculate pitch difference (rotation around X axis)
+      const startPitch = Math.asin(Math.max(-1, Math.min(1, startDir.y)));
+      const currPitch = Math.asin(Math.max(-1, Math.min(1, currDir.y)));
+      let pitchDiff = currPitch - startPitch;
+
+      // Apply 1:1 mapping - controller movement directly controls orientation
+      this.orientationOffset.y = this.bButtonStartOrientation.y - yawDiff;
+      this.orientationOffset.x = this.bButtonStartOrientation.x + pitchDiff;
+
+      // Clamp vertical rotation
+      this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
+
+      this.onOrientationChange(this.orientationOffset);
     }
   }
 

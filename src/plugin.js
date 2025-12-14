@@ -885,6 +885,12 @@ void main() {
         this.initVRGallery_();
       }
 
+      // Link VR HUD and VR Gallery for joystick scrolling and relative positioning
+      if (this.vrHUD && this.vrGallery) {
+        this.vrHUD.vrGallery = this.vrGallery;
+        this.vrGallery.vrHUD = this.vrHUD;
+      }
+
       // Use setAnimationLoop for WebXR compatibility
       if (this.webXRSupported_) {
         this.useSetAnimationLoop_ = true;

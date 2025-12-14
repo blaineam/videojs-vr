@@ -48,6 +48,9 @@ class VRGallery {
     this.scrollStartPosition = 0;
     this.hoveredItem = null;
 
+    // VR HUD reference (set by plugin for relative positioning)
+    this.vrHUD = null;
+
     // Raycaster for interaction
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2(0, 0);
@@ -706,6 +709,11 @@ class VRGallery {
     this.updateScrollPosition();
   }
 
+  // Public method for external scrolling (e.g., from joystick)
+  scroll(amount) {
+    this.handleScroll(amount);
+  }
+
   updateScrollPosition() {
     // Move thumbnail container
     this.thumbnailContainer.position.y = this.scrollPosition;
@@ -790,8 +798,22 @@ class VRGallery {
   update() {
     if (!this.isVisible) return;
 
-    // Make gallery face the camera
-    this.galleryGroup.quaternion.copy(this.camera.quaternion);
+    // Position gallery relative to VR HUD if available
+    if (this.vrHUD && this.vrHUD.hudGroup) {
+      // Position gallery above the HUD controls
+      const hudPos = this.vrHUD.hudGroup.position.clone();
+      const hudQuat = this.vrHUD.hudGroup.quaternion.clone();
+
+      // Place gallery above HUD (HUD is at camera.y - 0.3, gallery should be above)
+      this.galleryGroup.position.copy(hudPos);
+      this.galleryGroup.position.y += this.frameHeight / 2 + 0.5; // Above HUD with some spacing
+
+      // Match HUD orientation
+      this.galleryGroup.quaternion.copy(hudQuat);
+    } else {
+      // Fallback: face the camera
+      this.galleryGroup.quaternion.copy(this.camera.quaternion);
+    }
 
     // Clip thumbnails outside visible area
     // Account for thumbnail height - a thumbnail is visible if any part of it is in the clip region
