@@ -703,7 +703,10 @@ void main() {
     if (!this.initialized_) {
       return;
     }
-    if (this.getVideoEl_().readyState === this.getVideoEl_().HAVE_ENOUGH_DATA) {
+    // Update video texture when video has any frame data (readyState >= 2)
+    // HAVE_CURRENT_DATA (2), HAVE_FUTURE_DATA (3), or HAVE_ENOUGH_DATA (4)
+    const videoEl = this.getVideoEl_();
+    if (videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
       if (this.videoTexture) {
         this.videoTexture.needsUpdate = true;
       }
