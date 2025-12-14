@@ -700,6 +700,11 @@ void main() {
   }
 
   handleResize_() {
+    // Skip resize if in XR session - XR controls the size
+    if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
+      return;
+    }
+
     const width = this.player_.currentWidth();
     const height = this.player_.currentHeight();
 
@@ -720,6 +725,33 @@ void main() {
   }
 
   init() {
+    // If we're in an XR session, don't do a full reset - just update the video texture
+    // This allows seamless video source changes while in VR
+    if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
+      this.log('Source changed during XR session - updating video texture without reset');
+      // Create new video texture from updated video element
+      if (this.videoTexture) {
+        this.videoTexture.dispose();
+      }
+      this.videoTexture = new THREE.VideoTexture(this.getVideoEl_());
+      this.videoTexture.generateMipmaps = false;
+      this.videoTexture.minFilter = THREE.LinearFilter;
+      this.videoTexture.magFilter = THREE.LinearFilter;
+      this.videoTexture.format = THREE.RGBFormat;
+
+      // Update all materials using the video texture
+      if (this.movieMaterial) {
+        this.movieMaterial.map = this.videoTexture;
+        this.movieMaterial.needsUpdate = true;
+      }
+      // Also update any right-eye materials for stereo modes
+      if (this.movieMaterialR) {
+        this.movieMaterialR.map = this.videoTexture;
+        this.movieMaterialR.needsUpdate = true;
+      }
+      return;
+    }
+
     this.reset();
 
     this.camera = new THREE.PerspectiveCamera(75, this.player_.currentWidth() / this.player_.currentHeight(), 1, 1000);

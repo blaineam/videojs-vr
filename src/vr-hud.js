@@ -845,16 +845,10 @@ class VRHUD {
     this.updateCursor();
 
     // Make HUD follow camera at constant distance
-    // Apply orientation offset to the camera direction so HUD moves with reoriented view
+    // HUD should NOT follow orientation offset - it stays relative to user's head position
+    // This prevents jarring jumps when changing orientation
     const cameraForward = new THREE.Vector3(0, 0, -1);
     cameraForward.applyQuaternion(this.camera.quaternion);
-
-    // Apply the orientation offset (same as video content)
-    if (this.orientationOffset) {
-      const offsetQuat = new THREE.Quaternion();
-      offsetQuat.setFromEuler(this.orientationOffset);
-      cameraForward.applyQuaternion(offsetQuat);
-    }
 
     // Flatten to horizontal plane for more wall-like behavior
     cameraForward.y = 0;

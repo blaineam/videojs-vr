@@ -31,10 +31,11 @@ class VRGallery {
     // Track failed loads to prevent infinite retries
     this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
     this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
-    this.maxRetries = 1; // Only try once, then give up
-    this.getSrcTimeout = 10000; // 10 second timeout
+    this.maxRetries = 3; // Allow 3 retries before giving up
+    this.getSrcTimeout = 30000; // 30 second timeout (thumbnails queue behind videos)
     this.loadingThumbnails = new Set(); // Track thumbnails currently loading
     this.thumbnailsLoaded = false; // Track if we've started loading thumbnails
+    this.maxConcurrentLoads = 4; // Limit concurrent thumbnail loads to avoid queue overload
 
     // Media items
     this.mediaItems = [];
@@ -88,9 +89,8 @@ class VRGallery {
     });
 
     this.galleryFrame = new THREE.Mesh(frameGeometry, frameMaterial);
-    // Position gallery bottom edge just above HUD controls (HUD at y=3.5, height=0.6, so top ~3.8)
-    // Gallery bottom should be at ~4.0, so y = 4.0 + frameHeight/2 = 4.0 + frameHeight/2
-    this.galleryFrame.position.set(0, 4.0 + frameHeight / 2, -this.galleryDistance);
+    // Position galleryFrame at local origin - galleryGroup handles world positioning in update()
+    this.galleryFrame.position.set(0, 0, 0);
     this.galleryGroup.add(this.galleryFrame);
 
     // Frame border with glow effect
@@ -745,21 +745,31 @@ class VRGallery {
 
   loadVisibleThumbnails() {
     // Load thumbnails that are currently visible (within clipping region)
+    // Respect maxConcurrentLoads to avoid overwhelming the getSrc queue
+    const currentlyLoading = this.loadingThumbnails.size;
+    if (currentlyLoading >= this.maxConcurrentLoads) {
+      return; // Wait for some to finish before loading more
+    }
+
     let loadedCount = 0;
+    const maxToLoad = this.maxConcurrentLoads - currentlyLoading;
     const buffer = 2; // Load 2 extra rows above/below for smoother scrolling
     const halfHeight = this.thumbnailHeight / 2;
     const rowHeight = this.thumbnailHeight + this.thumbnailSpacing;
     const bufferSize = rowHeight * buffer;
 
-    this.thumbnailMeshes.forEach((mesh, index) => {
-      if (!mesh) return;
+    for (let i = 0; i < this.thumbnailMeshes.length && loadedCount < maxToLoad; i++) {
+      const mesh = this.thumbnailMeshes[i];
+      if (!mesh) continue;
 
       const thumbnailUrl = mesh.userData.thumbnailUrl;
-      if (!thumbnailUrl || this.loadedTextures.has(thumbnailUrl)) return;
+      if (!thumbnailUrl || this.loadedTextures.has(thumbnailUrl)) continue;
+      if (this.loadingThumbnails.has(thumbnailUrl)) continue;
+      if (this.permanentlyFailedThumbnails.has(thumbnailUrl)) continue;
 
       // Get the parent thumbnailGroup's position (mesh is imgMesh inside thumbnailGroup)
       const thumbnailGroup = mesh.parent;
-      if (!thumbnailGroup) return;
+      if (!thumbnailGroup) continue;
 
       // Check if thumbnail is in or near visible region
       // thumbnailGroup.position.y is relative to thumbnailContainer
@@ -775,10 +785,10 @@ class VRGallery {
         this.loadThumbnailTexture(thumbnailUrl, mesh);
         loadedCount++;
       }
-    });
+    }
 
     if (loadedCount > 0) {
-      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails`);
+      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} already in progress)`);
     }
   }
 
@@ -804,9 +814,12 @@ class VRGallery {
       const hudPos = this.vrHUD.hudGroup.position.clone();
       const hudQuat = this.vrHUD.hudGroup.quaternion.clone();
 
-      // Place gallery above HUD (HUD is at camera.y - 0.3, gallery should be above)
+      // Place gallery above HUD
+      // HUD panel height is 0.6, so HUD top edge is hudPos.y + 0.3
+      // Gallery bottom edge should be at HUD top + small gap
+      // Gallery center = hudPos.y + 0.3 (HUD top) + 0.1 (gap) + frameHeight/2
       this.galleryGroup.position.copy(hudPos);
-      this.galleryGroup.position.y += this.frameHeight / 2 + 0.15; // Above HUD with small spacing
+      this.galleryGroup.position.y += 0.4 + this.frameHeight / 2;
 
       // Match HUD orientation
       this.galleryGroup.quaternion.copy(hudQuat);
