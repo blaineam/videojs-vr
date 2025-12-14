@@ -450,7 +450,7 @@ class VRHUD {
       // Button background
       const btnGeometry = new THREE.PlaneGeometry(menuWidth - 0.06, 0.065);
       const btnMaterial = new THREE.MeshBasicMaterial({
-        color: 0x2a2a4a,
+        color: 0x1a1a3a,
         opacity: 0.9,
         transparent: true
       });
@@ -459,8 +459,8 @@ class VRHUD {
       btnMesh.userData.interactive = true;
       btnMesh.userData.type = 'projection-option';
       btnMesh.userData.projectionId = mode.id;
-      btnMesh.userData.baseColor = 0x2a2a4a;
-      btnMesh.userData.hoverColor = 0x00ffff;
+      btnMesh.userData.baseColor = 0x1a1a3a;
+      btnMesh.userData.hoverColor = 0x004466; // Darker cyan - keeps white text readable
       this.projectionMenu.add(btnMesh);
       this.interactiveElements.push(btnMesh);
       this.projectionOptionButtons.push({ mesh: btnMesh, id: mode.id });
@@ -471,7 +471,7 @@ class VRHUD {
       labelCanvas.height = 32;
       const labelCtx = labelCanvas.getContext('2d');
       labelCtx.fillStyle = '#ffffff';
-      labelCtx.font = '18px Arial';
+      labelCtx.font = 'bold 22px Arial';
       labelCtx.textAlign = 'center';
       labelCtx.textBaseline = 'middle';
       labelCtx.fillText(mode.label, 128, 16);
@@ -505,8 +505,9 @@ class VRHUD {
     // Update button highlights to show current projection
     this.projectionOptionButtons.forEach(btn => {
       const isSelected = btn.id === projectionId;
-      btn.mesh.material.color.setHex(isSelected ? 0x00ff88 : 0x2a2a4a);
-      btn.mesh.userData.baseColor = isSelected ? 0x00ff88 : 0x2a2a4a;
+      // Use darker colors that still contrast well with white text
+      btn.mesh.material.color.setHex(isSelected ? 0x006644 : 0x1a1a3a);
+      btn.mesh.userData.baseColor = isSelected ? 0x006644 : 0x1a1a3a;
     });
   }
 
@@ -785,22 +786,9 @@ class VRHUD {
     this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
     this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-    // Handle ongoing orientation dragging
+    // Orientation dragging is handled by updateControllerDragging() using direction tracking
+    // Don't handle it here to avoid conflicts
     if (this.isDraggingOrientation) {
-      const intersects = this.raycaster.intersectObjects([this.controlPanel]);
-      if (intersects.length > 0) {
-        const currentPoint = intersects[0].point;
-        const delta = currentPoint.clone().sub(this.dragStartPoint);
-
-        // Update orientation offset based on controller movement
-        this.orientationOffset.x = this.dragStartRotation.x + delta.y * 3;
-        this.orientationOffset.y = this.dragStartRotation.y - delta.x * 3;
-
-        // Clamp vertical rotation
-        this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
-
-        this.onOrientationChange(this.orientationOffset);
-      }
       return;
     }
 

@@ -299,7 +299,7 @@ class VRGallery {
     titleCanvas.height = 32;
     const titleCtx = titleCanvas.getContext('2d');
     titleCtx.fillStyle = '#ffffff';
-    titleCtx.font = '14px Arial';
+    titleCtx.font = '18px Arial';
     titleCtx.textAlign = 'center';
     titleCtx.textBaseline = 'middle';
 
@@ -345,7 +345,7 @@ class VRGallery {
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px Arial';
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(this.formatDuration(duration), 32, 12);
