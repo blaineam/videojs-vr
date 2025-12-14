@@ -827,10 +827,14 @@ class VRHUD {
   }
 
   onSqueezeStart(event) {
-    // Grip squeeze shows the HUD (doesn't toggle)
-    if (this.hudGroup && !this.isVisible) {
-      this.show(true); // Force show even if not in XR (though we should be)
-      this.resetAutoHideTimer();
+    // Grip squeeze toggles the HUD visibility
+    if (this.hudGroup) {
+      if (this.isVisible) {
+        this.hide();
+      } else {
+        this.show(true); // Force show even if not in XR (though we should be)
+        this.resetAutoHideTimer();
+      }
     }
   }
 
@@ -1294,6 +1298,10 @@ class VRHUD {
     this.isVisible = false;
     this.hudGroup.visible = false;
     this.cursor.visible = false;
+    // Also hide the VR gallery when HUD hides
+    if (this.vrGallery && this.vrGallery.isVisible) {
+      this.vrGallery.hide();
+    }
   }
 
   toggle() {

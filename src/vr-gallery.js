@@ -405,52 +405,8 @@ class VRGallery {
     // Mark as loading
     this.loadingThumbnails.add(url);
 
-    try {
-      // Use getSrc to resolve the path to a blob URL if available (only if injected)
-      const getSrcFunc = this.getSrc;
-
-      let resolvedUrl = url;
-      const currentRetries = failInfo?.retries || 0;
-
-      // After 3 getSrc failures, try direct loading as fallback
-      const useDirectLoad = currentRetries >= 3;
-
-      if (getSrcFunc && typeof getSrcFunc === 'function' && !useDirectLoad) {
-        // Add timeout to getSrc call
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('getSrc timeout')), this.getSrcTimeout)
-        );
-
-        try {
-          // Use 'vr-gallery' priority to bypass video player checks in viewer
-          resolvedUrl = await Promise.race([
-            getSrcFunc(url, 'vr-gallery'),
-            timeoutPromise
-          ]);
-        } catch (timeoutError) {
-          const newRetries = currentRetries + 1;
-          // Only log first failure
-          if (newRetries === 1) {
-            console.warn('[VR Gallery] getSrc timed out for:', url);
-          }
-          this.failedLoads.set(url, {
-            retries: newRetries,
-            lastAttempt: Date.now(),
-            getSrcFailed: true
-          });
-          // If max retries reached, add to permanent blacklist
-          if (newRetries >= this.maxRetries) {
-            this.permanentlyFailedThumbnails.add(url);
-          }
-          this.loadingThumbnails.delete(url);
-          return;
-        }
-      } else if (useDirectLoad) {
-        // Fallback: try direct loading without getSrc
-        // This may work for thumbnails that don't need decryption
-        console.log('[VR Gallery] Trying direct load for:', url);
-      }
-
+    // Helper to load texture from resolved URL
+    const loadTextureFromUrl = (resolvedUrl) => {
       const loader = new THREE.TextureLoader();
       loader.crossOrigin = 'anonymous';
 
@@ -471,34 +427,65 @@ class VRGallery {
         },
         undefined,
         (error) => {
-          const newRetries = (failInfo?.retries || 0) + 1;
-          // Only log first failure
-          if (newRetries === 1) {
+          const currentRetries = (this.failedLoads.get(url)?.retries || 0) + 1;
+          if (currentRetries === 1) {
             console.warn('[VR Gallery] Failed to load thumbnail:', url);
           }
           this.failedLoads.set(url, {
-            retries: newRetries,
+            retries: currentRetries,
             lastAttempt: Date.now()
           });
-          // If max retries reached, add to permanent blacklist
-          if (newRetries >= this.maxRetries) {
+          if (currentRetries >= this.maxRetries) {
             this.permanentlyFailedThumbnails.add(url);
           }
           this.loadingThumbnails.delete(url);
         }
       );
+    };
+
+    try {
+      const getSrcFunc = this.getSrc;
+
+      if (getSrcFunc && typeof getSrcFunc === 'function') {
+        // Start getSrc WITHOUT a hard timeout that abandons the request
+        // Let it complete in the background and apply texture when done
+        getSrcFunc(url, 'vr-gallery')
+          .then((resolvedUrl) => {
+            // Check if already loaded (by another path) or permanently failed
+            if (this.loadedTextures.has(url) || this.permanentlyFailedThumbnails.has(url)) {
+              this.loadingThumbnails.delete(url);
+              return;
+            }
+            loadTextureFromUrl(resolvedUrl);
+          })
+          .catch((error) => {
+            const currentRetries = (this.failedLoads.get(url)?.retries || 0) + 1;
+            if (currentRetries === 1) {
+              console.warn('[VR Gallery] getSrc failed for:', url, error.message);
+            }
+            this.failedLoads.set(url, {
+              retries: currentRetries,
+              lastAttempt: Date.now()
+            });
+            if (currentRetries >= this.maxRetries) {
+              this.permanentlyFailedThumbnails.add(url);
+            }
+            this.loadingThumbnails.delete(url);
+          });
+      } else {
+        // No getSrc function - load directly
+        loadTextureFromUrl(url);
+      }
     } catch (error) {
-      const newRetries = (failInfo?.retries || 0) + 1;
-      // Only log first failure
-      if (newRetries === 1) {
+      const currentRetries = (failInfo?.retries || 0) + 1;
+      if (currentRetries === 1) {
         console.warn('[VR Gallery] Failed to resolve thumbnail path:', url);
       }
       this.failedLoads.set(url, {
-        retries: newRetries,
+        retries: currentRetries,
         lastAttempt: Date.now()
       });
-      // If max retries reached, add to permanent blacklist
-      if (newRetries >= this.maxRetries) {
+      if (currentRetries >= this.maxRetries) {
         this.permanentlyFailedThumbnails.add(url);
       }
       this.loadingThumbnails.delete(url);
