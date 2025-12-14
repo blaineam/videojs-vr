@@ -555,10 +555,23 @@ class VRHUD {
       const obj = intersects[0].object;
       if (obj.userData.type === 'orientation-handle') {
         this.isDraggingOrientation = true;
+        this.draggingController = controller; // Store which controller is dragging
         this.dragStartPoint = intersects[0].point.clone();
         this.dragStartRotation = this.orientationOffset.clone();
+        // Cancel auto-hide while dragging
+        if (this.hideTimeout) {
+          clearTimeout(this.hideTimeout);
+          this.hideTimeout = null;
+        }
       } else if (obj.userData.type === 'scrub' || obj.userData.type === 'scrub-handle') {
         this.isDraggingScrub = true;
+        this.draggingController = controller;
+        this.scrubDragStartX = intersects[0].point.x; // Track where drag started
+        // Cancel auto-hide while dragging
+        if (this.hideTimeout) {
+          clearTimeout(this.hideTimeout);
+          this.hideTimeout = null;
+        }
       }
     }
   }
@@ -566,6 +579,9 @@ class VRHUD {
   onSelectEnd(event) {
     this.isDraggingOrientation = false;
     this.isDraggingScrub = false;
+    this.draggingController = null;
+    // Restart auto-hide timer after interaction ends
+    this.resetAutoHideTimer();
   }
 
   onSelect(event) {
@@ -805,6 +821,9 @@ class VRHUD {
     // Always update controller rays even when HUD is hidden (so user can see where they're pointing)
     this.updateControllerRays();
 
+    // Handle continuous dragging from controllers
+    this.updateControllerDragging();
+
     if (!this.isVisible) return;
 
     this.updateScrubBar();
@@ -812,17 +831,92 @@ class VRHUD {
     this.updateCursor();
 
     // Make HUD follow camera at constant distance
-    // Position HUD in front of camera at fixed distance at eye level
-    const cameraDirection = new THREE.Vector3(0, 0, -1);
-    cameraDirection.applyQuaternion(this.camera.quaternion);
+    // Apply orientation offset to the camera direction so HUD moves with reoriented view
+    const cameraForward = new THREE.Vector3(0, 0, -1);
+    cameraForward.applyQuaternion(this.camera.quaternion);
 
+    // Apply the orientation offset (same as video content)
+    if (this.orientationOffset) {
+      const offsetQuat = new THREE.Quaternion();
+      offsetQuat.setFromEuler(this.orientationOffset);
+      cameraForward.applyQuaternion(offsetQuat);
+    }
+
+    // Flatten to horizontal plane for more wall-like behavior
+    cameraForward.y = 0;
+    cameraForward.normalize();
+
+    // Position HUD at eye level, in front of camera (horizontal direction only)
     this.hudGroup.position.copy(this.camera.position);
-    this.hudGroup.position.addScaledVector(cameraDirection, this.hudDistance);
-    // HUD at eye level (vertical like a wall)
-    this.hudGroup.position.y = this.camera.position.y;
+    this.hudGroup.position.addScaledVector(cameraForward, this.hudDistance);
+    // HUD at fixed height relative to camera (slightly below eye level)
+    this.hudGroup.position.y = this.camera.position.y - 0.3;
 
-    // Make HUD face the camera
-    this.hudGroup.quaternion.copy(this.camera.quaternion);
+    // Make HUD face camera horizontally only (like a wall)
+    // Calculate yaw rotation to face camera
+    const hudLookAt = new THREE.Vector3(this.camera.position.x, this.hudGroup.position.y, this.camera.position.z);
+    this.hudGroup.lookAt(hudLookAt);
+  }
+
+  updateControllerDragging() {
+    if (!this.isInXRSession) return;
+    if (!this.draggingController) return; // Only update if we have an active drag
+
+    const controller = this.draggingController;
+
+    this.tempMatrix = this.tempMatrix || new THREE.Matrix4();
+    this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+
+    this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+
+    // Handle orientation dragging - project ray onto HUD plane even if not hitting it directly
+    if (this.isDraggingOrientation) {
+      // Create a plane at the HUD position facing the camera
+      const hudPlane = new THREE.Plane();
+      const hudNormal = new THREE.Vector3(0, 0, 1);
+      hudNormal.applyQuaternion(this.hudGroup.quaternion);
+      hudPlane.setFromNormalAndCoplanarPoint(hudNormal, this.hudGroup.position);
+
+      // Intersect ray with HUD plane
+      const intersection = new THREE.Vector3();
+      if (this.raycaster.ray.intersectPlane(hudPlane, intersection)) {
+        const delta = intersection.clone().sub(this.dragStartPoint);
+
+        // Update orientation offset based on controller movement
+        this.orientationOffset.x = this.dragStartRotation.x + delta.y * 3;
+        this.orientationOffset.y = this.dragStartRotation.y - delta.x * 3;
+
+        // Clamp vertical rotation
+        this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
+
+        this.onOrientationChange(this.orientationOffset);
+      }
+    }
+
+    // Handle scrub dragging - project onto scrub track plane
+    if (this.isDraggingScrub) {
+      // Create a plane at the scrub track position
+      const trackWorldPos = new THREE.Vector3();
+      this.scrubTrack.getWorldPosition(trackWorldPos);
+
+      const trackPlane = new THREE.Plane();
+      const trackNormal = new THREE.Vector3(0, 0, 1);
+      trackNormal.applyQuaternion(this.hudGroup.quaternion);
+      trackPlane.setFromNormalAndCoplanarPoint(trackNormal, trackWorldPos);
+
+      // Intersect ray with track plane
+      const intersection = new THREE.Vector3();
+      if (this.raycaster.ray.intersectPlane(trackPlane, intersection)) {
+        const localPoint = this.scrubTrack.worldToLocal(intersection.clone());
+        const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
+        const clampedProgress = Math.max(0, Math.min(1, progress));
+
+        if (this.player.duration()) {
+          this.player.currentTime(this.player.duration() * clampedProgress);
+        }
+      }
+    }
   }
 
   updateControllerRays() {

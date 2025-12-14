@@ -1161,15 +1161,11 @@ void main() {
    * Initialize VR Gallery
    */
   initVRGallery_() {
-    // Get getSrc function from options or window.medcrypt
-    let getSrcFunc = this.options_.getSrc;
-    if (!getSrcFunc && typeof window !== 'undefined' && window.medcrypt && window.medcrypt.getSrc) {
-      getSrcFunc = window.medcrypt.getSrc.bind(window.medcrypt);
-      console.log('[VR Plugin] Using window.medcrypt.getSrc for gallery');
-    } else if (getSrcFunc) {
-      console.log('[VR Plugin] Using provided getSrc for gallery');
-    } else {
-      console.warn('[VR Plugin] No getSrc function available for gallery!');
+    // Pass getSrc directly - deduplication in viewer prevents infinite loops
+    const getSrcFunc = this.options_.getSrc || null;
+
+    if (getSrcFunc) {
+      console.log('[VR Plugin] VR Gallery initialized with getSrc function');
     }
 
     this.vrGallery = new VRGallery({
@@ -1178,6 +1174,7 @@ void main() {
       renderer: this.renderer,
       getSrc: getSrcFunc,
       onMediaSelect: (item, index) => {
+        console.log('[VR Gallery] Media selected:', item, index);
         if (this.options_.onMediaSelect) {
           this.options_.onMediaSelect(item, index);
         }

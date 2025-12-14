@@ -29,9 +29,12 @@ class VRGallery {
     this.clipMaxY = 0;
 
     // Track failed loads to prevent infinite retries
-    this.failedLoads = new Map(); // url -> retry count
-    this.maxRetries = 3;
+    this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
+    this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
+    this.maxRetries = 1; // Only try once, then give up
     this.getSrcTimeout = 10000; // 10 second timeout
+    this.loadingThumbnails = new Set(); // Track thumbnails currently loading
+    this.thumbnailsLoaded = false; // Track if we've started loading thumbnails
 
     // Media items
     this.mediaItems = [];
@@ -150,10 +153,12 @@ class VRGallery {
     this.frameHeight = frameHeight;
 
     // Set clipping bounds for thumbnail visibility (in local gallery frame coordinates)
-    // Thumbnails will be culled if they're outside this vertical range
-    const viewHeight = this.visibleRows * (this.thumbnailHeight + this.thumbnailSpacing);
-    this.clipMinY = -viewHeight / 2 - 0.1; // Add small margin
-    this.clipMaxY = viewHeight / 2 + 0.1;
+    // The viewable area is below the title (0.2 from top) and above the bottom edge
+    // Thumbnails start at y=0.4 and go down, with row spacing of (thumbnailHeight + thumbnailSpacing)
+    // Frame top is at +frameHeight/2, bottom at -frameHeight/2
+    const titleOffset = 0.25; // Space for title at top
+    this.clipMaxY = frameHeight / 2 - titleOffset; // Below title
+    this.clipMinY = -frameHeight / 2 + 0.05; // Just above bottom edge, with small margin
   }
 
   createCloseButton() {
@@ -300,9 +305,9 @@ class VRGallery {
     imgMesh.userData.baseColor = null;
     thumbnailGroup.add(imgMesh);
 
-    // Load actual thumbnail if URL provided
+    // Store thumbnail URL for lazy loading (only load when gallery is visible)
     if (item.thumbnail) {
-      this.loadThumbnailTexture(item.thumbnail, imgMesh);
+      imgMesh.userData.thumbnailUrl = item.thumbnail;
     }
 
     // Title label
@@ -387,44 +392,62 @@ class VRGallery {
       return;
     }
 
-    // Check if we've exceeded retry limit
-    const retryCount = this.failedLoads.get(url) || 0;
-    if (retryCount >= this.maxRetries) {
-      console.warn(`[VR Gallery] Max retries (${this.maxRetries}) exceeded for thumbnail:`, url);
+    // Check permanent blacklist - NEVER retry these
+    if (this.permanentlyFailedThumbnails.has(url)) {
       return;
     }
 
+    // Check if already loading this thumbnail
+    if (this.loadingThumbnails.has(url)) {
+      return;
+    }
+
+    // Check if we've already tried this thumbnail
+    const failInfo = this.failedLoads.get(url);
+    if (failInfo && failInfo.retries >= this.maxRetries) {
+      // Add to permanent blacklist and never try again
+      this.permanentlyFailedThumbnails.add(url);
+      this.loadingThumbnails.delete(url);
+      return;
+    }
+
+    // Mark as loading
+    this.loadingThumbnails.add(url);
+
     try {
-      // Use getSrc to resolve the path to a blob URL if available
-      // Lazy lookup: check for window.medcrypt.getSrc at load time if not provided
-      let getSrcFunc = this.getSrc;
-      if (!getSrcFunc && typeof window !== 'undefined' && window.medcrypt && window.medcrypt.getSrc) {
-        getSrcFunc = window.medcrypt.getSrc.bind(window.medcrypt);
-        console.log('[VR Gallery] Found window.medcrypt.getSrc at load time');
-      }
+      // Use getSrc to resolve the path to a blob URL if available (only if injected)
+      const getSrcFunc = this.getSrc;
 
       let resolvedUrl = url;
       if (getSrcFunc && typeof getSrcFunc === 'function') {
-        console.log('[VR Gallery] Resolving thumbnail path:', url);
-
         // Add timeout to getSrc call
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('getSrc timeout')), this.getSrcTimeout)
         );
 
         try {
+          // Use 'vr-gallery' priority to bypass video player checks in viewer
           resolvedUrl = await Promise.race([
-            getSrcFunc(url, 'high'),
+            getSrcFunc(url, 'vr-gallery'),
             timeoutPromise
           ]);
-          console.log('[VR Gallery] Resolved to:', resolvedUrl);
         } catch (timeoutError) {
-          console.warn('[VR Gallery] getSrc timed out for:', url);
-          this.failedLoads.set(url, retryCount + 1);
+          const newRetries = (failInfo?.retries || 0) + 1;
+          // Only log first failure
+          if (newRetries === 1) {
+            console.warn('[VR Gallery] getSrc timed out for:', url);
+          }
+          this.failedLoads.set(url, {
+            retries: newRetries,
+            lastAttempt: Date.now()
+          });
+          // If max retries reached, add to permanent blacklist
+          if (newRetries >= this.maxRetries) {
+            this.permanentlyFailedThumbnails.add(url);
+          }
+          this.loadingThumbnails.delete(url);
           return;
         }
-      } else {
-        console.warn('[VR Gallery] getSrc not available, using raw URL:', url);
       }
 
       const loader = new THREE.TextureLoader();
@@ -440,19 +463,44 @@ class VRGallery {
 
           // Clear failed count on success
           this.failedLoads.delete(url);
+          this.loadingThumbnails.delete(url);
 
           mesh.material.map = texture;
           mesh.material.needsUpdate = true;
         },
         undefined,
         (error) => {
-          console.warn('Failed to load thumbnail:', url, '(resolved:', resolvedUrl, ')', error);
-          this.failedLoads.set(url, retryCount + 1);
+          const newRetries = (failInfo?.retries || 0) + 1;
+          // Only log first failure
+          if (newRetries === 1) {
+            console.warn('[VR Gallery] Failed to load thumbnail:', url);
+          }
+          this.failedLoads.set(url, {
+            retries: newRetries,
+            lastAttempt: Date.now()
+          });
+          // If max retries reached, add to permanent blacklist
+          if (newRetries >= this.maxRetries) {
+            this.permanentlyFailedThumbnails.add(url);
+          }
+          this.loadingThumbnails.delete(url);
         }
       );
     } catch (error) {
-      console.warn('Failed to resolve thumbnail path:', url, error);
-      this.failedLoads.set(url, retryCount + 1);
+      const newRetries = (failInfo?.retries || 0) + 1;
+      // Only log first failure
+      if (newRetries === 1) {
+        console.warn('[VR Gallery] Failed to resolve thumbnail path:', url);
+      }
+      this.failedLoads.set(url, {
+        retries: newRetries,
+        lastAttempt: Date.now()
+      });
+      // If max retries reached, add to permanent blacklist
+      if (newRetries >= this.maxRetries) {
+        this.permanentlyFailedThumbnails.add(url);
+      }
+      this.loadingThumbnails.delete(url);
     }
   }
 
@@ -462,6 +510,7 @@ class VRGallery {
 
     this.mediaItems = items;
     this.scrollPosition = 0;
+    this.thumbnailsLoaded = false; // Reset to trigger loading when gallery is shown
 
     // Calculate max scroll
     const totalRows = Math.ceil(items.length / this.columns);
@@ -673,6 +722,56 @@ class VRGallery {
   show() {
     this.isVisible = true;
     this.galleryGroup.visible = true;
+
+    // Load thumbnails when gallery is shown (deduplication in viewer prevents infinite loops)
+    if (!this.thumbnailsLoaded) {
+      this.thumbnailsLoaded = true;
+      this.loadAllThumbnails();
+    }
+  }
+
+  loadAllThumbnails() {
+    // Only load visible thumbnails initially - lazy load others as user scrolls
+    this.loadVisibleThumbnails();
+  }
+
+  loadVisibleThumbnails() {
+    // Load thumbnails that are currently visible (within clipping region)
+    let loadedCount = 0;
+    const buffer = 2; // Load 2 extra rows above/below for smoother scrolling
+    const halfHeight = this.thumbnailHeight / 2;
+    const rowHeight = this.thumbnailHeight + this.thumbnailSpacing;
+    const bufferSize = rowHeight * buffer;
+
+    this.thumbnailMeshes.forEach((mesh, index) => {
+      if (!mesh) return;
+
+      const thumbnailUrl = mesh.userData.thumbnailUrl;
+      if (!thumbnailUrl || this.loadedTextures.has(thumbnailUrl)) return;
+
+      // Get the parent thumbnailGroup's position (mesh is imgMesh inside thumbnailGroup)
+      const thumbnailGroup = mesh.parent;
+      if (!thumbnailGroup) return;
+
+      // Check if thumbnail is in or near visible region
+      // thumbnailGroup.position.y is relative to thumbnailContainer
+      const thumbnailY = thumbnailGroup.position.y + this.scrollPosition;
+      const thumbnailTop = thumbnailY + halfHeight;
+      const thumbnailBottom = thumbnailY - halfHeight;
+
+      // Include buffer zone for preloading
+      const isVisible = thumbnailBottom <= (this.clipMaxY + bufferSize) &&
+                        thumbnailTop >= (this.clipMinY - bufferSize);
+
+      if (isVisible) {
+        this.loadThumbnailTexture(thumbnailUrl, mesh);
+        loadedCount++;
+      }
+    });
+
+    if (loadedCount > 0) {
+      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails`);
+    }
   }
 
   hide() {
@@ -695,13 +794,27 @@ class VRGallery {
     this.galleryGroup.quaternion.copy(this.camera.quaternion);
 
     // Clip thumbnails outside visible area
+    // Account for thumbnail height - a thumbnail is visible if any part of it is in the clip region
+    const halfHeight = this.thumbnailHeight / 2;
     this.thumbnailMeshes.forEach((thumbnail, index) => {
-      if (thumbnail) {
-        const thumbnailY = thumbnail.position.y + this.scrollPosition;
-        const visible = thumbnailY >= this.clipMinY && thumbnailY <= this.clipMaxY;
-        thumbnail.visible = visible;
+      if (thumbnail && thumbnail.parent) {
+        // Use parent group position (thumbnailGroup), not the imgMesh position
+        const thumbnailGroup = thumbnail.parent;
+        const thumbnailY = thumbnailGroup.position.y + this.scrollPosition;
+        // Check if thumbnail's top or bottom edge is within clip region
+        const thumbnailTop = thumbnailY + halfHeight;
+        const thumbnailBottom = thumbnailY - halfHeight;
+        const visible = thumbnailBottom <= this.clipMaxY && thumbnailTop >= this.clipMinY;
+        thumbnailGroup.visible = visible; // Hide the whole group, not just the img mesh
       }
     });
+
+    // Lazy load visible thumbnails (throttled)
+    const now = Date.now();
+    if (!this.lastThumbnailLoad || now - this.lastThumbnailLoad > 500) {
+      this.lastThumbnailLoad = now;
+      this.loadVisibleThumbnails();
+    }
   }
 
   dispose() {
