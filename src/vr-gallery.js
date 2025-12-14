@@ -806,7 +806,7 @@ class VRGallery {
 
       // Place gallery above HUD (HUD is at camera.y - 0.3, gallery should be above)
       this.galleryGroup.position.copy(hudPos);
-      this.galleryGroup.position.y += this.frameHeight / 2 + 0.5; // Above HUD with some spacing
+      this.galleryGroup.position.y += this.frameHeight / 2 + 0.15; // Above HUD with small spacing
 
       // Match HUD orientation
       this.galleryGroup.quaternion.copy(hudQuat);

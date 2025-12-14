@@ -911,8 +911,9 @@ class VRHUD {
       let pitchDiff = currPitch - startPitch;
 
       // Apply 1:1 mapping - controller movement directly controls orientation
-      this.orientationOffset.y = this.dragStartRotation.y - yawDiff;
-      this.orientationOffset.x = this.dragStartRotation.x + pitchDiff;
+      // Positive yaw diff (moving right) should increase offset to move content right
+      this.orientationOffset.y = this.dragStartRotation.y + yawDiff;
+      this.orientationOffset.x = this.dragStartRotation.x - pitchDiff;
 
       // Clamp vertical rotation
       this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
@@ -1031,8 +1032,8 @@ class VRHUD {
 
       // Joystick up/down - gallery scroll
       if (Math.abs(thumbstickY) > 0.3 && this.vrGallery && this.vrGallery.isVisible) {
-        // Invert Y so pushing up scrolls up
-        this.vrGallery.scroll(-thumbstickY * this.joystickScrollSpeed);
+        // Joystick down (negative Y) scrolls down, joystick up (positive Y) scrolls up
+        this.vrGallery.scroll(thumbstickY * this.joystickScrollSpeed);
         this.resetAutoHideTimer();
       }
 
@@ -1112,8 +1113,9 @@ class VRHUD {
       let pitchDiff = currPitch - startPitch;
 
       // Apply 1:1 mapping - controller movement directly controls orientation
-      this.orientationOffset.y = this.bButtonStartOrientation.y - yawDiff;
-      this.orientationOffset.x = this.bButtonStartOrientation.x + pitchDiff;
+      // Positive yaw diff (moving right) should increase offset to move content right
+      this.orientationOffset.y = this.bButtonStartOrientation.y + yawDiff;
+      this.orientationOffset.x = this.bButtonStartOrientation.x - pitchDiff;
 
       // Clamp vertical rotation
       this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));

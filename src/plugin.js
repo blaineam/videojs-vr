@@ -1331,6 +1331,22 @@ void main() {
     }
   }
 
+  /**
+   * Check if VR is currently presenting (in XR session or VR display)
+   * @returns {boolean} True if currently in VR presentation mode
+   */
+  isPresenting() {
+    // Check WebXR first
+    if (this.webXRSupported_ && this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
+      return true;
+    }
+    // Check legacy VR display
+    if (this.vrDisplay && this.vrDisplay.isPresenting) {
+      return true;
+    }
+    return false;
+  }
+
   dispose() {
     super.dispose();
     this.reset();
