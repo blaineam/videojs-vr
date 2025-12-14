@@ -59,7 +59,8 @@ class VRHUD {
     this.vrGallery = null;
 
     // Orientation offset (for lying down viewing)
-    this.orientationOffset = new THREE.Euler(0, 0, 0);
+    // Use YXZ order: yaw (Y) first, then pitch (X), to prevent horizon roll
+    this.orientationOffset = new THREE.Euler(0, 0, 0, 'YXZ');
 
     // Raycaster for gaze/pointer interaction
     this.raycaster = new THREE.Raycaster();
@@ -833,6 +834,8 @@ class VRHUD {
   handleInteraction(object, point) {
     const type = object.userData.type;
 
+    console.log('[VR HUD] handleInteraction type:', type);
+
     // Reset auto-hide timer on any interaction
     this.resetAutoHideTimer();
 
@@ -854,6 +857,7 @@ class VRHUD {
         break;
 
       case 'gallery':
+        console.log('[VR HUD] Gallery button clicked');
         this.onGallery();
         break;
 
@@ -866,7 +870,7 @@ class VRHUD {
         break;
 
       case 'reset-orientation':
-        this.orientationOffset.set(0, 0, 0);
+        this.orientationOffset.set(0, 0, 0, 'YXZ');
         this.onOrientationChange(this.orientationOffset);
         break;
 
@@ -1094,11 +1098,15 @@ class VRHUD {
 
       // Apply 1:1 mapping - controller movement directly controls orientation
       // Positive yaw diff (moving right) should increase offset to move content right
-      this.orientationOffset.y = this.dragStartRotation.y + yawDiff;
-      this.orientationOffset.x = this.dragStartRotation.x - pitchDiff;
+      const newYaw = this.dragStartRotation.y + yawDiff;
+      const newPitch = this.dragStartRotation.x + pitchDiff;
 
       // Clamp vertical rotation
-      this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
+      const clampedPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, newPitch));
+
+      // Create new Euler with YXZ order to prevent horizon roll
+      // Z (roll) is always 0 to maintain horizon alignment
+      this.orientationOffset.set(clampedPitch, newYaw, 0, 'YXZ');
 
       this.onOrientationChange(this.orientationOffset);
     }

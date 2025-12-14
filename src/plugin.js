@@ -1255,8 +1255,12 @@ void main() {
         this.trigger('vr-previous');
       },
       onGallery: () => {
+        console.log('[VR Plugin] onGallery called, vrGallery:', !!this.vrGallery);
         if (this.vrGallery) {
           this.vrGallery.toggle();
+          console.log('[VR Plugin] Gallery toggled, now visible:', this.vrGallery.isVisible);
+        } else {
+          console.warn('[VR Plugin] vrGallery not available');
         }
         if (this.options_.onGallery) {
           this.options_.onGallery();
@@ -1284,7 +1288,9 @@ void main() {
       onOrientationChange: (euler) => {
         // Apply rotation to ALL video meshes for real-time visual feedback
         // In stereo modes (360_LR, 180_LR), there are separate meshes for each eye
-        const offsetQuat = new THREE.Quaternion().setFromEuler(euler);
+        // Ensure YXZ order to prevent horizon roll - only yaw (left/right) and pitch (up/down)
+        const safeEuler = new THREE.Euler(euler.x, euler.y, 0, 'YXZ');
+        const offsetQuat = new THREE.Quaternion().setFromEuler(safeEuler);
 
         // Find all video screen meshes in the scene
         // Check BOTH for videoTexture AND posterTexture to handle both eyes
