@@ -19,10 +19,22 @@ class VRHUD {
     this.onGallery = options.onGallery || (() => {});
     this.onExit = options.onExit || (() => {});
     this.onProjectionChange = options.onProjectionChange || (() => {});
+    this.onFavorite = options.onFavorite || null; // Optional favorite callback
 
-    // Projection modes for cycling
-    this.projectionModes = ['180', '180_LR', '180_MONO', '360', '360_LR', '360_TB', 'EAC', 'EAC_LR', 'Sphere'];
-    this.currentProjectionIndex = 0;
+    // Projection modes available
+    this.projectionModes = [
+      { id: '180', label: '180°' },
+      { id: '180_LR', label: '180° LR' },
+      { id: '180_MONO', label: '180° Mono' },
+      { id: '360', label: '360°' },
+      { id: '360_LR', label: '360° LR' },
+      { id: '360_TB', label: '360° TB' },
+      { id: 'EAC', label: 'EAC' },
+      { id: 'EAC_LR', label: 'EAC LR' },
+      { id: 'Sphere', label: 'Sphere' }
+    ];
+    this.currentProjection = '180';
+    this.projectionMenuVisible = false;
 
     // HUD configuration (can be overridden by options)
     this.hudDistance = options.hudDistance !== undefined ? options.hudDistance : 4;
@@ -36,8 +48,6 @@ class VRHUD {
     this.hideTimeout = null;
     this.isDraggingOrientation = false;
     this.isDraggingScrub = false;
-    this.isBButtonHeld = false; // B button for orientation drag
-    this.bButtonDragStart = null; // Controller direction when B started
 
     // Joystick state
     this.lastJoystickSeek = 0; // Throttle joystick seek
@@ -66,6 +76,7 @@ class VRHUD {
     this.createControlPanel();
     this.createScrubBar();
     this.createNavigationButtons();
+    this.createProjectionMenu();
 
     this.scene.add(this.hudGroup);
 
@@ -285,9 +296,15 @@ class VRHUD {
     this.orientDragBtn = this.createButton('✋', 0.75, -0.15, 'orientation-handle');
     buttonGroup.add(this.orientDragBtn);
 
-    // Projection cycle button (rightmost)
-    this.projectionBtn = this.createButton('🎬', 1.0, -0.15, 'projection-cycle');
+    // Projection menu button
+    this.projectionBtn = this.createButton('🎬', 1.0, -0.15, 'projection-menu');
     buttonGroup.add(this.projectionBtn);
+
+    // Favorite button (only if callback is provided) - rightmost
+    if (this.onFavorite) {
+      this.favoriteBtn = this.createButton('★', 1.25, -0.15, 'favorite');
+      buttonGroup.add(this.favoriteBtn);
+    }
 
     this.controlPanel.add(buttonGroup);
   }
@@ -351,6 +368,125 @@ class VRHUD {
     return btnGroup;
   }
 
+  createProjectionMenu() {
+    // Create projection selection menu (hidden by default)
+    this.projectionMenu = new THREE.Group();
+    this.projectionMenu.name = 'projection-menu';
+    this.projectionMenu.visible = false;
+
+    // Menu background
+    const menuWidth = 0.5;
+    const menuHeight = this.projectionModes.length * 0.08 + 0.15;
+    const menuGeometry = new THREE.PlaneGeometry(menuWidth, menuHeight);
+    const menuMaterial = new THREE.MeshBasicMaterial({
+      color: 0x0a0a1a,
+      opacity: 0.95,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const menuBg = new THREE.Mesh(menuGeometry, menuMaterial);
+    this.projectionMenu.add(menuBg);
+
+    // Menu border
+    const borderGeometry = new THREE.PlaneGeometry(menuWidth + 0.02, menuHeight + 0.02);
+    const borderMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
+      opacity: 0.4,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const border = new THREE.Mesh(borderGeometry, borderMaterial);
+    border.position.z = -0.001;
+    this.projectionMenu.add(border);
+
+    // Title
+    const titleCanvas = document.createElement('canvas');
+    titleCanvas.width = 256;
+    titleCanvas.height = 32;
+    const titleCtx = titleCanvas.getContext('2d');
+    titleCtx.fillStyle = '#00ffff';
+    titleCtx.font = 'bold 20px Arial';
+    titleCtx.textAlign = 'center';
+    titleCtx.textBaseline = 'middle';
+    titleCtx.fillText('PROJECTION', 128, 16);
+
+    const titleTexture = new THREE.CanvasTexture(titleCanvas);
+    const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true });
+    const titleGeometry = new THREE.PlaneGeometry(0.35, 0.05);
+    const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
+    titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
+    this.projectionMenu.add(titleMesh);
+
+    // Create projection option buttons
+    this.projectionOptionButtons = [];
+    const startY = menuHeight / 2 - 0.12;
+
+    this.projectionModes.forEach((mode, index) => {
+      const btnY = startY - index * 0.08;
+
+      // Button background
+      const btnGeometry = new THREE.PlaneGeometry(menuWidth - 0.06, 0.065);
+      const btnMaterial = new THREE.MeshBasicMaterial({
+        color: 0x2a2a4a,
+        opacity: 0.9,
+        transparent: true
+      });
+      const btnMesh = new THREE.Mesh(btnGeometry, btnMaterial);
+      btnMesh.position.set(0, btnY, 0.002);
+      btnMesh.userData.interactive = true;
+      btnMesh.userData.type = 'projection-option';
+      btnMesh.userData.projectionId = mode.id;
+      btnMesh.userData.baseColor = 0x2a2a4a;
+      btnMesh.userData.hoverColor = 0x00ffff;
+      this.projectionMenu.add(btnMesh);
+      this.interactiveElements.push(btnMesh);
+      this.projectionOptionButtons.push({ mesh: btnMesh, id: mode.id });
+
+      // Button label
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = 256;
+      labelCanvas.height = 32;
+      const labelCtx = labelCanvas.getContext('2d');
+      labelCtx.fillStyle = '#ffffff';
+      labelCtx.font = '18px Arial';
+      labelCtx.textAlign = 'center';
+      labelCtx.textBaseline = 'middle';
+      labelCtx.fillText(mode.label, 128, 16);
+
+      const labelTexture = new THREE.CanvasTexture(labelCanvas);
+      const labelMaterial = new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true });
+      const labelGeometry = new THREE.PlaneGeometry(0.35, 0.04);
+      const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+      labelMesh.position.set(0, btnY, 0.003);
+      this.projectionMenu.add(labelMesh);
+    });
+
+    // Position menu above the projection button
+    this.projectionMenu.position.set(0.8, 0.4, 0.02);
+
+    this.controlPanel.add(this.projectionMenu);
+  }
+
+  toggleProjectionMenu() {
+    this.projectionMenuVisible = !this.projectionMenuVisible;
+    this.projectionMenu.visible = this.projectionMenuVisible;
+  }
+
+  hideProjectionMenu() {
+    this.projectionMenuVisible = false;
+    this.projectionMenu.visible = false;
+  }
+
+  setProjection(projectionId) {
+    this.currentProjection = projectionId;
+    // Update button highlights to show current projection
+    this.projectionOptionButtons.forEach(btn => {
+      const isSelected = btn.id === projectionId;
+      btn.mesh.material.color.setHex(isSelected ? 0x00ff88 : 0x2a2a4a);
+      btn.mesh.userData.baseColor = isSelected ? 0x00ff88 : 0x2a2a4a;
+    });
+  }
+
   setupInteraction() {
     // For VR controllers and hands
     if (this.renderer.xr) {
@@ -398,7 +534,6 @@ class VRHUD {
       // Controller 1 (typically left hand on Quest)
       const controller1 = this.renderer.xr.getController(1);
       const controllerGrip1 = this.renderer.xr.getControllerGrip(1);
-      const hand1 = this.renderer.xr.getHand(1);
 
       if (controller1) {
         controller1.addEventListener('selectstart', this.onSelectStart);
@@ -434,31 +569,6 @@ class VRHUD {
         this.controller1 = controller1;
         this.controllerGrip1 = controllerGrip1;
         this.ray1 = ray;
-      }
-
-      // Setup hand tracking (Quest supports hand tracking)
-      if (hand0) {
-        hand0.addEventListener('pinchstart', this.onPinchStart.bind(this));
-        hand0.addEventListener('pinchend', this.onPinchEnd.bind(this));
-
-        // Add hand model visualization
-        const handModel0 = this.createHandModel();
-        hand0.add(handModel0);
-
-        this.scene.add(hand0);
-        this.hand0 = hand0;
-      }
-
-      if (hand1) {
-        hand1.addEventListener('pinchstart', this.onPinchStart.bind(this));
-        hand1.addEventListener('pinchend', this.onPinchEnd.bind(this));
-
-        // Add hand model visualization
-        const handModel1 = this.createHandModel();
-        hand1.add(handModel1);
-
-        this.scene.add(hand1);
-        this.hand1 = hand1;
       }
     }
 
@@ -665,32 +775,6 @@ class VRHUD {
     // Squeeze end - could be used for other interactions
   }
 
-  onPinchStart(event) {
-    // Hand pinch gesture - show HUD if hidden, or act like trigger select if visible
-    if (!this.isVisible) {
-      this.show(true);
-      this.resetAutoHideTimer();
-      return;
-    }
-
-    const hand = event.target;
-    this.tempMatrix = new THREE.Matrix4();
-    this.tempMatrix.identity().extractRotation(hand.matrixWorld);
-
-    this.raycaster.ray.origin.setFromMatrixPosition(hand.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
-
-    const intersects = this.raycaster.intersectObjects(this.interactiveElements);
-
-    if (intersects.length > 0) {
-      this.handleInteraction(intersects[0].object, intersects[0].point);
-    }
-  }
-
-  onPinchEnd(event) {
-    // Pinch release
-  }
-
   handleInteraction(object, point) {
     const type = object.userData.type;
 
@@ -742,12 +826,24 @@ class VRHUD {
         }
         break;
 
-      case 'projection-cycle':
-        // Cycle to next projection mode
-        this.currentProjectionIndex = (this.currentProjectionIndex + 1) % this.projectionModes.length;
-        const newProjection = this.projectionModes[this.currentProjectionIndex];
-        console.log('[VR HUD] Switching projection to:', newProjection);
-        this.onProjectionChange(newProjection);
+      case 'projection-menu':
+        // Toggle projection menu visibility
+        this.toggleProjectionMenu();
+        break;
+
+      case 'projection-option':
+        // Select a projection from the menu
+        const selectedProjection = object.userData.projectionId;
+        console.log('[VR HUD] Selecting projection:', selectedProjection);
+        this.setProjection(selectedProjection);
+        this.onProjectionChange(selectedProjection);
+        this.hideProjectionMenu();
+        break;
+
+      case 'favorite':
+        if (this.onFavorite) {
+          this.onFavorite();
+        }
         break;
     }
   }
@@ -1064,74 +1160,6 @@ class VRHUD {
         }
         this.aButtonWasPressed = aButton.pressed;
       }
-
-      // B button (index 5 on Quest) - Hold for orientation drag
-      const bButtonIndex = 5;
-      if (buttons.length > bButtonIndex) {
-        const bButton = buttons[bButtonIndex];
-
-        if (bButton.pressed && !this.isBButtonHeld) {
-          // B button just pressed - start orientation drag
-          this.isBButtonHeld = true;
-          this.bButtonController = source.gripSpace ? this.renderer.xr.getController(
-            Array.from(session.inputSources).indexOf(source)
-          ) : null;
-
-          // Store the initial controller direction for 1:1 tracking
-          if (this.bButtonController) {
-            const tempMatrix = new THREE.Matrix4();
-            tempMatrix.identity().extractRotation(this.bButtonController.matrixWorld);
-            this.bButtonStartDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix);
-            this.bButtonStartOrientation = this.orientationOffset.clone();
-          }
-
-          // Cancel auto-hide while dragging
-          if (this.hideTimeout) {
-            clearTimeout(this.hideTimeout);
-            this.hideTimeout = null;
-          }
-        } else if (!bButton.pressed && this.isBButtonHeld) {
-          // B button released
-          this.isBButtonHeld = false;
-          this.bButtonController = null;
-          this.bButtonStartDirection = null;
-          this.resetAutoHideTimer();
-        }
-      }
-    }
-
-    // Handle B button orientation drag with 1:1 cursor tracking
-    if (this.isBButtonHeld && this.bButtonController && this.bButtonStartDirection) {
-      const tempMatrix = new THREE.Matrix4();
-      tempMatrix.identity().extractRotation(this.bButtonController.matrixWorld);
-      const currentDirection = new THREE.Vector3(0, 0, -1).applyMatrix4(tempMatrix);
-
-      // Calculate angular difference from start direction
-      // Use dot product to get angle, cross product for axis
-      const startDir = this.bButtonStartDirection.clone().normalize();
-      const currDir = currentDirection.clone().normalize();
-
-      // Project both directions onto the horizontal plane for yaw
-      const startHorizontal = new THREE.Vector3(startDir.x, 0, startDir.z).normalize();
-      const currHorizontal = new THREE.Vector3(currDir.x, 0, currDir.z).normalize();
-
-      // Calculate yaw difference (rotation around Y axis)
-      let yawDiff = Math.atan2(currHorizontal.x, currHorizontal.z) - Math.atan2(startHorizontal.x, startHorizontal.z);
-
-      // Calculate pitch difference (rotation around X axis)
-      const startPitch = Math.asin(Math.max(-1, Math.min(1, startDir.y)));
-      const currPitch = Math.asin(Math.max(-1, Math.min(1, currDir.y)));
-      let pitchDiff = currPitch - startPitch;
-
-      // Apply 1:1 mapping - controller movement directly controls orientation
-      // Positive yaw diff (moving right) should increase offset to move content right
-      this.orientationOffset.y = this.bButtonStartOrientation.y + yawDiff;
-      this.orientationOffset.x = this.bButtonStartOrientation.x - pitchDiff;
-
-      // Clamp vertical rotation
-      this.orientationOffset.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.orientationOffset.x));
-
-      this.onOrientationChange(this.orientationOffset);
     }
   }
 
@@ -1155,19 +1183,6 @@ class VRHUD {
     group.add(pointer);
 
     return group;
-  }
-
-  createHandModel() {
-    // Create a simple hand visualization (palm sphere)
-    const palmGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-    const palmMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffddbb,
-      transparent: true,
-      opacity: 0.8,
-      wireframe: true
-    });
-    const palm = new THREE.Mesh(palmGeometry, palmMaterial);
-    return palm;
   }
 
   show(force = false) {

@@ -31,11 +31,12 @@ class VRGallery {
     // Track failed loads to prevent infinite retries
     this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
     this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
-    this.maxRetries = 3; // Allow 3 retries before giving up
-    this.getSrcTimeout = 15000; // 15 second timeout
+    this.maxRetries = 10; // Allow 10 retries before giving up - be more forgiving
+    this.getSrcTimeout = 30000; // 30 second timeout - shorter to allow retries sooner
     this.loadingThumbnails = new Set(); // Track thumbnails currently loading
     this.thumbnailsLoaded = false; // Track if we've started loading thumbnails
-    this.maxConcurrentLoads = 8; // Allow more concurrent loads for faster gallery population
+    this.maxConcurrentLoads = 6; // Slightly more concurrent loads
+    this.retryBackoff = 5000; // Wait 5 seconds before retrying a failed thumbnail
 
     // Media items
     this.mediaItems = [];
@@ -105,27 +106,6 @@ class VRGallery {
     border.position.z = -0.002;
     this.galleryFrame.add(border);
 
-    // Title
-    const titleCanvas = document.createElement('canvas');
-    titleCanvas.width = 512;
-    titleCanvas.height = 64;
-    const ctx = titleCanvas.getContext('2d');
-    ctx.fillStyle = '#00ffff';
-    ctx.font = 'bold 36px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('VR GALLERY', 256, 32);
-
-    const titleTexture = new THREE.CanvasTexture(titleCanvas);
-    const titleMaterial = new THREE.MeshBasicMaterial({
-      map: titleTexture,
-      transparent: true
-    });
-    const titleGeometry = new THREE.PlaneGeometry(0.8, 0.1);
-    const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-    titleMesh.position.set(0, frameHeight / 2 - 0.12, 0.01);
-    this.galleryFrame.add(titleMesh);
-
     // Close button
     this.closeBtn = this.createCloseButton();
     this.closeBtn.position.set(frameWidth / 2 - 0.1, frameHeight / 2 - 0.1, 0.01);
@@ -156,11 +136,11 @@ class VRGallery {
     this.frameHeight = frameHeight;
 
     // Set clipping bounds for thumbnail visibility (in local gallery frame coordinates)
-    // The viewable area is below the title and above the bottom edge
     // Frame top is at +frameHeight/2, bottom at -frameHeight/2
-    const titleOffset = 0.25; // Space for title at top
-    const bottomMargin = 0.15; // More margin at bottom to prevent overflow
-    this.clipMaxY = frameHeight / 2 - titleOffset; // Below title
+    // Thumbnails have height 0.3, so we need margin > thumbnailHeight/2 to keep them inside border
+    const topMargin = 0.15; // Small margin at top (no title now)
+    const bottomMargin = 0.25; // Larger margin to keep thumbnails inside cyan border
+    this.clipMaxY = frameHeight / 2 - topMargin; // Near top edge
     this.clipMinY = -frameHeight / 2 + bottomMargin; // Well above bottom edge
   }
 
@@ -707,6 +687,23 @@ class VRGallery {
     this.scrollPosition = Math.max(0, Math.min(this.maxScroll,
       this.scrollPosition + delta));
     this.updateScrollPosition();
+
+    // Debounce retry of visible thumbnails after scrolling stops
+    if (this.scrollDebounceTimer) {
+      clearTimeout(this.scrollDebounceTimer);
+    }
+    this.scrollDebounceTimer = setTimeout(() => {
+      // Clear recent failures to allow retrying visible thumbnails
+      const now = Date.now();
+      for (const [url, info] of this.failedLoads.entries()) {
+        // Clear failures that are older than 2 seconds so visible thumbnails get another chance
+        if (info.retries < this.maxRetries && now - info.lastAttempt > 2000) {
+          this.failedLoads.delete(url);
+        }
+      }
+      // Trigger loading of visible thumbnails
+      this.loadVisibleThumbnails();
+    }, 300); // 300ms after scroll stops
   }
 
   // Public method for external scrolling (e.g., from joystick)
@@ -751,37 +748,31 @@ class VRGallery {
       return; // Wait for some to finish before loading more
     }
 
-    // Clear old failed thumbnails that can be retried (after 10 seconds)
+    // Clear old failed thumbnails that can be retried (after retryBackoff period)
     const now = Date.now();
     for (const [url, info] of this.failedLoads.entries()) {
-      if (info.retries < this.maxRetries && now - info.lastAttempt > 10000) {
+      if (info.retries < this.maxRetries && now - info.lastAttempt > this.retryBackoff) {
         this.failedLoads.delete(url);
       }
     }
 
     let loadedCount = 0;
-    let skippedLoading = 0;
-    let skippedFailed = 0;
     const maxToLoad = this.maxConcurrentLoads - currentlyLoading;
-    const buffer = 3; // Load 3 extra rows above/below for smoother scrolling
+    const buffer = 4; // Load 4 extra rows above/below for smoother scrolling
     const halfHeight = this.thumbnailHeight / 2;
     const rowHeight = this.thumbnailHeight + this.thumbnailSpacing;
     const bufferSize = rowHeight * buffer;
 
+    // Iterate through ALL thumbnails, not just from index 0
+    // This ensures newly visible thumbnails at any scroll position are loaded
     for (let i = 0; i < this.thumbnailMeshes.length && loadedCount < maxToLoad; i++) {
       const mesh = this.thumbnailMeshes[i];
       if (!mesh) continue;
 
       const thumbnailUrl = mesh.userData.thumbnailUrl;
       if (!thumbnailUrl || this.loadedTextures.has(thumbnailUrl)) continue;
-      if (this.loadingThumbnails.has(thumbnailUrl)) {
-        skippedLoading++;
-        continue;
-      }
-      if (this.permanentlyFailedThumbnails.has(thumbnailUrl)) {
-        skippedFailed++;
-        continue;
-      }
+      if (this.loadingThumbnails.has(thumbnailUrl)) continue;
+      if (this.permanentlyFailedThumbnails.has(thumbnailUrl)) continue;
 
       // Get the parent thumbnailGroup's position (mesh is imgMesh inside thumbnailGroup)
       const thumbnailGroup = mesh.parent;
@@ -804,7 +795,7 @@ class VRGallery {
     }
 
     if (loadedCount > 0) {
-      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress, ${skippedFailed} failed)`);
+      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress)`);
     }
   }
 

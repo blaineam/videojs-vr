@@ -38,6 +38,7 @@ const defaults = {
   onGallery: null,
   onExit: null,
   onProjectionChange: null,
+  onFavorite: null,
   // Media items for gallery
   mediaItems: []
 };
@@ -724,6 +725,11 @@ void main() {
     this.currentProjection_ = projection;
     this.defaultProjection_ = projection;
 
+    // Update VR HUD's projection state to keep UI in sync
+    if (this.vrHUD) {
+      this.vrHUD.setProjection(projection);
+    }
+
     // If we're in an XR session, rebuild the geometry with the new projection
     if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting && this.scene) {
       this.log('Rebuilding projection during XR session:', projection);
@@ -768,24 +774,27 @@ void main() {
     if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
       this.log('Source changed during XR session - updating video texture without reset');
       // Create new video texture from updated video element
-      if (this.videoTexture) {
-        this.videoTexture.dispose();
-      }
+      const oldVideoTexture = this.videoTexture;
       this.videoTexture = new THREE.VideoTexture(this.getVideoEl_());
       this.videoTexture.generateMipmaps = false;
       this.videoTexture.minFilter = THREE.LinearFilter;
       this.videoTexture.magFilter = THREE.LinearFilter;
       this.videoTexture.format = THREE.RGBFormat;
 
-      // Update all materials using the video texture
-      if (this.movieMaterial) {
-        this.movieMaterial.map = this.videoTexture;
-        this.movieMaterial.needsUpdate = true;
-      }
-      // Also update any right-eye materials for stereo modes
-      if (this.movieMaterialR) {
-        this.movieMaterialR.map = this.videoTexture;
-        this.movieMaterialR.needsUpdate = true;
+      // Update ALL materials in the scene using video texture (both eyes in stereo modes)
+      // This ensures both left and right eye meshes get the new texture
+      this.scene.traverse((object) => {
+        if (object.isMesh && object.material && object.material.map === oldVideoTexture) {
+          object.material.map = this.videoTexture;
+          object.material.needsUpdate = true;
+          // Also clear baseQuaternion so orientation tracking starts fresh
+          delete object.userData.baseQuaternion;
+        }
+      });
+
+      // Dispose old texture after updating all references
+      if (oldVideoTexture) {
+        oldVideoTexture.dispose();
       }
       return;
     }
@@ -1201,6 +1210,10 @@ void main() {
         }
         this.trigger('vr-projection-change', { projection });
       },
+      onFavorite: this.options_.onFavorite ? () => {
+        this.options_.onFavorite();
+        this.trigger('vr-favorite');
+      } : null,
       onOrientationChange: (euler) => {
         // Apply rotation to ALL video meshes for real-time visual feedback
         // In stereo modes (360_LR, 180_LR), there are separate meshes for each eye
