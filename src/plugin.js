@@ -705,11 +705,17 @@ void main() {
     if (!this.initialized_) {
       return;
     }
+
     // Update video texture when video has any frame data (readyState >= 2)
     // HAVE_CURRENT_DATA (2), HAVE_FUTURE_DATA (3), or HAVE_ENOUGH_DATA (4)
     const videoEl = this.getVideoEl_();
     if (videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
       if (this.videoTexture) {
+        // Ensure texture's image reference is current video element
+        // This handles cases where video element may have been recreated
+        if (this.videoTexture.image !== videoEl) {
+          this.videoTexture.image = videoEl;
+        }
         this.videoTexture.needsUpdate = true;
       }
     }
