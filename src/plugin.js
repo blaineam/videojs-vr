@@ -680,7 +680,9 @@ void main() {
       return this.vrDisplay.requestAnimationFrame(fn);
     }
 
-    return this.player_.requestAnimationFrame(fn);
+    // Use window.requestAnimationFrame directly to ensure the render loop
+    // continues even when the video player is paused or in certain states
+    return window.requestAnimationFrame(fn);
   }
 
   cancelAnimationFrame(id) {
@@ -688,7 +690,7 @@ void main() {
       return this.vrDisplay.cancelAnimationFrame(id);
     }
 
-    return this.player_.cancelAnimationFrame(id);
+    return window.cancelAnimationFrame(id);
   }
 
   togglePlay_() {
