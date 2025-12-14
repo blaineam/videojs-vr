@@ -387,11 +387,19 @@ class VRGallery {
 
     // Check if we've already tried this thumbnail
     const failInfo = this.failedLoads.get(url);
-    if (failInfo && failInfo.retries >= this.maxRetries) {
-      // Add to permanent blacklist and never try again
-      this.permanentlyFailedThumbnails.add(url);
-      this.loadingThumbnails.delete(url);
-      return;
+    if (failInfo) {
+      if (failInfo.retries >= this.maxRetries) {
+        // Add to permanent blacklist and never try again
+        this.permanentlyFailedThumbnails.add(url);
+        this.loadingThumbnails.delete(url);
+        return;
+      }
+      // Check if we need to wait before retrying (respect backoff)
+      const timeSinceLastAttempt = Date.now() - failInfo.lastAttempt;
+      if (timeSinceLastAttempt < this.retryBackoff) {
+        // Not enough time has passed, skip for now
+        return;
+      }
     }
 
     // Mark as loading
@@ -402,7 +410,12 @@ class VRGallery {
       const getSrcFunc = this.getSrc;
 
       let resolvedUrl = url;
-      if (getSrcFunc && typeof getSrcFunc === 'function') {
+      const currentRetries = failInfo?.retries || 0;
+
+      // After 3 getSrc failures, try direct loading as fallback
+      const useDirectLoad = currentRetries >= 3;
+
+      if (getSrcFunc && typeof getSrcFunc === 'function' && !useDirectLoad) {
         // Add timeout to getSrc call
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('getSrc timeout')), this.getSrcTimeout)
@@ -415,14 +428,15 @@ class VRGallery {
             timeoutPromise
           ]);
         } catch (timeoutError) {
-          const newRetries = (failInfo?.retries || 0) + 1;
+          const newRetries = currentRetries + 1;
           // Only log first failure
           if (newRetries === 1) {
             console.warn('[VR Gallery] getSrc timed out for:', url);
           }
           this.failedLoads.set(url, {
             retries: newRetries,
-            lastAttempt: Date.now()
+            lastAttempt: Date.now(),
+            getSrcFailed: true
           });
           // If max retries reached, add to permanent blacklist
           if (newRetries >= this.maxRetries) {
@@ -431,6 +445,10 @@ class VRGallery {
           this.loadingThumbnails.delete(url);
           return;
         }
+      } else if (useDirectLoad) {
+        // Fallback: try direct loading without getSrc
+        // This may work for thumbnails that don't need decryption
+        console.log('[VR Gallery] Trying direct load for:', url);
       }
 
       const loader = new THREE.TextureLoader();
@@ -742,12 +760,6 @@ class VRGallery {
 
   loadVisibleThumbnails() {
     // Load thumbnails that are currently visible (within clipping region)
-    // Respect maxConcurrentLoads to avoid overwhelming the getSrc queue
-    const currentlyLoading = this.loadingThumbnails.size;
-    if (currentlyLoading >= this.maxConcurrentLoads) {
-      return; // Wait for some to finish before loading more
-    }
-
     // Clear old failed thumbnails that can be retried (after retryBackoff period)
     const now = Date.now();
     for (const [url, info] of this.failedLoads.entries()) {
@@ -756,16 +768,16 @@ class VRGallery {
       }
     }
 
-    let loadedCount = 0;
-    const maxToLoad = this.maxConcurrentLoads - currentlyLoading;
+    const currentlyLoading = this.loadingThumbnails.size;
     const buffer = 4; // Load 4 extra rows above/below for smoother scrolling
     const halfHeight = this.thumbnailHeight / 2;
     const rowHeight = this.thumbnailHeight + this.thumbnailSpacing;
     const bufferSize = rowHeight * buffer;
 
-    // Iterate through ALL thumbnails, not just from index 0
-    // This ensures newly visible thumbnails at any scroll position are loaded
-    for (let i = 0; i < this.thumbnailMeshes.length && loadedCount < maxToLoad; i++) {
+    // First pass: Find ALL visible thumbnails that need loading
+    // This ensures we know what to load even if we're at capacity
+    const visibleToLoad = [];
+    for (let i = 0; i < this.thumbnailMeshes.length; i++) {
       const mesh = this.thumbnailMeshes[i];
       if (!mesh) continue;
 
@@ -789,13 +801,27 @@ class VRGallery {
                         thumbnailTop >= (this.clipMinY - bufferSize);
 
       if (isVisible) {
-        this.loadThumbnailTexture(thumbnailUrl, mesh);
-        loadedCount++;
+        // Calculate distance from center of visible area for priority
+        const centerY = (this.clipMaxY + this.clipMinY) / 2;
+        const distFromCenter = Math.abs(thumbnailY - centerY);
+        visibleToLoad.push({ mesh, url: thumbnailUrl, distance: distFromCenter });
       }
     }
 
+    // Sort by distance from center (load center thumbnails first)
+    visibleToLoad.sort((a, b) => a.distance - b.distance);
+
+    // Second pass: Load up to maxConcurrentLoads
+    const maxToLoad = this.maxConcurrentLoads - currentlyLoading;
+    let loadedCount = 0;
+    for (const item of visibleToLoad) {
+      if (loadedCount >= maxToLoad) break;
+      this.loadThumbnailTexture(item.url, item.mesh);
+      loadedCount++;
+    }
+
     if (loadedCount > 0) {
-      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress)`);
+      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress, ${visibleToLoad.length - loadedCount} queued)`);
     }
   }
 

@@ -31,7 +31,8 @@ class VRHUD {
       { id: '360_TB', label: '360° TB' },
       { id: 'EAC', label: 'EAC' },
       { id: 'EAC_LR', label: 'EAC LR' },
-      { id: 'Sphere', label: 'Sphere' }
+      { id: 'Sphere', label: 'Sphere' },
+      { id: 'SBS_MONO', label: 'Side by Side' }
     ];
     this.currentProjection = '180';
     this.projectionMenuVisible = false;
@@ -268,41 +269,49 @@ class VRHUD {
     const buttonGroup = new THREE.Group();
     buttonGroup.name = 'navigation-buttons';
 
+    // Calculate button positions to fit within panel (width 2.4, so max x ~1.1)
+    // With favorite button: 9 buttons, spacing ~0.22
+    // Without favorite: 8 buttons, spacing ~0.25
+    const hasOnFavorite = !!this.onFavorite;
+    const buttonSpacing = hasOnFavorite ? 0.22 : 0.25;
+    const startX = hasOnFavorite ? -0.88 : -0.875;
+
     // Exit VR button (leftmost)
-    this.exitBtn = this.createButton('✕', -0.9, -0.15, 'exit-vr', 0xff3366);
+    this.exitBtn = this.createButton('✕', startX, -0.15, 'exit-vr', 0xff3366);
     buttonGroup.add(this.exitBtn);
 
     // Gallery button
-    this.galleryBtn = this.createButton('⊞', -0.55, -0.15, 'gallery');
+    this.galleryBtn = this.createButton('⊞', startX + buttonSpacing * 1, -0.15, 'gallery');
     buttonGroup.add(this.galleryBtn);
 
     // Previous button
-    this.prevBtn = this.createButton('⏮', -0.25, -0.15, 'previous');
+    this.prevBtn = this.createButton('⏮', startX + buttonSpacing * 2, -0.15, 'previous');
     buttonGroup.add(this.prevBtn);
 
     // Play/Pause button
-    this.playPauseBtn = this.createButton('⏯', 0, -0.15, 'play-pause');
+    this.playPauseBtn = this.createButton('⏯', startX + buttonSpacing * 3, -0.15, 'play-pause');
     buttonGroup.add(this.playPauseBtn);
 
     // Next button
-    this.nextBtn = this.createButton('⏭', 0.25, -0.15, 'next');
+    this.nextBtn = this.createButton('⏭', startX + buttonSpacing * 4, -0.15, 'next');
     buttonGroup.add(this.nextBtn);
 
     // Orientation reset button
-    this.orientResetBtn = this.createButton('⟲', 0.5, -0.15, 'reset-orientation');
+    this.orientResetBtn = this.createButton('⟲', startX + buttonSpacing * 5, -0.15, 'reset-orientation');
     buttonGroup.add(this.orientResetBtn);
 
-    // Orientation drag handle - aligned in row with other buttons
-    this.orientDragBtn = this.createButton('✋', 0.75, -0.15, 'orientation-handle');
+    // Orientation drag handle
+    this.orientDragBtn = this.createButton('✋', startX + buttonSpacing * 6, -0.15, 'orientation-handle');
     buttonGroup.add(this.orientDragBtn);
 
     // Projection menu button
-    this.projectionBtn = this.createButton('🎬', 1.0, -0.15, 'projection-menu');
+    this.projectionBtn = this.createButton('🎬', startX + buttonSpacing * 7, -0.15, 'projection-menu');
     buttonGroup.add(this.projectionBtn);
 
     // Favorite button (only if callback is provided) - rightmost
-    if (this.onFavorite) {
-      this.favoriteBtn = this.createButton('★', 1.25, -0.15, 'favorite');
+    if (hasOnFavorite) {
+      this.favoriteBtn = this.createButton('☆', startX + buttonSpacing * 8, -0.15, 'favorite');
+      this.favoriteBtnMesh = this.favoriteBtn.children.find(c => c.userData && c.userData.type === 'favorite');
       buttonGroup.add(this.favoriteBtn);
     }
 
@@ -399,11 +408,25 @@ class VRHUD {
     border.position.z = -0.001;
     this.projectionMenu.add(border);
 
-    // Title
+    // Title with solid background for readability
+    const titleBgGeometry = new THREE.PlaneGeometry(menuWidth - 0.04, 0.07);
+    const titleBgMaterial = new THREE.MeshBasicMaterial({
+      color: 0x003344,
+      opacity: 1.0,
+      transparent: false
+    });
+    const titleBgMesh = new THREE.Mesh(titleBgGeometry, titleBgMaterial);
+    titleBgMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
+    this.projectionMenu.add(titleBgMesh);
+
     const titleCanvas = document.createElement('canvas');
     titleCanvas.width = 256;
     titleCanvas.height = 32;
     const titleCtx = titleCanvas.getContext('2d');
+    // Solid background
+    titleCtx.fillStyle = '#003344';
+    titleCtx.fillRect(0, 0, 256, 32);
+    // Text
     titleCtx.fillStyle = '#00ffff';
     titleCtx.font = 'bold 20px Arial';
     titleCtx.textAlign = 'center';
@@ -411,10 +434,10 @@ class VRHUD {
     titleCtx.fillText('PROJECTION', 128, 16);
 
     const titleTexture = new THREE.CanvasTexture(titleCanvas);
-    const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: true });
+    const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: false });
     const titleGeometry = new THREE.PlaneGeometry(0.35, 0.05);
     const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-    titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
+    titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.002);
     this.projectionMenu.add(titleMesh);
 
     // Create projection option buttons
@@ -485,6 +508,46 @@ class VRHUD {
       btn.mesh.material.color.setHex(isSelected ? 0x00ff88 : 0x2a2a4a);
       btn.mesh.userData.baseColor = isSelected ? 0x00ff88 : 0x2a2a4a;
     });
+  }
+
+  // Update favorite button to show current state
+  setFavoriteState(isFavorited) {
+    this.isFavorited = isFavorited;
+    if (this.favoriteBtn) {
+      // Find the label mesh (it has a canvas texture)
+      const labelMesh = this.favoriteBtn.children.find(c => c.material && c.material.map);
+      if (labelMesh) {
+        // Update the canvas texture
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = isFavorited ? '#ff6699' : '#ffffff';
+        ctx.font = '40px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isFavorited ? '❤️' : '☆', 32, 32);
+
+        const newTexture = new THREE.CanvasTexture(canvas);
+        if (labelMesh.material.map) {
+          labelMesh.material.map.dispose();
+        }
+        labelMesh.material.map = newTexture;
+        labelMesh.material.needsUpdate = true;
+      }
+
+      // Also update the button background color
+      const btnMesh = this.favoriteBtn.children.find(c => c.userData && c.userData.type === 'favorite');
+      if (btnMesh) {
+        btnMesh.material.color.setHex(isFavorited ? 0x663355 : 0x2a2a4a);
+        btnMesh.userData.baseColor = isFavorited ? 0x663355 : 0x2a2a4a;
+      }
+    }
+  }
+
+  // Get current favorite state
+  getFavoriteState() {
+    return this.isFavorited || false;
   }
 
   setupInteraction() {
@@ -907,18 +970,40 @@ class VRHUD {
   }
 
   updateCursor() {
-    // Raycast from camera center
+    // Raycast from camera center (gaze-based)
     this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
     const intersects = this.raycaster.intersectObjects(this.interactiveElements);
 
+    // Reset all interactive elements to base color first
+    // (Controller highlighting is done separately in updateControllerRays)
+    this.interactiveElements.forEach(el => {
+      // Don't reset if controller is highlighting this element
+      if (!el.userData.controllerHighlighted && el.userData.baseColor !== undefined) {
+        el.material.color.setHex(el.userData.baseColor);
+      }
+    });
+
     if (intersects.length > 0) {
-      // Hovering over interactive element
+      const obj = intersects[0].object;
+
+      // DON'T highlight projection menu items via gaze - only controllers should do that
+      // This prevents head movement from changing highlights
+      if (obj.userData.type === 'projection-option') {
+        // Just update cursor position, no highlight
+        this.cursorHover.material.opacity = 0.3;
+        this.cursorDot.material.color.setHex(0x00ffff);
+        const cursorPos = intersects[0].point.clone();
+        this.camera.worldToLocal(cursorPos);
+        this.cursor.position.copy(cursorPos);
+        return;
+      }
+
+      // For other elements, show hover state
       this.cursorHover.material.opacity = 0.8;
       this.cursorDot.material.color.setHex(0x00ff00);
 
-      // Highlight the hovered element
-      const obj = intersects[0].object;
-      if (obj.userData.baseColor !== undefined) {
+      // Highlight the hovered element (except projection options)
+      if (obj.userData.baseColor !== undefined && !obj.userData.controllerHighlighted) {
         obj.material.color.setHex(obj.userData.hoverColor || 0x00ffff);
       }
 
@@ -931,13 +1016,6 @@ class VRHUD {
       this.cursorHover.material.opacity = 0;
       this.cursorDot.material.color.setHex(0x00ffff);
       this.cursor.position.set(0, 0, -2);
-
-      // Reset all interactive elements to base color
-      this.interactiveElements.forEach(el => {
-        if (el.userData.baseColor !== undefined) {
-          el.material.color.setHex(el.userData.baseColor);
-        }
-      });
     }
   }
 
@@ -957,26 +1035,31 @@ class VRHUD {
     this.updateTimeDisplay();
     this.updateCursor();
 
-    // Make HUD follow camera at constant distance
-    // HUD should NOT follow orientation offset - it stays relative to user's head position
-    // This prevents jarring jumps when changing orientation
-    const cameraForward = new THREE.Vector3(0, 0, -1);
-    cameraForward.applyQuaternion(this.camera.quaternion);
+    // HUD stays FIXED in world space at the video content orientation
+    // It does NOT follow the camera/head - user must turn their head to see it
+    // This keeps the controls always aligned with the video content
 
-    // Flatten to horizontal plane for more wall-like behavior
-    cameraForward.y = 0;
-    cameraForward.normalize();
+    // Calculate the direction based ONLY on the orientation offset (where video is pointing)
+    // Not on camera direction
+    const forward = new THREE.Vector3(0, 0, -1);
 
-    // Position HUD at eye level, in front of camera (horizontal direction only)
-    this.hudGroup.position.copy(this.camera.position);
-    this.hudGroup.position.addScaledVector(cameraForward, this.hudDistance);
-    // HUD at fixed height relative to camera (slightly below eye level)
-    this.hudGroup.position.y = this.camera.position.y - 0.3;
+    // Apply orientation offset to get the direction video is facing
+    const orientationQuat = new THREE.Quaternion();
+    orientationQuat.setFromEuler(new THREE.Euler(this.orientationOffset.x, this.orientationOffset.y, 0, 'YXZ'));
+    forward.applyQuaternion(orientationQuat);
 
-    // Make HUD face camera horizontally only (like a wall)
-    // Calculate yaw rotation to face camera
-    const hudLookAt = new THREE.Vector3(this.camera.position.x, this.hudGroup.position.y, this.camera.position.z);
-    this.hudGroup.lookAt(hudLookAt);
+    // Position HUD at a fixed world position in the video content direction
+    // Use a fixed origin point (0, camera height, 0) to calculate position
+    const cameraHeight = this.camera.position.y;
+    this.hudGroup.position.set(
+      forward.x * this.hudDistance,
+      cameraHeight - 0.3,  // Slightly below eye level
+      forward.z * this.hudDistance
+    );
+
+    // Make HUD face the origin (where user is standing)
+    // This ensures HUD always faces toward the user regardless of which direction they're looking
+    this.hudGroup.lookAt(0, this.hudGroup.position.y, 0);
   }
 
   updateControllerDragging() {
@@ -1054,6 +1137,11 @@ class VRHUD {
   }
 
   updateControllerRays() {
+    // Clear all controller highlighting flags first
+    this.interactiveElements.forEach(el => {
+      el.userData.controllerHighlighted = false;
+    });
+
     // Check both controllers and show rays when in XR session
     const controllers = [this.controller0, this.controller1];
     const rays = [this.ray0, this.ray1];
@@ -1089,6 +1177,13 @@ class VRHUD {
           const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -distance)];
           ray.geometry.setFromPoints(points);
           ray.material.opacity = 0.8; // Brighter when hitting UI
+
+          // Highlight the element being pointed at by controller
+          const obj = intersects[0].object;
+          if (obj.userData.baseColor !== undefined) {
+            obj.material.color.setHex(obj.userData.hoverColor || 0x00ffff);
+            obj.userData.controllerHighlighted = true;
+          }
         } else {
           // Default length and dimmer when not hitting anything
           const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)];

@@ -42,7 +42,10 @@ export const validProjections = [
   '180',
   '180_LR',
   '180_MONO',
-  'SBS_MONO'
+  'SBS_MONO',
+  'SBS',
+  'SBS_LR',
+  'SBS_LRF'
 ];
 
 export const getInternalProjectionName = function(projection) {
@@ -62,6 +65,11 @@ export const getInternalProjectionName = function(projection) {
 
   if ((/equirectangular/i).test(projection)) {
     return '360';
+  }
+
+  // Map SBS variants to SBS_MONO (flat screen side-by-side)
+  if ((/^SBS(_LR)?F?$/i).test(projection)) {
+    return 'SBS_MONO';
   }
 
   for (let i = 0; i < validProjections.length; i++) {

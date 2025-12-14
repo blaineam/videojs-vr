@@ -134,6 +134,14 @@ class VR extends Plugin {
 
     if (this.scene) {
       this.scene.remove(this.movieScreen);
+      // Also remove SBS stereo right eye mesh if it exists
+      if (this.movieScreenRight) {
+        this.scene.remove(this.movieScreenRight);
+        this.movieScreenRight = null;
+      }
+      if (this.movieScreenLeft) {
+        this.movieScreenLeft = null;
+      }
     }
     if (projection === 'AUTO') {
       // mediainfo cannot be set to auto or we would infinite loop here
@@ -461,12 +469,14 @@ void main() {
         this.scene.add(this.movieScreen);
       }
     } else if (projection === 'SBS_MONO') {
-      // SBS_MONO: Show only left half of SBS video, centered and fully visible
+      // SBS_MONO: Flat screen projection for side-by-side video
+      // In WebXR: Left half in left eye, right half in right eye (stereo)
+      // In browser: Left half only (mono)
       const distance = 3;
 
-      // Get video dimensions - left half only
+      // Get video dimensions - half width for SBS
       const video = this.getVideoEl_();
-      const videoWidth = video.videoWidth / 2; // Left half width
+      const videoWidth = video.videoWidth / 2; // Half width
       const videoHeight = video.videoHeight;
       const videoAspect = videoWidth / videoHeight;
 
@@ -488,29 +498,79 @@ void main() {
         planeWidth = viewportHeight * videoAspect;
       }
 
-      this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+      // Check if we're in WebXR mode
+      const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
 
-      // Map UVs to left half of video only (U: 0 to 0.5)
-      const uvAttribute = this.movieGeometry.getAttribute('uv');
-      const uvArray = uvAttribute.array;
-      for (let i = 0; i < uvArray.length; i += 2) {
-        uvArray[i] *= 0.5; // Left half only
+      if (isInWebXR) {
+        // WebXR mode: Create two separate meshes for left and right eyes
+        // Left eye mesh (layer 1) - shows left half of video
+        const leftGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const leftUvAttribute = leftGeometry.getAttribute('uv');
+        const leftUvArray = leftUvAttribute.array;
+        for (let i = 0; i < leftUvArray.length; i += 2) {
+          leftUvArray[i] *= 0.5; // U: 0 to 0.5 (left half)
+        }
+        leftUvAttribute.needsUpdate = true;
+
+        const leftMaterial = new THREE.MeshBasicMaterial({
+          map: this.videoTexture,
+          side: THREE.FrontSide
+        });
+
+        this.movieScreenLeft = new THREE.Mesh(leftGeometry, leftMaterial);
+        this.movieScreenLeft.position.set(0, 0, -distance);
+        this.movieScreenLeft.layers.set(1); // Only visible to left eye
+        this.scene.add(this.movieScreenLeft);
+
+        // Right eye mesh (layer 2) - shows right half of video
+        const rightGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const rightUvAttribute = rightGeometry.getAttribute('uv');
+        const rightUvArray = rightUvAttribute.array;
+        for (let i = 0; i < rightUvArray.length; i += 2) {
+          rightUvArray[i] = 0.5 + rightUvArray[i] * 0.5; // U: 0.5 to 1.0 (right half)
+        }
+        rightUvAttribute.needsUpdate = true;
+
+        const rightMaterial = new THREE.MeshBasicMaterial({
+          map: this.videoTexture,
+          side: THREE.FrontSide
+        });
+
+        this.movieScreenRight = new THREE.Mesh(rightGeometry, rightMaterial);
+        this.movieScreenRight.position.set(0, 0, -distance);
+        this.movieScreenRight.layers.set(2); // Only visible to right eye
+        this.scene.add(this.movieScreenRight);
+
+        // Store reference for cleanup
+        this.movieScreen = this.movieScreenLeft;
+        this.movieGeometry = leftGeometry;
+        this.movieMaterial = leftMaterial;
+      } else {
+        // Browser mode: Show left half only (mono)
+        this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+
+        // Map UVs to left half of video only (U: 0 to 0.5)
+        const uvAttribute = this.movieGeometry.getAttribute('uv');
+        const uvArray = uvAttribute.array;
+        for (let i = 0; i < uvArray.length; i += 2) {
+          uvArray[i] *= 0.5; // Left half only
+        }
+        uvAttribute.needsUpdate = true;
+
+        this.movieMaterial = new THREE.MeshBasicMaterial({
+          map: this.videoTexture,
+          side: THREE.FrontSide
+        });
+
+        this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
+        this.movieScreen.position.set(0, 0, -distance);
+
+        this.movieScreen.layers.enable(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+
+        this.scene.add(this.movieScreen);
       }
-      uvAttribute.needsUpdate = true;
-
-      this.movieMaterial = new THREE.MeshBasicMaterial({
-        map: this.videoTexture,
-        side: THREE.FrontSide
-      });
-
-      this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
-      this.movieScreen.position.set(0, 0, -distance);
-
-      this.movieScreen.layers.enable(0);
-      this.movieScreen.layers.enable(1);
-      this.movieScreen.layers.enable(2);
-
-      this.scene.add(this.movieScreen);
 
       // Reset camera rotation to look straight ahead at centered plane
       this.camera.rotation.set(0, 0, 0);
@@ -836,11 +896,13 @@ void main() {
           this.posterTexture.magFilter = THREE.LinearFilter;
           this.usingPoster = true;
 
-          // Update material to use poster
-          if (this.movieMaterial && this.movieMaterial.map !== this.posterTexture) {
-            this.movieMaterial.map = this.posterTexture;
-            this.movieMaterial.needsUpdate = true;
-          }
+          // Update ALL video materials to use poster (for stereo modes with multiple meshes)
+          this.scene.traverse((object) => {
+            if (object.isMesh && object.material && object.material.map === this.videoTexture) {
+              object.material.map = this.posterTexture;
+              object.material.needsUpdate = true;
+            }
+          });
         },
         undefined,
         (error) => {
@@ -850,9 +912,14 @@ void main() {
 
       // Switch to video texture when video starts playing
       this.player_.one('playing', () => {
-        if (this.usingPoster && this.movieMaterial) {
-          this.movieMaterial.map = this.videoTexture;
-          this.movieMaterial.needsUpdate = true;
+        if (this.usingPoster) {
+          // Update ALL video materials back to video texture (for stereo modes)
+          this.scene.traverse((object) => {
+            if (object.isMesh && object.material && object.material.map === this.posterTexture) {
+              object.material.map = this.videoTexture;
+              object.material.needsUpdate = true;
+            }
+          });
           this.usingPoster = false;
         }
       });
@@ -1220,20 +1287,27 @@ void main() {
         const offsetQuat = new THREE.Quaternion().setFromEuler(euler);
 
         // Find all video screen meshes in the scene
+        // Check BOTH for videoTexture AND posterTexture to handle both eyes
         this.scene.traverse((object) => {
-          if (object.isMesh && object.material && object.material.map === this.videoTexture) {
-            // Get the base rotation (initial orientation)
-            const baseQuat = new THREE.Quaternion();
-            if (object.userData.baseQuaternion) {
-              baseQuat.copy(object.userData.baseQuaternion);
-            } else {
-              // Store initial quaternion on first use
-              object.userData.baseQuaternion = object.quaternion.clone();
-              baseQuat.copy(object.quaternion);
-            }
+          if (object.isMesh && object.material && object.material.map) {
+            // Match video meshes by checking for either videoTexture or posterTexture
+            const isVideoMesh = object.material.map === this.videoTexture ||
+                               (this.posterTexture && object.material.map === this.posterTexture);
 
-            // Apply offset rotation on top of base rotation
-            object.quaternion.copy(baseQuat).multiply(offsetQuat);
+            if (isVideoMesh) {
+              // Get the base rotation (initial orientation)
+              const baseQuat = new THREE.Quaternion();
+              if (object.userData.baseQuaternion) {
+                baseQuat.copy(object.userData.baseQuaternion);
+              } else {
+                // Store initial quaternion on first use
+                object.userData.baseQuaternion = object.quaternion.clone();
+                baseQuat.copy(object.quaternion);
+              }
+
+              // Apply offset rotation on top of base rotation
+              object.quaternion.copy(baseQuat).multiply(offsetQuat);
+            }
           }
         });
 
@@ -1376,6 +1450,27 @@ void main() {
     if (this.vrGallery) {
       this.vrGallery.toggle();
     }
+  }
+
+  /**
+   * Set the favorite state on the VR HUD
+   * @param {boolean} isFavorited - Whether the current video is favorited
+   */
+  setFavoriteState(isFavorited) {
+    if (this.vrHUD) {
+      this.vrHUD.setFavoriteState(isFavorited);
+    }
+  }
+
+  /**
+   * Get the current favorite state from the VR HUD
+   * @returns {boolean} Whether the current video is favorited
+   */
+  getFavoriteState() {
+    if (this.vrHUD) {
+      return this.vrHUD.getFavoriteState();
+    }
+    return false;
   }
 
   /**
