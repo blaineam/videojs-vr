@@ -32,10 +32,10 @@ class VRGallery {
     this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
     this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
     this.maxRetries = 3; // Allow 3 retries before giving up
-    this.getSrcTimeout = 30000; // 30 second timeout (thumbnails queue behind videos)
+    this.getSrcTimeout = 15000; // 15 second timeout
     this.loadingThumbnails = new Set(); // Track thumbnails currently loading
     this.thumbnailsLoaded = false; // Track if we've started loading thumbnails
-    this.maxConcurrentLoads = 4; // Limit concurrent thumbnail loads to avoid queue overload
+    this.maxConcurrentLoads = 8; // Allow more concurrent loads for faster gallery population
 
     // Media items
     this.mediaItems = [];
@@ -156,12 +156,12 @@ class VRGallery {
     this.frameHeight = frameHeight;
 
     // Set clipping bounds for thumbnail visibility (in local gallery frame coordinates)
-    // The viewable area is below the title (0.2 from top) and above the bottom edge
-    // Thumbnails start at y=0.4 and go down, with row spacing of (thumbnailHeight + thumbnailSpacing)
+    // The viewable area is below the title and above the bottom edge
     // Frame top is at +frameHeight/2, bottom at -frameHeight/2
     const titleOffset = 0.25; // Space for title at top
+    const bottomMargin = 0.15; // More margin at bottom to prevent overflow
     this.clipMaxY = frameHeight / 2 - titleOffset; // Below title
-    this.clipMinY = -frameHeight / 2 + 0.05; // Just above bottom edge, with small margin
+    this.clipMinY = -frameHeight / 2 + bottomMargin; // Well above bottom edge
   }
 
   createCloseButton() {
@@ -751,9 +751,19 @@ class VRGallery {
       return; // Wait for some to finish before loading more
     }
 
+    // Clear old failed thumbnails that can be retried (after 10 seconds)
+    const now = Date.now();
+    for (const [url, info] of this.failedLoads.entries()) {
+      if (info.retries < this.maxRetries && now - info.lastAttempt > 10000) {
+        this.failedLoads.delete(url);
+      }
+    }
+
     let loadedCount = 0;
+    let skippedLoading = 0;
+    let skippedFailed = 0;
     const maxToLoad = this.maxConcurrentLoads - currentlyLoading;
-    const buffer = 2; // Load 2 extra rows above/below for smoother scrolling
+    const buffer = 3; // Load 3 extra rows above/below for smoother scrolling
     const halfHeight = this.thumbnailHeight / 2;
     const rowHeight = this.thumbnailHeight + this.thumbnailSpacing;
     const bufferSize = rowHeight * buffer;
@@ -764,8 +774,14 @@ class VRGallery {
 
       const thumbnailUrl = mesh.userData.thumbnailUrl;
       if (!thumbnailUrl || this.loadedTextures.has(thumbnailUrl)) continue;
-      if (this.loadingThumbnails.has(thumbnailUrl)) continue;
-      if (this.permanentlyFailedThumbnails.has(thumbnailUrl)) continue;
+      if (this.loadingThumbnails.has(thumbnailUrl)) {
+        skippedLoading++;
+        continue;
+      }
+      if (this.permanentlyFailedThumbnails.has(thumbnailUrl)) {
+        skippedFailed++;
+        continue;
+      }
 
       // Get the parent thumbnailGroup's position (mesh is imgMesh inside thumbnailGroup)
       const thumbnailGroup = mesh.parent;
@@ -788,7 +804,7 @@ class VRGallery {
     }
 
     if (loadedCount > 0) {
-      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} already in progress)`);
+      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress, ${skippedFailed} failed)`);
     }
   }
 
@@ -846,7 +862,7 @@ class VRGallery {
 
     // Lazy load visible thumbnails (throttled)
     const now = Date.now();
-    if (!this.lastThumbnailLoad || now - this.lastThumbnailLoad > 500) {
+    if (!this.lastThumbnailLoad || now - this.lastThumbnailLoad > 200) {
       this.lastThumbnailLoad = now;
       this.loadVisibleThumbnails();
     }

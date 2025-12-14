@@ -37,6 +37,7 @@ const defaults = {
   onMediaSelect: null,
   onGallery: null,
   onExit: null,
+  onProjectionChange: null,
   // Media items for gallery
   mediaItems: []
 };
@@ -722,6 +723,43 @@ void main() {
 
     this.currentProjection_ = projection;
     this.defaultProjection_ = projection;
+
+    // If we're in an XR session, rebuild the geometry with the new projection
+    if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting && this.scene) {
+      this.log('Rebuilding projection during XR session:', projection);
+
+      // Remove existing movie screen(s)
+      const toRemove = [];
+      this.scene.traverse((object) => {
+        if (object.isMesh && object.material && object.material.map === this.videoTexture) {
+          toRemove.push(object);
+        }
+      });
+      toRemove.forEach(obj => {
+        if (obj.parent) obj.parent.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+
+      // Create new video texture if needed
+      if (!this.videoTexture) {
+        this.videoTexture = new THREE.VideoTexture(this.getVideoEl_());
+        this.videoTexture.generateMipmaps = false;
+        this.videoTexture.minFilter = THREE.LinearFilter;
+        this.videoTexture.magFilter = THREE.LinearFilter;
+        this.videoTexture.format = THREE.RGBFormat;
+      }
+
+      // Rebuild the mesh with new projection
+      this.changeProjection_(projection);
+
+      // Add new movie screen to scene
+      if (this.movieScreen) {
+        this.scene.add(this.movieScreen);
+      }
+
+      this.log('Projection rebuilt successfully');
+    }
   }
 
   init() {
@@ -1154,6 +1192,14 @@ void main() {
           this.options_.onExit();
         }
         this.trigger('vr-exit');
+      },
+      onProjectionChange: (projection) => {
+        console.log('[VR Plugin] Projection change requested:', projection);
+        this.setProjection(projection);
+        if (this.options_.onProjectionChange) {
+          this.options_.onProjectionChange(projection);
+        }
+        this.trigger('vr-projection-change', { projection });
       },
       onOrientationChange: (euler) => {
         // Apply rotation to ALL video meshes for real-time visual feedback

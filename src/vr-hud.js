@@ -18,6 +18,11 @@ class VRHUD {
     this.onOrientationChange = options.onOrientationChange || (() => {});
     this.onGallery = options.onGallery || (() => {});
     this.onExit = options.onExit || (() => {});
+    this.onProjectionChange = options.onProjectionChange || (() => {});
+
+    // Projection modes for cycling
+    this.projectionModes = ['180', '180_LR', '180_MONO', '360', '360_LR', '360_TB', 'EAC', 'EAC_LR', 'Sphere'];
+    this.currentProjectionIndex = 0;
 
     // HUD configuration (can be overridden by options)
     this.hudDistance = options.hudDistance !== undefined ? options.hudDistance : 4;
@@ -279,6 +284,10 @@ class VRHUD {
     // Orientation drag handle - aligned in row with other buttons
     this.orientDragBtn = this.createButton('✋', 0.75, -0.15, 'orientation-handle');
     buttonGroup.add(this.orientDragBtn);
+
+    // Projection cycle button (rightmost)
+    this.projectionBtn = this.createButton('🎬', 1.0, -0.15, 'projection-cycle');
+    buttonGroup.add(this.projectionBtn);
 
     this.controlPanel.add(buttonGroup);
   }
@@ -731,6 +740,14 @@ class VRHUD {
         if (this.player.duration()) {
           this.player.currentTime(this.player.duration() * clampedProgress);
         }
+        break;
+
+      case 'projection-cycle':
+        // Cycle to next projection mode
+        this.currentProjectionIndex = (this.currentProjectionIndex + 1) % this.projectionModes.length;
+        const newProjection = this.projectionModes[this.currentProjectionIndex];
+        console.log('[VR HUD] Switching projection to:', newProjection);
+        this.onProjectionChange(newProjection);
         break;
     }
   }
