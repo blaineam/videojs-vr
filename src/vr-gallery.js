@@ -15,7 +15,8 @@ class VRGallery {
     this.getSrc = options.getSrc || null; // Function to resolve resource paths to blob URLs
 
     // Gallery configuration
-    this.galleryDistance = 3.5;
+    // Reduced distance from 3.5 to 1.5 to minimize stereo parallax
+    this.galleryDistance = 1.5;
     this.thumbnailWidth = 0.5;
     this.thumbnailHeight = 0.3;
     this.thumbnailSpacing = 0.08;
@@ -66,6 +67,14 @@ class VRGallery {
     this.createScrollIndicator();
 
     this.scene.add(this.galleryGroup);
+
+    // Enable gallery to be visible on all camera layers (0, 1, 2)
+    // This ensures it renders correctly for both eyes in stereoscopic mode
+    this.galleryGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
 
     // Bind methods
     this.update = this.update.bind(this);
@@ -828,24 +837,25 @@ class VRGallery {
   update() {
     if (!this.isVisible) return;
 
-    // Position gallery relative to VR HUD if available
+    // Position gallery relative to VR HUD if available (stays fixed in scene)
     if (this.vrHUD && this.vrHUD.hudGroup) {
       // Position gallery above the HUD controls
       const hudPos = this.vrHUD.hudGroup.position.clone();
       const hudQuat = this.vrHUD.hudGroup.quaternion.clone();
 
-      // Place gallery above HUD
-      // HUD panel height is 0.6, so HUD top edge is hudPos.y + 0.3
-      // Gallery bottom edge should be at HUD top + small gap
-      // Gallery center = hudPos.y + 0.3 (HUD top) + 0.1 (gap) + frameHeight/2
+      // Calculate proper offset so gallery bottom is above HUD top
+      // HUD panel height = 0.6, so HUD top is at hudPos.y + 0.3
+      // Gallery frameHeight = ~1.54, so we need gallery center at hudPos.y + 0.3 + 0.1 (gap) + frameHeight/2
+      // This equals hudPos.y + 0.3 + 0.1 + 0.77 = hudPos.y + 1.17
       this.galleryGroup.position.copy(hudPos);
-      this.galleryGroup.position.y += 0.4 + this.frameHeight / 2;
+      this.galleryGroup.position.y += 1.2;  // Position so bottom is just above HUD top
 
       // Match HUD orientation
       this.galleryGroup.quaternion.copy(hudQuat);
     } else {
-      // Fallback: face the camera
-      this.galleryGroup.quaternion.copy(this.camera.quaternion);
+      // Fallback: position in scene at reduced distance
+      this.galleryGroup.position.set(0, 0.8, -this.galleryDistance);
+      this.galleryGroup.rotation.set(0, 0, 0);
     }
 
     // Clip thumbnails outside visible area

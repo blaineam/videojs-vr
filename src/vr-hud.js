@@ -38,7 +38,8 @@ class VRHUD {
     this.projectionMenuVisible = false;
 
     // HUD configuration (can be overridden by options)
-    this.hudDistance = options.hudDistance !== undefined ? options.hudDistance : 4;
+    // Reduced distance from 4 to 1.5 to minimize stereo parallax and double vision
+    this.hudDistance = options.hudDistance !== undefined ? options.hudDistance : 1.5;
     this.hudHeight = options.hudHeight !== undefined ? options.hudHeight : 1.5;
     this.hudScale = options.hudScale !== undefined ? options.hudScale : 0.015;
     this.autoHideDelay = options.autoHideDelay !== undefined ? options.autoHideDelay : 10000;
@@ -81,6 +82,14 @@ class VRHUD {
     this.createProjectionMenu();
 
     this.scene.add(this.hudGroup);
+
+    // Enable HUD to be visible on all camera layers (0, 1, 2)
+    // This ensures it renders correctly for both eyes in stereoscopic mode
+    this.hudGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
 
     // Bind methods
     this.update = this.update.bind(this);
@@ -1034,9 +1043,9 @@ class VRHUD {
     // HUD stays FIXED in world space at the video content orientation
     // It does NOT follow the camera/head - user must turn their head to see it
     // This keeps the controls always aligned with the video content
+    // Using reduced distance (1.5m) and lower position to minimize parallax
 
     // Calculate the direction based ONLY on the orientation offset (where video is pointing)
-    // Not on camera direction
     const forward = new THREE.Vector3(0, 0, -1);
 
     // Apply orientation offset to get the direction video is facing
@@ -1045,16 +1054,15 @@ class VRHUD {
     forward.applyQuaternion(orientationQuat);
 
     // Position HUD at a fixed world position in the video content direction
-    // Use a fixed origin point (0, camera height, 0) to calculate position
+    // Use camera height as reference, but position MUCH LOWER so user can see gallery top
     const cameraHeight = this.camera.position.y;
     this.hudGroup.position.set(
       forward.x * this.hudDistance,
-      cameraHeight - 0.3,  // Slightly below eye level
+      cameraHeight - 0.8,  // Much lower - was -0.3, now -0.8 for better visibility
       forward.z * this.hudDistance
     );
 
     // Make HUD face the origin (where user is standing)
-    // This ensures HUD always faces toward the user regardless of which direction they're looking
     this.hudGroup.lookAt(0, this.hudGroup.position.y, 0);
   }
 
