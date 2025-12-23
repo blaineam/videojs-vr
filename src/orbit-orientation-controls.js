@@ -75,6 +75,7 @@ class OrbitOrientationControls {
 
   /**
    * Set orientation offset (for adjusting view when lying down, etc.)
+   *
    * @param {THREE.Euler} euler - Euler angles for offset (pitch, yaw, roll)
    */
   setOrientationOffset(euler) {
@@ -87,7 +88,8 @@ class OrbitOrientationControls {
 
   /**
    * Get current orientation offset
-   * @returns {THREE.Euler}
+   *
+   * @return {THREE.Euler}
    */
   getOrientationOffset() {
     return this.orientationOffset.clone();
@@ -102,6 +104,7 @@ class OrbitOrientationControls {
 
   /**
    * Adjust orientation offset incrementally
+   *
    * @param {number} pitchDelta - Change in pitch (up/down)
    * @param {number} yawDelta - Change in yaw (left/right)
    * @param {number} rollDelta - Change in roll (tilt)

@@ -1,3 +1,4 @@
+/* global document */
 import * as THREE from 'three';
 
 /**
@@ -149,6 +150,7 @@ class VRHUD {
       side: THREE.DoubleSide,
       depthTest: false
     });
+
     this.cursorDot = new THREE.Mesh(dotGeometry, dotMaterial);
     this.cursor.add(this.cursorDot);
 
@@ -161,6 +163,7 @@ class VRHUD {
       side: THREE.DoubleSide,
       depthTest: false
     });
+
     this.cursorHover = new THREE.Mesh(hoverGeometry, hoverMaterial);
     this.cursor.add(this.cursorHover);
 
@@ -196,6 +199,7 @@ class VRHUD {
       side: THREE.DoubleSide
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
+
     border.position.z = -0.001;
     this.controlPanel.add(border);
 
@@ -204,6 +208,7 @@ class VRHUD {
 
   createScrubBar() {
     const scrubGroup = new THREE.Group();
+
     scrubGroup.name = 'scrub-bar-group';
 
     // Track background
@@ -264,6 +269,7 @@ class VRHUD {
     });
 
     const timeGeometry = new THREE.PlaneGeometry(0.4, 0.1);
+
     this.timeDisplay = new THREE.Mesh(timeGeometry, timeMaterial);
     this.timeDisplay.position.set(0, -0.12, 0.001);
     scrubGroup.add(this.timeDisplay);
@@ -277,6 +283,7 @@ class VRHUD {
 
   createNavigationButtons() {
     const buttonGroup = new THREE.Group();
+
     buttonGroup.name = 'navigation-buttons';
 
     // Calculate button positions to fit within panel (width 2.4, so max x ~1.1)
@@ -330,6 +337,7 @@ class VRHUD {
 
   createButton(label, x, y, type, customColor) {
     const btnGroup = new THREE.Group();
+
     btnGroup.name = `btn-${type}`;
 
     // Button background
@@ -342,6 +350,7 @@ class VRHUD {
     });
 
     const btnMesh = new THREE.Mesh(btnGeometry, btnMaterial);
+
     btnMesh.userData.interactive = true;
     btnMesh.userData.type = type;
     btnMesh.userData.baseColor = baseColor;
@@ -356,14 +365,17 @@ class VRHUD {
       transparent: true
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
+
     border.position.z = 0.001;
     btnGroup.add(border);
 
     // Button label (using canvas texture)
     const canvas = document.createElement('canvas');
+
     canvas.width = 64;
     canvas.height = 64;
     const ctx = canvas.getContext('2d');
+
     ctx.fillStyle = '#ffffff';
     ctx.font = '40px Arial';
     ctx.textAlign = 'center';
@@ -377,6 +389,7 @@ class VRHUD {
     });
     const labelGeometry = new THREE.PlaneGeometry(0.1, 0.1);
     const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+
     labelMesh.position.z = 0.002;
     btnGroup.add(labelMesh);
 
@@ -404,6 +417,7 @@ class VRHUD {
       side: THREE.DoubleSide
     });
     const menuBg = new THREE.Mesh(menuGeometry, menuMaterial);
+
     this.projectionMenu.add(menuBg);
 
     // Menu border
@@ -415,6 +429,7 @@ class VRHUD {
       side: THREE.DoubleSide
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
+
     border.position.z = -0.001;
     this.projectionMenu.add(border);
 
@@ -426,14 +441,17 @@ class VRHUD {
       transparent: false
     });
     const titleBgMesh = new THREE.Mesh(titleBgGeometry, titleBgMaterial);
+
     titleBgMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
     this.projectionMenu.add(titleBgMesh);
 
     const titleCanvas = document.createElement('canvas');
+
     titleCanvas.width = 256;
     titleCanvas.height = 32;
     const titleCtx = titleCanvas.getContext('2d');
     // Solid background
+
     titleCtx.fillStyle = '#003344';
     titleCtx.fillRect(0, 0, 256, 32);
     // Text
@@ -447,6 +465,7 @@ class VRHUD {
     const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: false });
     const titleGeometry = new THREE.PlaneGeometry(0.35, 0.05);
     const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
+
     titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.002);
     this.projectionMenu.add(titleMesh);
 
@@ -465,6 +484,7 @@ class VRHUD {
         transparent: true
       });
       const btnMesh = new THREE.Mesh(btnGeometry, btnMaterial);
+
       btnMesh.position.set(0, btnY, 0.002);
       btnMesh.userData.interactive = true;
       btnMesh.userData.type = 'projection-option';
@@ -477,9 +497,11 @@ class VRHUD {
 
       // Button label
       const labelCanvas = document.createElement('canvas');
+
       labelCanvas.width = 256;
       labelCanvas.height = 32;
       const labelCtx = labelCanvas.getContext('2d');
+
       labelCtx.fillStyle = '#ffffff';
       labelCtx.font = 'bold 22px Arial';
       labelCtx.textAlign = 'center';
@@ -490,6 +512,7 @@ class VRHUD {
       const labelMaterial = new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true });
       const labelGeometry = new THREE.PlaneGeometry(0.35, 0.04);
       const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
+
       labelMesh.position.set(0, btnY, 0.003);
       this.projectionMenu.add(labelMesh);
     });
@@ -516,6 +539,7 @@ class VRHUD {
     this.projectionOptionButtons.forEach(btn => {
       const isSelected = btn.id === projectionId;
       // Use darker colors that still contrast well with white text
+
       btn.mesh.material.color.setHex(isSelected ? 0x006644 : 0x1a1a3a);
       btn.mesh.userData.baseColor = isSelected ? 0x006644 : 0x1a1a3a;
     });
@@ -527,12 +551,15 @@ class VRHUD {
     if (this.favoriteBtn) {
       // Find the label mesh (it has a canvas texture)
       const labelMesh = this.favoriteBtn.children.find(c => c.material && c.material.map);
+
       if (labelMesh) {
         // Update the canvas texture
         const canvas = document.createElement('canvas');
+
         canvas.width = 64;
         canvas.height = 64;
         const ctx = canvas.getContext('2d');
+
         ctx.fillStyle = isFavorited ? '#ff6699' : '#ffffff';
         ctx.font = '40px Arial';
         ctx.textAlign = 'center';
@@ -540,6 +567,7 @@ class VRHUD {
         ctx.fillText(isFavorited ? '❤️' : '☆', 32, 32);
 
         const newTexture = new THREE.CanvasTexture(canvas);
+
         if (labelMesh.material.map) {
           labelMesh.material.map.dispose();
         }
@@ -549,6 +577,7 @@ class VRHUD {
 
       // Also update the button background color
       const btnMesh = this.favoriteBtn.children.find(c => c.userData && c.userData.type === 'favorite');
+
       if (btnMesh) {
         btnMesh.material.color.setHex(isFavorited ? 0x663355 : 0x2a2a4a);
         btnMesh.userData.baseColor = isFavorited ? 0x663355 : 0x2a2a4a;
@@ -588,12 +617,14 @@ class VRHUD {
           linewidth: 2
         });
         const ray = new THREE.Line(rayGeometry, rayMaterial);
+
         ray.name = 'controller-ray';
         ray.visible = false; // Only show when pointing at UI
         controller0.add(ray);
 
         // Add simple controller model visualization
         const controllerModel0 = this.createControllerModel();
+
         controllerGrip0.add(controllerModel0);
 
         this.scene.add(controller0);
@@ -628,12 +659,14 @@ class VRHUD {
           linewidth: 2
         });
         const ray = new THREE.Line(rayGeometry, rayMaterial);
+
         ray.name = 'controller-ray';
         ray.visible = false;
         controller1.add(ray);
 
         // Add simple controller model visualization
         const controllerModel1 = this.createControllerModel();
+
         controllerGrip1.add(controllerModel1);
 
         this.scene.add(controller1);
@@ -668,6 +701,7 @@ class VRHUD {
 
   handleClick(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
+
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -681,6 +715,7 @@ class VRHUD {
 
   handleMouseDown(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
+
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -689,6 +724,7 @@ class VRHUD {
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
+
       if (obj.userData.type === 'orientation-handle') {
         this.isDraggingOrientation = true;
         this.dragStartPoint = intersects[0].point.clone();
@@ -706,6 +742,7 @@ class VRHUD {
 
   handleMouseMove(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
+
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
@@ -746,6 +783,7 @@ class VRHUD {
 
   onSelectStart(event) {
     const controller = event.target;
+
     this.tempMatrix = new THREE.Matrix4();
     this.tempMatrix.identity().extractRotation(controller.matrixWorld);
 
@@ -756,6 +794,7 @@ class VRHUD {
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
+
       if (obj.userData.type === 'orientation-handle') {
         this.isDraggingOrientation = true;
         this.draggingController = controller; // Store which controller is dragging
@@ -790,6 +829,7 @@ class VRHUD {
 
   onSelect(event) {
     const controller = event.target;
+
     this.tempMatrix = new THREE.Matrix4();
     this.tempMatrix.identity().extractRotation(controller.matrixWorld);
 
@@ -805,6 +845,7 @@ class VRHUD {
     // Handle ongoing scrub dragging
     if (this.isDraggingScrub) {
       const intersects = this.raycaster.intersectObjects([this.scrubTrack]);
+
       if (intersects.length > 0) {
         const localPoint = this.scrubTrack.worldToLocal(intersects[0].point.clone());
         const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
@@ -819,6 +860,7 @@ class VRHUD {
 
     // Regular button clicks
     const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+
     if (intersects.length > 0) {
       this.handleInteraction(intersects[0].object, intersects[0].point);
     }
@@ -849,70 +891,71 @@ class VRHUD {
     this.resetAutoHideTimer();
 
     switch (type) {
-      case 'play-pause':
-        if (this.player.paused()) {
-          this.player.play();
-        } else {
-          this.player.pause();
-        }
-        break;
+    case 'play-pause':
+      if (this.player.paused()) {
+        this.player.play();
+      } else {
+        this.player.pause();
+      }
+      break;
 
-      case 'previous':
-        this.onPrevious();
-        break;
+    case 'previous':
+      this.onPrevious();
+      break;
 
-      case 'next':
-        this.onNext();
-        break;
+    case 'next':
+      this.onNext();
+      break;
 
-      case 'gallery':
-        console.log('[VR HUD] Gallery button clicked');
-        this.onGallery();
-        break;
+    case 'gallery':
+      console.log('[VR HUD] Gallery button clicked');
+      this.onGallery();
+      break;
 
-      case 'exit-vr':
-        this.onExit();
-        // Also try to exit XR session
-        if (this.renderer.xr && this.renderer.xr.getSession()) {
-          this.renderer.xr.getSession().end();
-        }
-        break;
+    case 'exit-vr':
+      this.onExit();
+      // Also try to exit XR session
+      if (this.renderer.xr && this.renderer.xr.getSession()) {
+        this.renderer.xr.getSession().end();
+      }
+      break;
 
-      case 'reset-orientation':
-        this.orientationOffset.set(0, 0, 0, 'YXZ');
-        this.onOrientationChange(this.orientationOffset);
-        break;
+    case 'reset-orientation':
+      this.orientationOffset.set(0, 0, 0, 'YXZ');
+      this.onOrientationChange(this.orientationOffset);
+      break;
 
-      case 'scrub':
-      case 'scrub-handle':
-        const localPoint = this.scrubTrack.worldToLocal(point.clone());
-        const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
-        const clampedProgress = Math.max(0, Math.min(1, progress));
+    case 'scrub':
+    case 'scrub-handle':
+      const localPoint = this.scrubTrack.worldToLocal(point.clone());
+      const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
+      const clampedProgress = Math.max(0, Math.min(1, progress));
 
-        if (this.player.duration()) {
-          this.player.currentTime(this.player.duration() * clampedProgress);
-        }
-        break;
+      if (this.player.duration()) {
+        this.player.currentTime(this.player.duration() * clampedProgress);
+      }
+      break;
 
-      case 'projection-menu':
-        // Toggle projection menu visibility
-        this.toggleProjectionMenu();
-        break;
+    case 'projection-menu':
+      // Toggle projection menu visibility
+      this.toggleProjectionMenu();
+      break;
 
-      case 'projection-option':
-        // Select a projection from the menu
-        const selectedProjection = object.userData.projectionId;
-        console.log('[VR HUD] Selecting projection:', selectedProjection);
-        this.setProjection(selectedProjection);
-        this.onProjectionChange(selectedProjection);
-        this.hideProjectionMenu();
-        break;
+    case 'projection-option':
+      // Select a projection from the menu
+      const selectedProjection = object.userData.projectionId;
 
-      case 'favorite':
-        if (this.onFavorite) {
-          this.onFavorite();
-        }
-        break;
+      console.log('[VR HUD] Selecting projection:', selectedProjection);
+      this.setProjection(selectedProjection);
+      this.onProjectionChange(selectedProjection);
+      this.hideProjectionMenu();
+      break;
+
+    case 'favorite':
+      if (this.onFavorite) {
+        this.onFavorite();
+      }
+      break;
     }
   }
 
@@ -931,7 +974,9 @@ class VRHUD {
   }
 
   formatTime(seconds) {
-    if (isNaN(seconds) || !isFinite(seconds)) return '0:00';
+    if (isNaN(seconds) || !isFinite(seconds)) {
+      return '0:00';
+    }
 
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -998,6 +1043,7 @@ class VRHUD {
         this.cursorHover.material.opacity = 0.3;
         this.cursorDot.material.color.setHex(0x00ffff);
         const cursorPos = intersects[0].point.clone();
+
         this.camera.worldToLocal(cursorPos);
         this.cursor.position.copy(cursorPos);
         return;
@@ -1014,6 +1060,7 @@ class VRHUD {
 
       // Position cursor at intersection
       const cursorPos = intersects[0].point.clone();
+
       this.camera.worldToLocal(cursorPos);
       this.cursor.position.copy(cursorPos);
     } else {
@@ -1034,7 +1081,9 @@ class VRHUD {
     // Handle continuous dragging from controllers
     this.updateControllerDragging();
 
-    if (!this.isVisible) return;
+    if (!this.isVisible) {
+      return;
+    }
 
     this.updateScrubBar();
     this.updateTimeDisplay();
@@ -1050,15 +1099,17 @@ class VRHUD {
 
     // Apply orientation offset to get the direction video is facing
     const orientationQuat = new THREE.Quaternion();
+
     orientationQuat.setFromEuler(new THREE.Euler(this.orientationOffset.x, this.orientationOffset.y, 0, 'YXZ'));
     forward.applyQuaternion(orientationQuat);
 
     // Position HUD at a fixed world position in the video content direction
     // Use camera height as reference, but position MUCH LOWER so user can see gallery top
     const cameraHeight = this.camera.position.y;
+
     this.hudGroup.position.set(
       forward.x * this.hudDistance,
-      cameraHeight - 0.8,  // Much lower - was -0.3, now -0.8 for better visibility
+      cameraHeight - 0.8, // Much lower - was -0.3, now -0.8 for better visibility
       forward.z * this.hudDistance
     );
 
@@ -1067,8 +1118,12 @@ class VRHUD {
   }
 
   updateControllerDragging() {
-    if (!this.isInXRSession) return;
-    if (!this.draggingController) return; // Only update if we have an active drag
+    if (!this.isInXRSession) {
+      return;
+    }
+    if (!this.draggingController) {
+      return;
+    } // Only update if we have an active drag
 
     const controller = this.draggingController;
 
@@ -1097,12 +1152,12 @@ class VRHUD {
       const currHorizontal = new THREE.Vector3(currDir.x, 0, currDir.z).normalize();
 
       // Calculate yaw difference (rotation around Y axis)
-      let yawDiff = Math.atan2(currHorizontal.x, currHorizontal.z) - Math.atan2(startHorizontal.x, startHorizontal.z);
+      const yawDiff = Math.atan2(currHorizontal.x, currHorizontal.z) - Math.atan2(startHorizontal.x, startHorizontal.z);
 
       // Calculate pitch difference (rotation around X axis)
       const startPitch = Math.asin(Math.max(-1, Math.min(1, startDir.y)));
       const currPitch = Math.asin(Math.max(-1, Math.min(1, currDir.y)));
-      let pitchDiff = currPitch - startPitch;
+      const pitchDiff = currPitch - startPitch;
 
       // Apply 1:1 mapping - controller movement directly controls orientation
       // Positive yaw diff (moving right) should increase offset to move content right
@@ -1123,15 +1178,18 @@ class VRHUD {
     if (this.isDraggingScrub) {
       // Create a plane at the scrub track position
       const trackWorldPos = new THREE.Vector3();
+
       this.scrubTrack.getWorldPosition(trackWorldPos);
 
       const trackPlane = new THREE.Plane();
       const trackNormal = new THREE.Vector3(0, 0, 1);
+
       trackNormal.applyQuaternion(this.hudGroup.quaternion);
       trackPlane.setFromNormalAndCoplanarPoint(trackNormal, trackWorldPos);
 
       // Intersect ray with track plane
       const intersection = new THREE.Vector3();
+
       if (this.raycaster.ray.intersectPlane(trackPlane, intersection)) {
         const localPoint = this.scrubTrack.worldToLocal(intersection.clone());
         const progress = (localPoint.x + this.scrubTrackWidth / 2) / this.scrubTrackWidth;
@@ -1158,7 +1216,9 @@ class VRHUD {
       const controller = controllers[i];
       const ray = rays[i];
 
-      if (!controller || !ray) continue;
+      if (!controller || !ray) {
+        continue;
+      }
 
       // Only show rays when in XR session
       if (!this.isInXRSession) {
@@ -1179,15 +1239,18 @@ class VRHUD {
       // Check for intersections with HUD elements (if visible)
       if (this.isVisible) {
         const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+
         if (intersects.length > 0) {
           // Shorten ray to intersection point and make it brighter
           const distance = intersects[0].distance;
           const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -distance)];
+
           ray.geometry.setFromPoints(points);
           ray.material.opacity = 0.8; // Brighter when hitting UI
 
           // Highlight the element being pointed at by controller
           const obj = intersects[0].object;
+
           if (obj.userData.baseColor !== undefined) {
             obj.material.color.setHex(obj.userData.hoverColor || 0x00ffff);
             obj.userData.controllerHighlighted = true;
@@ -1195,12 +1258,14 @@ class VRHUD {
         } else {
           // Default length and dimmer when not hitting anything
           const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)];
+
           ray.geometry.setFromPoints(points);
           ray.material.opacity = 0.3; // Dimmer when not hitting UI
         }
       } else {
         // HUD hidden - show dim ray at default length
         const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)];
+
         ray.geometry.setFromPoints(points);
         ray.material.opacity = 0.3;
       }
@@ -1208,16 +1273,23 @@ class VRHUD {
   }
 
   pollGamepads() {
-    if (!this.isInXRSession) return;
+    if (!this.isInXRSession) {
+      return;
+    }
 
     const session = this.renderer.xr.getSession();
-    if (!session) return;
+
+    if (!session) {
+      return;
+    }
 
     const now = Date.now();
 
     // Get gamepads from XR input sources
     for (const source of session.inputSources) {
-      if (!source.gamepad) continue;
+      if (!source.gamepad) {
+        continue;
+      }
 
       const gamepad = source.gamepad;
       const axes = gamepad.axes;
@@ -1235,6 +1307,7 @@ class VRHUD {
           this.player.duration() || 0,
           (this.player.currentTime() || 0) + seekAmount
         ));
+
         this.player.currentTime(newTime);
         this.lastJoystickSeek = now;
         this.resetAutoHideTimer();
@@ -1250,8 +1323,10 @@ class VRHUD {
       // A button (index 4 on Quest) - Play/Pause
       // Button layout: 0=trigger, 1=squeeze, 2=?, 3=thumbstick press, 4=A/X, 5=B/Y
       const aButtonIndex = 4;
+
       if (buttons.length > aButtonIndex) {
         const aButton = buttons[aButtonIndex];
+
         if (aButton.pressed && !this.aButtonWasPressed) {
           // A button just pressed - toggle play/pause
           if (this.player.paused()) {
@@ -1274,6 +1349,7 @@ class VRHUD {
     const handleGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.1);
     const handleMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
     const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+
     handle.rotation.x = Math.PI / 2;
     group.add(handle);
 
@@ -1281,6 +1357,7 @@ class VRHUD {
     const pointerGeometry = new THREE.ConeGeometry(0.008, 0.03, 8);
     const pointerMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
     const pointer = new THREE.Mesh(pointerGeometry, pointerMaterial);
+
     pointer.position.set(0, 0, -0.065);
     pointer.rotation.x = Math.PI / 2;
     group.add(pointer);
@@ -1340,13 +1417,19 @@ class VRHUD {
     this.camera.remove(this.cursor);
 
     // Clean up textures
-    if (this.timeTexture) this.timeTexture.dispose();
+    if (this.timeTexture) {
+      this.timeTexture.dispose();
+    }
 
     // Clean up geometries and materials
     this.hudGroup.traverse((obj) => {
-      if (obj.geometry) obj.geometry.dispose();
+      if (obj.geometry) {
+        obj.geometry.dispose();
+      }
       if (obj.material) {
-        if (obj.material.map) obj.material.map.dispose();
+        if (obj.material.map) {
+          obj.material.map.dispose();
+        }
         obj.material.dispose();
       }
     });

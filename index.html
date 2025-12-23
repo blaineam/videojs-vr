@@ -90,12 +90,24 @@
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
 
-    .demo-frame {
+    .demo-player {
       width: 100%;
       aspect-ratio: 16 / 9;
-      border: none;
       border-radius: 16px;
-      background: #000;
+      overflow: hidden;
+    }
+
+    .demo-note {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .demo-note strong {
+      color: #00ffff;
     }
 
     .section-title {
@@ -234,6 +246,8 @@
       }
     }
   </style>
+  <link href="node_modules/video.js/dist/video-js.css" rel="stylesheet">
+  <link href="dist/videojs-vr.css" rel="stylesheet">
 </head>
 <body>
   <div class="container">
@@ -263,7 +277,14 @@
     <section class="demo-section">
       <div class="glass-card">
         <h2 class="section-title">Live Demo</h2>
-        <iframe class="demo-frame" src="examples/360.html" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="gyroscope; accelerometer; xr; xr-spatial-tracking"></iframe>
+        <video id="demo-player" class="video-js vjs-default-skin demo-player" controls playsinline>
+          <source src="samples/eagle-360.mp4" type="video/mp4">
+        </video>
+        <div class="demo-note">
+          <strong>Controls:</strong> Drag to look around &bull;
+          <strong>VR Mode:</strong> Click the VR button to enter immersive mode &bull;
+          <strong>In VR:</strong> Squeeze grip to show controls
+        </div>
       </div>
     </section>
 
@@ -380,5 +401,21 @@
       </p>
     </footer>
   </div>
+
+  <script src="node_modules/video.js/dist/video.js"></script>
+  <script src="dist/videojs-vr.js"></script>
+  <script>
+    (function(window, videojs) {
+      var player = window.player = videojs('demo-player');
+      player.mediainfo = player.mediainfo || {};
+      player.mediainfo.projection = '360';
+      var vr = window.vr = player.vr({
+        projection: 'AUTO',
+        forceCardboard: false,
+        enableVRHUD: true,
+        enableVRGallery: true
+      });
+    }(window, window.videojs));
+  </script>
 </body>
 </html>

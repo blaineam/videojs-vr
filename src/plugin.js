@@ -1,3 +1,4 @@
+/* global navigator */
 import {version as VERSION} from '../package.json';
 import window from 'global/window';
 import document from 'global/document';
@@ -247,6 +248,7 @@ class VR extends Plugin {
       const setFaceUVs = (faceIndex, corners) => {
         const baseIdx = faceIndex * 8;
         // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+
         uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
         uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
         uvArray[baseIdx + 4] = corners[0].x; uvArray[baseIdx + 5] = corners[0].y;
@@ -254,12 +256,12 @@ class VR extends Plugin {
       };
 
       // Set UVs for each face
-      setFaceUVs(0, right);   // +X face
-      setFaceUVs(1, left);    // -X face
-      setFaceUVs(2, top);     // +Y face
-      setFaceUVs(3, bottom);  // -Y face
-      setFaceUVs(4, front);   // +Z face
-      setFaceUVs(5, back);    // -Z face
+      setFaceUVs(0, right); // +X face
+      setFaceUVs(1, left); // -X face
+      setFaceUVs(2, top); // +Y face
+      setFaceUVs(3, bottom); // -Y face
+      setFaceUVs(4, front); // +Z face
+      setFaceUVs(5, back); // -Z face
 
       uvAttribute.needsUpdate = true;
 
@@ -274,8 +276,8 @@ class VR extends Plugin {
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
-        Math.PI,  // phiStart
-        Math.PI   // phiLength
+        Math.PI, // phiStart
+        Math.PI // phiLength
       );
 
       // Scale to flip for inside viewing
@@ -307,8 +309,8 @@ class VR extends Plugin {
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
-        Math.PI,  // phiStart
-        Math.PI   // phiLength
+        Math.PI, // phiStart
+        Math.PI // phiLength
       );
       geometry.scale(-1, 1, 1);
 
@@ -419,6 +421,7 @@ void main() {
         const setFaceUVs = (faceIndex, corners) => {
           const baseIdx = faceIndex * 8;
           // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+
           uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
           uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
           uvArray[baseIdx + 4] = corners[0].x; uvArray[baseIdx + 5] = corners[0].y;
@@ -426,12 +429,12 @@ void main() {
         };
 
         // Set UVs for each face - EAC has different face mapping
-        setFaceUVs(0, right);   // +X face
-        setFaceUVs(1, left);    // -X face
-        setFaceUVs(2, top);     // +Y face
-        setFaceUVs(3, bottom);  // -Y face
-        setFaceUVs(4, front);   // +Z face
-        setFaceUVs(5, back);    // -Z face
+        setFaceUVs(0, right); // +X face
+        setFaceUVs(1, left); // -X face
+        setFaceUVs(2, top); // +Y face
+        setFaceUVs(3, bottom); // -Y face
+        setFaceUVs(4, front); // +Z face
+        setFaceUVs(5, back); // -Z face
 
         uvAttribute.needsUpdate = true;
 
@@ -487,7 +490,8 @@ void main() {
       const viewportAspect = viewportWidth / viewportHeight;
 
       // Aspect fit: scale to fit inside viewport while maintaining aspect ratio
-      let planeWidth, planeHeight;
+      let planeWidth; let planeHeight;
+
       if (videoAspect > viewportAspect) {
         // Video is wider - fit to width
         planeWidth = viewportWidth;
@@ -507,6 +511,7 @@ void main() {
         const leftGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
         const leftUvAttribute = leftGeometry.getAttribute('uv');
         const leftUvArray = leftUvAttribute.array;
+
         for (let i = 0; i < leftUvArray.length; i += 2) {
           leftUvArray[i] *= 0.5; // U: 0 to 0.5 (left half)
         }
@@ -526,6 +531,7 @@ void main() {
         const rightGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
         const rightUvAttribute = rightGeometry.getAttribute('uv');
         const rightUvArray = rightUvAttribute.array;
+
         for (let i = 0; i < rightUvArray.length; i += 2) {
           rightUvArray[i] = 0.5 + rightUvArray[i] * 0.5; // U: 0.5 to 1.0 (right half)
         }
@@ -552,6 +558,7 @@ void main() {
         // Map UVs to left half of video only (U: 0 to 0.5)
         const uvAttribute = this.movieGeometry.getAttribute('uv');
         const uvArray = uvAttribute.array;
+
         for (let i = 0; i < uvArray.length; i += 2) {
           uvArray[i] *= 0.5; // Left half only
         }
@@ -709,6 +716,7 @@ void main() {
     // Update video texture when video has any frame data (readyState >= 2)
     // HAVE_CURRENT_DATA (2), HAVE_FUTURE_DATA (3), or HAVE_ENOUGH_DATA (4)
     const videoEl = this.getVideoEl_();
+
     if (videoEl && videoEl.readyState >= videoEl.HAVE_CURRENT_DATA) {
       if (this.videoTexture) {
         // Ensure texture's image reference is current video element
@@ -807,15 +815,22 @@ void main() {
 
       // Remove existing movie screen(s)
       const toRemove = [];
+
       this.scene.traverse((object) => {
         if (object.isMesh && object.material && object.material.map === this.videoTexture) {
           toRemove.push(object);
         }
       });
       toRemove.forEach(obj => {
-        if (obj.parent) obj.parent.remove(obj);
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
+        if (obj.parent) {
+          obj.parent.remove(obj);
+        }
+        if (obj.geometry) {
+          obj.geometry.dispose();
+        }
+        if (obj.material) {
+          obj.material.dispose();
+        }
       });
 
       // Create new video texture if needed
@@ -846,6 +861,7 @@ void main() {
       this.log('Source changed during XR session - updating video texture without reset');
       // Create new video texture from updated video element
       const oldVideoTexture = this.videoTexture;
+
       this.videoTexture = new THREE.VideoTexture(this.getVideoEl_());
       this.videoTexture.generateMipmaps = false;
       this.videoTexture.minFilter = THREE.LinearFilter;
@@ -899,6 +915,7 @@ void main() {
     if (posterUrl && !this.player_.hasStarted()) {
       // Load poster image as texture
       const textureLoader = new THREE.TextureLoader();
+
       textureLoader.load(
         posterUrl,
         (texture) => {
@@ -1314,6 +1331,7 @@ void main() {
             if (isVideoMesh) {
               // Get the base rotation (initial orientation)
               const baseQuat = new THREE.Quaternion();
+
               if (object.userData.baseQuaternion) {
                 baseQuat.copy(object.userData.baseQuaternion);
               } else {
@@ -1471,6 +1489,7 @@ void main() {
 
   /**
    * Set the favorite state on the VR HUD
+   *
    * @param {boolean} isFavorited - Whether the current video is favorited
    */
   setFavoriteState(isFavorited) {
@@ -1481,7 +1500,8 @@ void main() {
 
   /**
    * Get the current favorite state from the VR HUD
-   * @returns {boolean} Whether the current video is favorited
+   *
+   * @return {boolean} Whether the current video is favorited
    */
   getFavoriteState() {
     if (this.vrHUD) {
@@ -1492,6 +1512,7 @@ void main() {
 
   /**
    * Set media items for the gallery
+   *
    * @param {Array} items - Array of media items with thumbnail, title, url, etc.
    */
   setGalleryItems(items) {
@@ -1502,6 +1523,7 @@ void main() {
 
   /**
    * Set orientation offset for lying down viewing, etc.
+   *
    * @param {Object|THREE.Euler} offset - Orientation offset {x, y, z} or Euler
    */
   setOrientationOffset(offset) {
@@ -1536,7 +1558,8 @@ void main() {
 
   /**
    * Check if VR is currently presenting (in XR session or VR display)
-   * @returns {boolean} True if currently in VR presentation mode
+   *
+   * @return {boolean} True if currently in VR presentation mode
    */
   isPresenting() {
     // Check WebXR first

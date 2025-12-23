@@ -1,3 +1,4 @@
+/* global navigator */
 import window from 'global/window';
 import videojs from 'video.js';
 // Add Cardboard button
@@ -100,6 +101,7 @@ class CardboardButton extends Button {
 
       // Check for WebXR support first
       const vr = this.player_.vr();
+
       if (vr && vr.webXRSupported_ && navigator.xr) {
         // Use WebXR
         navigator.xr.requestSession('immersive-vr', {
@@ -116,8 +118,7 @@ class CardboardButton extends Button {
           });
 
           window.dispatchEvent(new window.Event('vrdisplayactivate'));
-        }).catch((err) => {
-          console.error('Failed to start WebXR session:', err);
+        }).catch(() => {
           // Fall back to legacy VR display activation
           window.dispatchEvent(new window.Event('vrdisplayactivate'));
         });
@@ -128,6 +129,7 @@ class CardboardButton extends Button {
     } else {
       // Deactivate
       const vr = this.player_.vr();
+
       if (vr && vr.xrSession_) {
         vr.xrSession_.end().catch(() => {});
       }

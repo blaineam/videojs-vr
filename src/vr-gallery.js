@@ -1,3 +1,4 @@
+/* global document */
 import * as THREE from 'three';
 
 /**
@@ -435,8 +436,9 @@ class VRGallery {
           mesh.material.needsUpdate = true;
         },
         undefined,
-        (error) => {
-          const currentRetries = (this.failedLoads.get(url)?.retries || 0) + 1;
+        () => {
+          const failedInfo = this.failedLoads.get(url);
+          const currentRetries = (failedInfo ? failedInfo.retries : 0) + 1;
           if (currentRetries === 1) {
             console.warn('[VR Gallery] Failed to load thumbnail:', url);
           }
