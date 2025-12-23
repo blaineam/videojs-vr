@@ -8,6 +8,20 @@ module.exports = function(config) {
 
   config = generate(config, options);
 
-  // any other custom stuff not supported by options here!
+  // Configure Chrome for CI environments
+  config.customLaunchers = {
+    ChromeHeadlessCI: {
+      base: 'ChromeHeadless',
+      flags: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
+    }
+  };
+
+  // Use only ChromeHeadlessCI in CI environments (disable browser detection)
+  if (process.env.CI) {
+    config.browsers = ['ChromeHeadlessCI'];
+    // Remove detect-browsers framework to prevent auto-detection
+    config.frameworks = config.frameworks.filter(f => f !== 'detectBrowsers');
+    delete config.detectBrowsers;
+  }
 };
 
