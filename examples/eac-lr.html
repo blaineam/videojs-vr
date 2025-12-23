@@ -1,26 +1,106 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>videojs-vr Demo</title>
-   <link href="../node_modules/video.js/dist/video-js.css" rel="stylesheet">
-   <link href="../dist/videojs-vr.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EAC Stereo Video - videojs-vr</title>
+  <link href="../node_modules/video.js/dist/video-js.css" rel="stylesheet">
+  <link href="../dist/videojs-vr.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    .header { text-align: center; margin-bottom: 2rem; }
+    .header h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .header p { color: rgba(255, 255, 255, 0.6); font-size: 0.9rem; }
+    .projection-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: rgba(0, 255, 255, 0.15);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #00ffff;
+      margin-bottom: 1rem;
+    }
+    .video-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 1.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      max-width: 900px;
+      width: 100%;
+    }
+    .video-js { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; }
+    .back-link {
+      margin-top: 2rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 0.75rem 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50px;
+      transition: all 0.3s ease;
+    }
+    .back-link:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(0, 255, 255, 0.3); color: #00ffff; }
+    .back-link svg { width: 16px; height: 16px; }
+    .info-panel {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+    .info-panel strong { color: #00ffff; }
+    .credits { margin-top: 0.75rem; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); }
+  </style>
 </head>
 <body>
-  <p>LR EAC video</p>
-  <video width="640" height="300" id="videojs-vr-player-eac-lr" class="video-js vjs-default-skin" controls playsinline>
-    <source src="../samples/coriolis_eac.webm" type="video/webm">
-  </video>
-  <p>Credits: Animations for Physics and Astronomy, CC-BY-3.0</p>
+  <div class="header">
+    <span class="projection-badge">EAC_LR</span>
+    <h1>EAC Stereo Video</h1>
+    <p>Equi-Angular Cubemap with left/right stereoscopic layout</p>
+  </div>
 
-  <ul>
-    <li><a href="../">return to main example</a></li>
-  </ul>
+  <div class="video-container">
+    <video id="videojs-vr-player" class="video-js vjs-default-skin" controls playsinline>
+      <source src="../samples/coriolis_eac.webm" type="video/webm">
+    </video>
+    <div class="info-panel">
+      <strong>Format:</strong> EAC with side-by-side stereo &bull;
+      <strong>3D Effect:</strong> True stereoscopic depth in VR &bull;
+      <strong>Efficiency:</strong> Best of EAC + 3D
+      <div class="credits">Credits: Animations for Physics and Astronomy, CC-BY-3.0</div>
+    </div>
+  </div>
+
+  <a href="../" class="back-link">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+    Back to Examples
+  </a>
+
   <script src="../node_modules/video.js/dist/video.js"></script>
   <script src="../dist/videojs-vr.js"></script>
   <script>
     (function(window, videojs) {
-      window.player = videojs('videojs-vr-player-eac-lr').vr({projection: 'EAC_LR', debug: true, forceCardboard: false});
+      var player = window.player = videojs('videojs-vr-player');
+      var vr = window.vr = player.vr({projection: 'EAC_LR', debug: true, forceCardboard: false, enableVRHUD: true, enableVRGallery: true});
     }(window, window.videojs));
   </script>
 </body>
