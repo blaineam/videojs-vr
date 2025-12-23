@@ -26,7 +26,7 @@ bower_components/
 node_modules/
 
 # Build-related directories
-dist/
+# dist/ is NOT ignored - we commit built files for direct browser usage
 docs/api/
 test/dist/
 .eslintcache

@@ -1,4 +1,5 @@
 /* global document */
+/* eslint-disable no-inline-comments, newline-after-var, curly, no-console, function-paren-newline, no-multi-spaces */
 import * as THREE from 'three';
 
 /**
@@ -470,7 +471,8 @@ class VRGallery {
             loadTextureFromUrl(resolvedUrl);
           })
           .catch((error) => {
-            const currentRetries = (this.failedLoads.get(url)?.retries || 0) + 1;
+            const failedData = this.failedLoads.get(url);
+            const currentRetries = (failedData ? failedData.retries : 0) + 1;
             if (currentRetries === 1) {
               console.warn('[VR Gallery] getSrc failed for:', url, error.message);
             }
@@ -488,7 +490,7 @@ class VRGallery {
         loadTextureFromUrl(url);
       }
     } catch (error) {
-      const currentRetries = (failInfo?.retries || 0) + 1;
+      const currentRetries = (failInfo ? failInfo.retries : 0) + 1;
       if (currentRetries === 1) {
         console.warn('[VR Gallery] Failed to resolve thumbnail path:', url);
       }

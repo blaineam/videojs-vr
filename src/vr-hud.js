@@ -1,4 +1,5 @@
 /* global document */
+/* eslint-disable no-inline-comments, newline-after-var, curly, no-console, function-paren-newline, no-multi-spaces */
 import * as THREE from 'three';
 
 /**
@@ -596,8 +597,6 @@ class VRHUD {
       // Controller 0 (typically right hand on Quest)
       const controller0 = this.renderer.xr.getController(0);
       const controllerGrip0 = this.renderer.xr.getControllerGrip(0);
-      const hand0 = this.renderer.xr.getHand(0);
-
       if (controller0) {
         controller0.addEventListener('selectstart', this.onSelectStart);
         controller0.addEventListener('selectend', this.onSelectEnd);
