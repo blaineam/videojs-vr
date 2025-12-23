@@ -1,29 +1,17 @@
 {
-  "name": "videojs-vr",
-  "version": "2.0.0",
-  "description": "A plugin to add 360 and VR video support to video.js.",
+  "name": "@blaineam/videojs-vr",
+  "version": "3.0.0",
+  "description": "A plugin to add 360, 180, and VR video support to video.js with full WebXR support, VR HUD controls, and in-VR media gallery.",
   "author": {
-    "name": "James Broberg",
-    "email": "james.broberg@metacdn.com"
+    "name": "Blaine Miller"
   },
-  "contributors": [
-    {
-      "name": "Sean Lawrence",
-      "email": "lawrensm@gmail.com"
-    },
-    {
-      "name": "Mitchell Trent",
-      "email": "mitch@tofi.com.au"
-    },
-    {
-      "name": "Brandon Casey",
-      "email": "branonocasey@gmail.com"
-    }
-  ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/videojs/videojs-vr"
+    "url": "https://github.com/blaineam/videojs-vr"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "main": "dist/videojs-vr.cjs.js",
   "module": "dist/videojs-vr.es.js",
@@ -72,11 +60,6 @@
     "src/",
     "test/"
   ],
-  "greenkeeper": {
-    "ignore": [
-      "three"
-    ]
-  },
   "dependencies": {
     "@babel/runtime": "^7.14.5",
     "global": "^4.4.0",

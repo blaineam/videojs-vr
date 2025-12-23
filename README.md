@@ -1,97 +1,50 @@
-# VR
+# videojs-vr
 
-https://videojs-vr.netlify.app
+A video.js plugin that turns a video element into a HTML5 Panoramic 360 video player. Project video onto different shapes with full WebXR support for immersive VR viewing on devices like Meta Quest, HTC Vive, and other WebXR-compatible headsets.
 
-[![Build Status](https://travis-ci.org/videojs/videojs-vr.svg?branch=master)](https://travis-ci.org/videojs/videojs-vr)
-[![Greenkeeper badge](https://badges.greenkeeper.io/videojs/videojs-vr.svg)](https://greenkeeper.io/)
-[![Slack Status](http://slack.videojs.com/badge.svg)](http://slack.videojs.com)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/72fb5012-1a07-433d-a286-2f4bf152c410/deploy-status)](https://app.netlify.com/sites/videojs-vr/deploys)
+**Maintainer:** Blaine Miller
 
-[![NPM](https://nodei.co/npm/videojs-vr.png?downloads=true&downloadRank=true)](https://nodei.co/npm/videojs-vr/)
-
-A video.js plugin that turns a video element into a HTML5 Panoramic 360 video player. Project video onto different shapes. Optionally supports Oculus Rift, HTC Vive and the GearVR.
-
-Lead Maintainer: Brandon Casey [@brandonocasey](https://github.com/brandonocasey)
-
-Maintenance Status: Stable
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Installation](#installation)
-- [Browser Support](#browser-support)
-- [Caveats](#caveats)
-- [Projection support](#projection-support)
-- [Usage](#usage)
-  - [`<script>` Tag](#script-tag)
-  - [Browserify/CommonJS](#browserifycommonjs)
-  - [RequireJS/AMD](#requirejsamd)
-  - [Optional integration with videojs-errors](#optional-integration-with-videojs-errors)
-- [Setting a global projection](#setting-a-global-projection)
-  - [Passing a projection on a source by source basis](#passing-a-projection-on-a-source-by-source-basis)
-- [Oculus Rift and HTC Vive Support](#oculus-rift-and-htc-vive-support)
-- [Accessing the Camera Position](#accessing-the-camera-position)
-- [Accessing THREE.js objects](#accessing-threejs-objects)
-- [Options](#options)
-  - [`forceCardboard`](#forcecardboard)
-  - [`motionControls`](#motioncontrols)
-  - [`projection`](#projection)
-    - [`'180'`](#180)
-    - [`'180_LR'`](#180_lr)
-    - [`'180_MONO'`](#180_mono)
-    - [`'360'`, `'Sphere'`, or `'equirectangular'`](#360-sphere-or-equirectangular)
-    - [`'Cube'` or `'360_CUBE'`](#cube-or-360_cube)
-    - [`'NONE'`](#none)
-    - [`'AUTO'`](#auto)
-    - [`'360_LR'`](#360_lr)
-    - [`'360_TB'`](#360_tb)
-    - [`'EAC'`](#eac)
-    - [`'EAC_LR'`](#eac_lr)
-  - [`sphereDetail`](#spheredetail)
-  - [`player.mediainfo.projection`](#playermediainfoprojection)
-  - [`debug`](#debug)
-  - [`omnitone`](#omnitone)
-  - [`omnitoneOptions`](#omnitoneoptions)
-  - [`disableTogglePlay`](#disabletoggleplay)
-- [Credits](#credits)
-- [Support](#support)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+**PRs Welcome!** Contributions, bug reports, and feature requests are encouraged.
 
 ## Installation
 
 ```sh
-npm i videojs-vr
+npm install @blaineam/videojs-vr
 ```
 
+## Features
+
+- **Full WebXR Support**: Modern WebXR API support for immersive VR experiences on Quest, Vive, and other headsets
+- **Multiple Projections**: Support for 360, 180, side-by-side (SBS), and equi-angular cubemap (EAC) video formats
+- **VR HUD Controls**: In-VR user interface with scrub bar, play/pause, and navigation controls
+- **VR Gallery Panel**: Browse and select media while in VR mode with scrollable thumbnails
+- **Controller Support**: Full VR controller interaction with pointer rays and grip toggle
+- **Orientation Controls**: Adjust viewing angle for comfortable viewing in any position
+- **Stereo 3D Support**: Proper left/right eye rendering for stereoscopic content
+
 ## Browser Support
+
 The most recent versions of:
-* Desktop
-  * Chrome
-  * Firefox
-  * Safari
-* Mobile
-  * Chrome on Android
-  * Safari on iOS
 
-## Caveats
-* HLS captions on safari will not be visible as they are located inside of the shadowRoot in the video element and we cannot get access to them.
+### Desktop
+- Chrome
+- Firefox
+- Safari
 
-## Projection support
-Currently we only support:
-* Projections
-  * Spherical Videos, via the 360/equirectangular projection
-  * 360 cube videos
-* Mappings
-  * Monoscopic (single video pane)
-  * Stereoscopic (dual video pane for both eyes) via the cardboard button
-## Usage
+### Mobile
+- Chrome on Android
+- Safari on iOS
 
-To include videojs-vr on your website or web application, use any of the following methods.
+### VR Headsets (WebXR)
+- Meta Quest (Quest 2, Quest 3, Quest Pro)
+- HTC Vive / Vive Pro
+- Valve Index
+- Windows Mixed Reality headsets
+- Any WebXR-compatible device
 
-### `<script>` Tag
+## Quick Start
 
-This is the simplest case. Get the script in whatever way you prefer and include the plugin _after_ you include [video.js][videojs], so that the `videojs` global is available.
+### Script Tag
 
 ```html
 <script src="//path/to/video.min.js"></script>
@@ -99,203 +52,315 @@ This is the simplest case. Get the script in whatever way you prefer and include
 <script>
   var player = videojs('my-video');
 
-  player.vr();
+  player.vr({
+    projection: '360',
+    enableVRHUD: true,
+    enableVRGallery: true
+  });
 </script>
 ```
 
-### Browserify/CommonJS
-
-When using with Browserify, install videojs-vr via npm and `require` the plugin as you would any other module.
+### ES Modules / Bundlers
 
 ```js
-var videojs = require('video.js');
+import videojs from 'video.js';
+import '@blaineam/videojs-vr';
 
-// The actual plugin function is exported by this module, but it is also
-// attached to the `Player.prototype`; so, there is no need to assign it
-// to a variable.
-require('videojs-vr');
+const player = videojs('my-video');
 
-var player = videojs('my-video');
-
-player.vr({projection: '360'});
-```
-
-### RequireJS/AMD
-
-When using with RequireJS (or another AMD library), get the script in whatever way you prefer and `require` the plugin as you normally would:
-
-```js
-require(['video.js', 'videojs-vr'], function(videojs) {
-  var player = videojs('my-video');
-
-  player.vr({projection: '360'});
+player.vr({
+  projection: '360',
+  enableVRHUD: true,
+  enableVRGallery: true,
+  onNext: () => console.log('Next video'),
+  onPrevious: () => console.log('Previous video'),
+  onFavorite: () => console.log('Toggle favorite')
 });
 ```
 
-### Optional integration with videojs-errors
-If the [videojs-errors](https://github.com/brightcove/videojs-errors) plugin is intialized before `videojs-vr`, then it will be used to display errors to users.
+## Projection Types
 
-## Setting a global projection
-If you are only going to be playing 360 videos you can set the global plugin projection like so:
+### Standard Projections
+
+| Projection | Description |
+|------------|-------------|
+| `'360'` / `'Sphere'` / `'equirectangular'` | Full 360-degree spherical video |
+| `'180'` | 180-degree half sphere video |
+| `'180_MONO'` | Monoscopic 180-degree video |
+| `'Cube'` / `'360_CUBE'` | 360-degree cube map video |
+| `'NONE'` | Standard flat video (no VR projection) |
+| `'AUTO'` | Automatically detect from `player.mediainfo.projection` |
+
+### Side-by-Side (Stereoscopic) Projections
+
+Side-by-side video contains separate left and right eye views packed into a single video frame. The plugin automatically separates these for proper stereoscopic viewing in VR headsets.
+
+| Projection | Description |
+|------------|-------------|
+| `'360_LR'` | 360-degree with left/right eye side-by-side |
+| `'360_TB'` | 360-degree with top/bottom eye layout |
+| `'180_LR'` | 180-degree with left/right eye side-by-side |
+| `'SBS_MONO'` | Flat screen side-by-side - shows stereo 3D in WebXR, mono in browser |
+
+### Equi-Angular Cubemap (EAC)
+
+| Projection | Description |
+|------------|-------------|
+| `'EAC'` | YouTube's equi-angular cubemap format |
+| `'EAC_LR'` | EAC with left/right eye side-by-side |
+
+## WebXR VR Mode
+
+When viewing in a WebXR-compatible browser (like Meta Quest Browser), the plugin provides an immersive VR experience:
+
+1. Click the **Cardboard/VR button** in the player controls to enter VR mode
+2. **Squeeze the grip** on your VR controller to show/hide the VR HUD
+3. Use the **thumbstick** to:
+   - Left/Right: Seek through the video
+   - Up/Down: Scroll through the gallery (when open)
+4. **Point and click** with your controller to interact with buttons
+5. Press **A button** on controller to toggle play/pause
+
+### VR HUD Controls
+
+The VR HUD provides these controls while in VR mode:
+
+| Button | Function |
+|--------|----------|
+| **Exit (X)** | Exit VR mode |
+| **Gallery** | Open the media gallery panel |
+| **Previous** | Go to previous media item |
+| **Play/Pause** | Toggle video playback |
+| **Next** | Go to next media item |
+| **Reset Orientation** | Reset view to default orientation |
+| **Drag Handle** | Drag to adjust viewing angle (for lying down, etc.) |
+| **Projection** | Open projection mode selector |
+| **Favorite** | Toggle favorite status (if callback provided) |
+
+The HUD also includes a **scrub bar** showing current playback position with a draggable handle for seeking.
+
+## VR Gallery Panel
+
+The VR Gallery allows users to browse and select media while remaining in VR:
 
 ```js
-
-var player = videojs('my-video');
-
-player.vr({projection: '360'});
-
-// or change player.vr.defaultProjection
-// and call player.vr.initScene again
-
+player.vr({
+  projection: '360',
+  enableVRGallery: true,
+  mediaItems: [
+    {
+      title: 'Beach Sunset',
+      thumbnail: '/thumbnails/beach.jpg',
+      url: '/videos/beach-360.mp4',
+      duration: 180 // seconds (optional)
+    },
+    {
+      title: 'Mountain View',
+      thumbnail: '/thumbnails/mountain.jpg',
+      url: '/videos/mountain-360.mp4',
+      duration: 240
+    }
+  ],
+  onMediaSelect: (item, index) => {
+    // Handle media selection
+    player.src({ src: item.url, type: 'video/mp4' });
+  }
+});
 ```
 
-### Passing a projection on a source by source basis
-Set `player.mediainfo` and `player.mediainfo.projection` to a valid projection value and pass in 'AUTO' or nothing for the `projection` key when initializing this plugin.
-EX:
-```js
-var player = videojs('my-video');
+### Gallery Features
 
-if (!player.mediainfo) {
-  player.mediainfo = {};
-}
+- **Scrollable Grid**: 4-column thumbnail grid with smooth scrolling
+- **Lazy Loading**: Thumbnails load as they become visible
+- **VR Controller Support**: Point and click to select, use thumbstick to scroll
+- **Mouse/Touch Support**: Works in non-VR mode too
+- **Duration Badges**: Shows video duration on thumbnails
 
-if (!player.mediainfo.projection) {
-  player.mediainfo.projection = '360';
-}
-
-player.vr({projection: 'AUTO'});
-
-// or player.vr(); since 'AUTO' is the default
-```
-
-## Oculus Rift and HTC Vive Support
-This project leverages the [webvr-polyfill](https://github.com/borismus/webvr-polyfill) and [three.js](https://github.com/mrdoob/three.js) libraries to create a 'responsive VR' experience across multiple devices.
-
-Oculus Rift and HTC Vive playback requires Firefox >= 55, experimental WebVR-enabled builds of Chromium, or via Chrome by enabling webvr in `chrome://flags`. Go to [WebVR.info](http://www.webvr.info) for more info.
-
-GearVR playback requires the latest Samsung Internet for Gear VR with WebVR support enabled. Go [here](https://webvr.rocks/samsung_internet) for more info.
-
-## Accessing the Camera Position
-The Three.js rotation values are exposed under the property `cameraVector` on the `vr` plugin namespace.
+### Dynamic Gallery Updates
 
 ```js
-var player = videojs('my-video');
+// Update gallery items at runtime
+player.vr().setGalleryItems([
+  { title: 'New Video', thumbnail: '/thumb.jpg', url: '/video.mp4' }
+]);
 
-player.vr().cameraVector;
+// Show/hide gallery programmatically
+player.vr().showGallery();
+player.vr().hideGallery();
+player.vr().toggleGallery();
 ```
 
-## Accessing THREE.js objects
-The Three.js Scene, renderer, and perspective camera are exposed under the `threeJs` object as the properties `scene`, `renderer`, and `camera` on the `vr` plugin namespace.
+## API Reference
+
+### Options
 
 ```js
-var player = videojs('my-video');
+player.vr({
+  // Projection mode
+  projection: '360',           // See projection types above
+  sphereDetail: 32,            // Sphere mesh detail (higher = smoother)
 
-player.vr().camera;
-player.vr().scene;
-player.vr().renderer;
+  // VR HUD options
+  enableVRHUD: true,           // Enable in-VR controls
+  enableVRGallery: true,       // Enable in-VR media gallery
+  showHUDOnStart: true,        // Show HUD when entering VR
+  hudAutoHideDelay: 5000,      // Auto-hide HUD after ms (0 to disable)
+  hudDistance: 1.5,            // Distance of HUD from viewer
+  hudHeight: 1.5,              // Height of HUD
+  hudScale: 0.015,             // Scale of HUD elements
+
+  // Behavior options
+  forceCardboard: false,       // Force cardboard button on all devices
+  motionControls: true,        // Enable gyroscope/device orientation
+  disableTogglePlay: false,    // Disable click-to-play
+
+  // Spatial audio (requires Omnitone library)
+  omnitone: null,              // Pass Omnitone library object
+  omnitoneOptions: {},         // Omnitone configuration
+
+  // Media gallery items
+  mediaItems: [],              // Array of media items for gallery
+
+  // Callbacks
+  onNext: () => {},            // Called when next button pressed
+  onPrevious: () => {},        // Called when previous button pressed
+  onMediaSelect: (item, index) => {}, // Called when gallery item selected
+  onGallery: () => {},         // Called when gallery button pressed
+  onExit: () => {},            // Called when exit VR pressed
+  onProjectionChange: (projection) => {}, // Called when projection changed
+  onFavorite: () => {}         // Called when favorite button pressed (enables button)
+});
 ```
 
-## Options
-### `forceCardboard`
-> Type: `boolean`, default: `false`
+### Methods
 
-Force the cardboard button to display on all devices even if we don't think they support it.
+```js
+const vr = player.vr();
 
-### `motionControls`
-> Type: `boolean`, default: `true on ios and andriod`
+// Projection
+vr.setProjection('360_LR');    // Change projection mode
 
-Whether motion/gyro controls should be enabled.
+// VR HUD
+vr.showHUD();                  // Show the VR HUD
+vr.hideHUD();                  // Hide the VR HUD
+vr.toggleHUD();                // Toggle HUD visibility
 
-### `projection`
+// VR Gallery
+vr.showGallery();              // Show the gallery panel
+vr.hideGallery();              // Hide the gallery panel
+vr.toggleGallery();            // Toggle gallery visibility
+vr.setGalleryItems(items);     // Update gallery media items
 
-> Type `string`, default: `'auto'`
-Can be any of the following:
+// Favorite state
+vr.setFavoriteState(true);     // Set favorite button state
+vr.getFavoriteState();         // Get current favorite state
 
-#### `'180'`
-The video is half sphere and the user should not be able to look behind themselves
+// Orientation
+vr.setOrientationOffset({ x: 0.5, y: 0, z: 0 }); // Tilt view
+vr.resetOrientationOffset();   // Reset to default orientation
+vr.recenter();                 // Recenter VR view
 
-#### `'180_LR'`
-Used for side-by-side 180 videos
-The video is half sphere and the user should not be able to look behind themselves
+// Status
+vr.isPresenting();             // Check if currently in VR mode
 
-#### `'180_MONO'`
-Used for monoscopic 180 videos
-The video is half sphere and the user should not be able to look behind themselves
+// Three.js access
+vr.camera;                     // THREE.PerspectiveCamera
+vr.scene;                      // THREE.Scene
+vr.renderer;                   // THREE.WebGLRenderer
+vr.cameraVector;               // Camera direction vector
+```
 
-#### `'360'`, `'Sphere'`, or `'equirectangular'`
-The video is a sphere
+### Events
 
-#### `'Cube'` or `'360_CUBE'`
-The video is a cube
+```js
+// VR-specific events
+player.on('vr-next', () => {});
+player.on('vr-previous', () => {});
+player.on('vr-gallery', () => {});
+player.on('vr-exit', () => {});
+player.on('vr-favorite', () => {});
+player.on('vr-media-select', (e, { item, index }) => {});
+player.on('vr-projection-change', (e, { projection }) => {});
+player.on('vr-orientation-change', (e, euler) => {});
+player.on('initialized', () => {});
+```
 
-#### `'NONE'`
-This video is not a 360 video
+## Custom Buttons
 
-#### `'AUTO'`
-Check `player.mediainfo.projection` to see if the current video is a 360 video.
+The favorite button is an example of how custom functionality can be added. When the `onFavorite` callback is provided, the favorite button appears in the VR HUD:
 
-#### `'360_LR'`
-Used for side-by-side 360 videos
+```js
+player.vr({
+  projection: '360',
+  onFavorite: () => {
+    const isFavorited = !player.vr().getFavoriteState();
+    player.vr().setFavoriteState(isFavorited);
 
-#### `'360_TB'`
-Used for top-to-bottom 360 videos
+    // Save to your backend
+    saveFavoriteStatus(currentVideoId, isFavorited);
+  }
+});
 
-#### `'EAC'`
-Used for Equi-Angular Cubemap videos
+// Update favorite state when loading a new video
+player.on('loadedmetadata', () => {
+  const isFavorited = checkIfFavorited(currentVideoId);
+  player.vr().setFavoriteState(isFavorited);
+});
+```
 
-#### `'EAC_LR'`
-Used for side-by-side Equi-Angular Cubemap videos
+## Per-Source Projection
 
-### `sphereDetail`
+Set projection on a source-by-source basis using `player.mediainfo`:
 
-> type: `number`, default: `32`
+```js
+player.mediainfo = {
+  projection: '360_LR'  // This video is side-by-side 360
+};
 
-This alters the number of segments in the spherical mesh onto which equirectangular
-videos are projected. The default is `32` but in some circumstances you may notice
-artifacts and need to increase this number.
+player.vr({ projection: 'AUTO' }); // Will use mediainfo.projection
+```
 
-### `player.mediainfo.projection`
+## Accessing Three.js Objects
 
-> type: `string`
+For advanced customization, Three.js objects are exposed:
 
-This should be set on a source-by-source basis to turn 360 videos on an off depending upon the video.
+```js
+const vr = player.vr();
 
-See [`projection`](#projection) above for information of values. Note that `AUTO` is the same as `NONE` for `player.mediainfo.projection`.
+// Add custom objects to the scene
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const cube = new THREE.Mesh(geometry, material);
+cube.position.set(0, 0, -5);
+vr.scene.add(cube);
 
-### `debug`
+// Access camera for custom positioning
+console.log(vr.camera.position);
+console.log(vr.cameraVector); // Direction camera is facing
+```
 
-> type: `boolean`, default: `false`
+## Caveats
 
-Enable debug logging for this plugin
+- HLS captions on Safari will not be visible as they are located inside the shadowRoot in the video element
+- Some older mobile browsers may have limited WebXR support
+- CORS headers are required for cross-origin video sources
 
-### `omnitone`
+## Development
 
-> type: `Omnitone library object`
+```sh
+# Install dependencies
+npm install
 
-Use this property to pass the Omnitone library object to the plugin.
-Please be aware of, the Omnitone library is not included in the build files.
+# Start development server
+npm start
 
-### `omnitoneOptions`
+# Run tests
+npm test
 
-> type: `object`, default: `{}`
+# Build for production
+npm run build-prod
+```
 
-Default options for the Omnitone library. Please check available options on https://github.com/GoogleChrome/omnitone
+## License
 
-### `disableTogglePlay`
-
-> type: `boolean`, default: `false`
-
-Feature to disable the togglePlay manually.
-This functionality is useful in live events so that users cannot stop the live, but still have a controlBar available.
-
-## Credits ##
-
-This project is a conglomeration of a few amazing open source libraries.
-
-* [VideoJS](http://www.videojs.com)
-* [Three.js](http://threejs.org)
-* [webvr-polyfill](https://github.com/borismus/webvr-polyfill)
-* [Omnitone](https://googlechrome.github.io/omnitone)
-
-## Support ##
-This work is sponsored by [Brightcove](https://www.brightcove.com), [HapYak](http://corp.hapyak.com/) and [StreamShark](https://streamshark.io)
+MIT

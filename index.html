@@ -1,24 +1,384 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>videojs-vr Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>videojs-vr - Immersive VR Video Player</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      color: #fff;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 0;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00ffff, #ff00ff, #00ffff);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes shimmer {
+      to { background-position: 200% center; }
+    }
+
+    .tagline {
+      font-size: 1.25rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 2rem;
+    }
+
+    .badges {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 50px;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .badge-icon {
+      width: 16px;
+      height: 16px;
+    }
+
+    .demo-section {
+      margin: 3rem 0;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
+    .demo-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border: none;
+      border-radius: 16px;
+      background: #000;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .section-title::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 1.5rem;
+      background: linear-gradient(180deg, #00ffff, #ff00ff);
+      border-radius: 2px;
+    }
+
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+
+    .example-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .example-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(0, 255, 255, 0.3);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 255, 255, 0.1);
+    }
+
+    .example-card h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .example-card p {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .example-card .projection-tag {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      background: rgba(0, 255, 255, 0.15);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #00ffff;
+      width: fit-content;
+    }
+
+    .features-section {
+      margin: 4rem 0;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-card p {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    footer {
+      text-align: center;
+      padding: 3rem 0;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: #00ffff;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .container {
+        padding: 1rem;
+      }
+
+      .glass-card {
+        padding: 1rem;
+      }
+
+      .examples-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-  <iframe width="700" height="400" src="examples/360.html" allowfullscreen="" webkitallowfullscreen="" mozallowfullscreen="" allow="gyroscope; accelerometer; xr"></iframe>
-  <ul>
-    <li><a href="test/debug.html">Run unit tests in browser.</a></li>
-    <li><a href="examples/180.html">180 video example</a></li>
-    <li><a href="examples/180-mono.html">180 video example (monoscopic input)</a></li>
-    <li><a href="examples/360-cube.html">360 Cube Video example</a></li>
-    <li><a href="examples/360.html">360 Video example</a></li>
-    <li><a href="examples/360-two.html">Another 360 Video example</a></li>
-    <li><a href="examples/360-tb.html">360 TB Video example</a></li>
-    <li><a href="examples/eac.html">EAC video example</a></li>
-    <li><a href="examples/eac-lr.html">EAC LR video example</a></li>
-    <li><a href="examples/fluid.html">"Fluid" video size example</a></li>
-    <li><a href="examples/spatial.html">Spatial audio example</a></li>
-    <li><a href="examples/sphere-detail.html">360 with increased sphere detail example</a></li>
-  </ul>
+  <div class="container">
+    <header>
+      <h1>videojs-vr</h1>
+      <p class="tagline">Immersive 360 and VR video player with WebXR support</p>
+      <div class="badges">
+        <span class="badge">
+          <svg class="badge-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>
+          WebXR Ready
+        </span>
+        <span class="badge">
+          <svg class="badge-icon" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+          VR HUD Controls
+        </span>
+        <span class="badge">
+          <svg class="badge-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/></svg>
+          In-VR Gallery
+        </span>
+        <span class="badge">
+          <svg class="badge-icon" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+          Three.js Powered
+        </span>
+      </div>
+    </header>
+
+    <section class="demo-section">
+      <div class="glass-card">
+        <h2 class="section-title">Live Demo</h2>
+        <iframe class="demo-frame" src="examples/360.html" allowfullscreen webkitallowfullscreen mozallowfullscreen allow="gyroscope; accelerometer; xr; xr-spatial-tracking"></iframe>
+      </div>
+    </section>
+
+    <section class="features-section">
+      <h2 class="section-title">Features</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🥽</div>
+          <h3>Full WebXR Support</h3>
+          <p>Works with Meta Quest, Vive, Index, and all WebXR-compatible headsets</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎮</div>
+          <h3>VR Controller Support</h3>
+          <p>Point-and-click interaction with controller rays and grip toggle</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📺</div>
+          <h3>VR HUD Controls</h3>
+          <p>Scrub bar, play/pause, next/previous, and orientation controls in VR</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🖼️</div>
+          <h3>In-VR Gallery</h3>
+          <p>Browse and select media without leaving VR mode</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🌐</div>
+          <h3>Multiple Projections</h3>
+          <p>360, 180, cube map, EAC, and side-by-side stereo formats</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>Mobile & Desktop</h3>
+          <p>Responsive design with gyroscope support on mobile devices</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="examples-section">
+      <div class="glass-card">
+        <h2 class="section-title">Examples</h2>
+        <div class="examples-grid">
+          <a href="examples/360.html" class="example-card">
+            <span class="projection-tag">360</span>
+            <h3>360 Video</h3>
+            <p>Full spherical equirectangular video projection</p>
+          </a>
+          <a href="examples/360-two.html" class="example-card">
+            <span class="projection-tag">360</span>
+            <h3>360 Video (Alt)</h3>
+            <p>Another 360 video example with different content</p>
+          </a>
+          <a href="examples/360-tb.html" class="example-card">
+            <span class="projection-tag">360_TB</span>
+            <h3>360 Top-Bottom</h3>
+            <p>Stereoscopic 360 with top/bottom eye layout</p>
+          </a>
+          <a href="examples/360-cube.html" class="example-card">
+            <span class="projection-tag">360_CUBE</span>
+            <h3>360 Cube Map</h3>
+            <p>Cube map projection for 360 content</p>
+          </a>
+          <a href="examples/180.html" class="example-card">
+            <span class="projection-tag">180_LR</span>
+            <h3>180 Video</h3>
+            <p>180-degree half sphere with side-by-side stereo</p>
+          </a>
+          <a href="examples/180-mono.html" class="example-card">
+            <span class="projection-tag">180_MONO</span>
+            <h3>180 Mono</h3>
+            <p>Monoscopic 180-degree video projection</p>
+          </a>
+          <a href="examples/eac.html" class="example-card">
+            <span class="projection-tag">EAC</span>
+            <h3>Equi-Angular Cubemap</h3>
+            <p>YouTube's EAC format for efficient 360 video</p>
+          </a>
+          <a href="examples/eac-lr.html" class="example-card">
+            <span class="projection-tag">EAC_LR</span>
+            <h3>EAC Stereo</h3>
+            <p>EAC with left/right stereoscopic layout</p>
+          </a>
+          <a href="examples/fluid.html" class="example-card">
+            <span class="projection-tag">Fluid</span>
+            <h3>Fluid Layout</h3>
+            <p>Responsive video player that adapts to container size</p>
+          </a>
+          <a href="examples/spatial.html" class="example-card">
+            <span class="projection-tag">Audio</span>
+            <h3>Spatial Audio</h3>
+            <p>360 video with Omnitone spatial audio support</p>
+          </a>
+          <a href="examples/360-sphere-detail.html" class="example-card">
+            <span class="projection-tag">Quality</span>
+            <h3>High Detail Sphere</h3>
+            <p>360 video with increased sphere mesh detail</p>
+          </a>
+          <a href="test/debug.html" class="example-card">
+            <span class="projection-tag">Dev</span>
+            <h3>Debug Tests</h3>
+            <p>Run unit tests in the browser</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>
+        Built with ❤️ by Blaine Miller<br>
+        <a href="https://github.com/blaineam/videojs-vr">GitHub</a> &middot;
+        <a href="https://www.npmjs.com/package/@blaineam/videojs-vr">npm</a> &middot;
+        PRs Welcome!
+      </p>
+    </footer>
+  </div>
 </body>
 </html>
