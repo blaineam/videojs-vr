@@ -37598,6 +37598,12 @@ void main() {
       window.addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
       this.initialized_ = true;
       this.trigger('initialized');
+
+      // Trigger resize after a short delay to ensure DOM is fully laid out
+      // This fixes issues with aspect ratio when player dimensions aren't ready at init time
+      setTimeout(() => {
+        this.handleResize_();
+      }, 100);
     }
     addCardboardButton_() {
       if (!this.player_.controlBar.getChild('CardboardButton')) {
