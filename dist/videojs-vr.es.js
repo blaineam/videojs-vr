@@ -29323,6 +29323,10 @@ class VRHUD {
     this.onExit = options.onExit || (() => {});
     this.onProjectionChange = options.onProjectionChange || (() => {});
     this.onFavorite = options.onFavorite || null; // Optional favorite callback
+    this.onForceMonoToggle = options.onForceMonoToggle || null; // Callback for force mono toggle
+
+    // Force mono state (persists for VR session duration)
+    this.forceMonoEnabled = false;
 
     // Projection modes available
     this.projectionModes = [{
@@ -29486,26 +29490,36 @@ class VRHUD {
     this.camera.add(this.cursor);
   }
   createControlPanel() {
-    // Background panel for controls
-    const panelWidth = 2.4;
+    // Background panel for controls - Dark glassmorphic design (no blue tint)
+    const panelWidth = 2.6;
     const panelHeight = 0.6;
-    const panelGeometry = new PlaneGeometry(panelWidth, panelHeight);
+    const cornerRadius = 0.08;
+
+    // Create rounded rectangle shape
+    const shape = this.createRoundedRectShape(panelWidth, panelHeight, cornerRadius);
+    const panelGeometry = new ShapeGeometry(shape);
+    // Center the geometry
+    panelGeometry.translate(-panelWidth / 2, -panelHeight / 2, 0);
+
+    // Main panel - dark semi-transparent (like dark mode glass)
     const panelMaterial = new MeshBasicMaterial({
-      color: 0x1a1a2e,
+      color: 0x1a1a1a,
+      // Neutral dark gray, no blue tint
       opacity: 0.85,
       transparent: true,
       side: DoubleSide
     });
     this.controlPanel = new Mesh(panelGeometry, panelMaterial);
     this.controlPanel.name = 'control-panel';
-    this.controlPanel.position.set(0, 0, 0); // HUD group is positioned, panel is at origin within group
-    // No rotation - panel is vertical like a wall facing the camera
+    this.controlPanel.position.set(0, 0, 0);
 
-    // Panel border/glow
-    const borderGeometry = new PlaneGeometry(panelWidth + 0.02, panelHeight + 0.02);
+    // Subtle border - very faint white
+    const borderShape = this.createRoundedRectShape(panelWidth + 0.02, panelHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new ShapeGeometry(borderShape);
+    borderGeometry.translate(-(panelWidth + 0.02) / 2, -(panelHeight + 0.02) / 2, 0);
     const borderMaterial = new MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.3,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: DoubleSide
     });
@@ -29514,14 +29528,48 @@ class VRHUD {
     this.controlPanel.add(border);
     this.hudGroup.add(this.controlPanel);
   }
+
+  // Helper to create rounded rectangle shape
+  createRoundedRectShape(width, height, radius) {
+    const shape = new Shape();
+    shape.moveTo(radius, 0);
+    shape.lineTo(width - radius, 0);
+    shape.quadraticCurveTo(width, 0, width, radius);
+    shape.lineTo(width, height - radius);
+    shape.quadraticCurveTo(width, height, width - radius, height);
+    shape.lineTo(radius, height);
+    shape.quadraticCurveTo(0, height, 0, height - radius);
+    shape.lineTo(0, radius);
+    shape.quadraticCurveTo(0, 0, radius, 0);
+    return shape;
+  }
+
+  // Helper to create horizontal pill shape with true semicircular ends
+  createPillShape(width, height) {
+    const shape = new Shape();
+    const radius = height / 2;
+    // Start at top-left (after left semicircle)
+    shape.moveTo(radius, height);
+    // Top edge to right
+    shape.lineTo(width - radius, height);
+    // Right semicircle (clockwise from top to bottom)
+    shape.absarc(width - radius, radius, radius, Math.PI / 2, -Math.PI / 2, true);
+    // Bottom edge to left
+    shape.lineTo(radius, 0);
+    // Left semicircle (clockwise from bottom to top)
+    shape.absarc(radius, radius, radius, -Math.PI / 2, Math.PI / 2, true);
+    return shape;
+  }
   createScrubBar() {
     const scrubGroup = new Group();
     scrubGroup.name = 'scrub-bar-group';
 
-    // Track background
+    // Track background with true semicircular ends (pill shape)
     const trackWidth = 1.8;
     const trackHeight = 0.08;
-    const trackGeometry = new PlaneGeometry(trackWidth, trackHeight);
+    const trackShape = this.createPillShape(trackWidth, trackHeight);
+    const trackGeometry = new ShapeGeometry(trackShape);
+    trackGeometry.translate(-trackWidth / 2, -trackHeight / 2, 0);
     const trackMaterial = new MeshBasicMaterial({
       color: 0x333344,
       opacity: 0.9,
@@ -29583,15 +29631,15 @@ class VRHUD {
     const buttonGroup = new Group();
     buttonGroup.name = 'navigation-buttons';
 
-    // Calculate button positions to fit within panel (width 2.4, so max x ~1.1)
-    // With favorite button: 9 buttons, spacing ~0.22
-    // Without favorite: 8 buttons, spacing ~0.25
+    // Calculate button positions to fit within panel (width 2.6)
+    // With favorite button: 10 buttons (including force mono), spacing ~0.22
+    // Without favorite: 9 buttons, spacing ~0.24
     const hasOnFavorite = !!this.onFavorite;
-    const buttonSpacing = hasOnFavorite ? 0.22 : 0.25;
-    const startX = hasOnFavorite ? -0.88 : -0.875;
+    const buttonSpacing = hasOnFavorite ? 0.22 : 0.24;
+    const startX = hasOnFavorite ? -0.99 : -0.96;
 
-    // Exit VR button (leftmost)
-    this.exitBtn = this.createButton('✕', startX, -0.15, 'exit-vr', 0xff3366);
+    // Exit VR button (leftmost) - neutral base, red on hover
+    this.exitBtn = this.createButton('✕', startX, -0.15, 'exit-vr', 0x2a2a2a, 0xff3366);
     buttonGroup.add(this.exitBtn);
 
     // Gallery button
@@ -29610,33 +29658,37 @@ class VRHUD {
     this.nextBtn = this.createButton('⏭', startX + buttonSpacing * 4, -0.15, 'next');
     buttonGroup.add(this.nextBtn);
 
+    // Force Mono toggle button - shows larger single eye icon
+    this.forceMonoBtn = this.createButton('○', startX + buttonSpacing * 5, -0.15, 'force-mono', 0x2a3a5a);
+    buttonGroup.add(this.forceMonoBtn);
+
     // Orientation reset button
-    this.orientResetBtn = this.createButton('⟲', startX + buttonSpacing * 5, -0.15, 'reset-orientation');
+    this.orientResetBtn = this.createButton('⟲', startX + buttonSpacing * 6, -0.15, 'reset-orientation');
     buttonGroup.add(this.orientResetBtn);
 
     // Orientation drag handle
-    this.orientDragBtn = this.createButton('✋', startX + buttonSpacing * 6, -0.15, 'orientation-handle');
+    this.orientDragBtn = this.createButton('✋', startX + buttonSpacing * 7, -0.15, 'orientation-handle');
     buttonGroup.add(this.orientDragBtn);
 
     // Projection menu button
-    this.projectionBtn = this.createButton('🎬', startX + buttonSpacing * 7, -0.15, 'projection-menu');
+    this.projectionBtn = this.createButton('🎬', startX + buttonSpacing * 8, -0.15, 'projection-menu');
     buttonGroup.add(this.projectionBtn);
 
     // Favorite button (only if callback is provided) - rightmost
     if (hasOnFavorite) {
-      this.favoriteBtn = this.createButton('☆', startX + buttonSpacing * 8, -0.15, 'favorite');
+      this.favoriteBtn = this.createButton('☆', startX + buttonSpacing * 9, -0.15, 'favorite');
       this.favoriteBtnMesh = this.favoriteBtn.children.find(c => c.userData && c.userData.type === 'favorite');
       buttonGroup.add(this.favoriteBtn);
     }
     this.controlPanel.add(buttonGroup);
   }
-  createButton(label, x, y, type, customColor) {
+  createButton(label, x, y, type, customColor, customHoverColor) {
     const btnGroup = new Group();
     btnGroup.name = `btn-${type}`;
 
-    // Button background
+    // Button background - dark glassmorphic circle (no blue tint)
     const btnGeometry = new CircleGeometry(0.08, 32);
-    const baseColor = customColor || 0x2a2a4a;
+    const baseColor = customColor || 0x2a2a2a; // Neutral dark gray
     const btnMaterial = new MeshBasicMaterial({
       color: baseColor,
       opacity: 0.9,
@@ -29646,14 +29698,15 @@ class VRHUD {
     btnMesh.userData.interactive = true;
     btnMesh.userData.type = type;
     btnMesh.userData.baseColor = baseColor;
-    btnMesh.userData.hoverColor = customColor ? 0xff6699 : 0x00ffff;
+    btnMesh.userData.hoverColor = customHoverColor || 0x444444; // Lighter gray on hover (or custom)
+
     btnGroup.add(btnMesh);
 
-    // Button border
-    const borderGeometry = new RingGeometry(0.075, 0.085, 32);
+    // Subtle white border
+    const borderGeometry = new RingGeometry(0.078, 0.082, 32);
     const borderMaterial = new MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.5,
+      color: 0xffffff,
+      opacity: 0.15,
       transparent: true
     });
     const border = new Mesh(borderGeometry, borderMaterial);
@@ -29684,29 +29737,35 @@ class VRHUD {
     return btnGroup;
   }
   createProjectionMenu() {
-    // Create projection selection menu (hidden by default)
+    // Create projection selection menu (hidden by default) - Dark glassmorphic design
     this.projectionMenu = new Group();
     this.projectionMenu.name = 'projection-menu';
     this.projectionMenu.visible = false;
 
-    // Menu background
+    // Menu background - dark semi-transparent (no blue tint)
     const menuWidth = 0.5;
     const menuHeight = this.projectionModes.length * 0.08 + 0.15;
-    const menuGeometry = new PlaneGeometry(menuWidth, menuHeight);
+    const cornerRadius = 0.04;
+    const menuShape = this.createRoundedRectShape(menuWidth, menuHeight, cornerRadius);
+    const menuGeometry = new ShapeGeometry(menuShape);
+    menuGeometry.translate(-menuWidth / 2, -menuHeight / 2, 0);
     const menuMaterial = new MeshBasicMaterial({
-      color: 0x0a0a1a,
-      opacity: 0.95,
+      color: 0x1a1a1a,
+      // Neutral dark gray
+      opacity: 0.9,
       transparent: true,
       side: DoubleSide
     });
     const menuBg = new Mesh(menuGeometry, menuMaterial);
     this.projectionMenu.add(menuBg);
 
-    // Menu border
-    const borderGeometry = new PlaneGeometry(menuWidth + 0.02, menuHeight + 0.02);
+    // Subtle white border
+    const borderShape = this.createRoundedRectShape(menuWidth + 0.02, menuHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new ShapeGeometry(borderShape);
+    borderGeometry.translate(-(menuWidth + 0.02) / 2, -(menuHeight + 0.02) / 2, 0);
     const borderMaterial = new MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.4,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: DoubleSide
     });
@@ -29714,48 +29773,18 @@ class VRHUD {
     border.position.z = -0.001;
     this.projectionMenu.add(border);
 
-    // Title with solid background for readability
-    const titleBgGeometry = new PlaneGeometry(menuWidth - 0.04, 0.07);
-    const titleBgMaterial = new MeshBasicMaterial({
-      color: 0x003344,
-      opacity: 1.0,
-      transparent: false
-    });
-    const titleBgMesh = new Mesh(titleBgGeometry, titleBgMaterial);
-    titleBgMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
-    this.projectionMenu.add(titleBgMesh);
-    const titleCanvas = document.createElement('canvas');
-    titleCanvas.width = 256;
-    titleCanvas.height = 32;
-    const titleCtx = titleCanvas.getContext('2d');
-    // Solid background
-
-    titleCtx.fillStyle = '#003344';
-    titleCtx.fillRect(0, 0, 256, 32);
-    // Text
-    titleCtx.fillStyle = '#00ffff';
-    titleCtx.font = 'bold 20px Arial';
-    titleCtx.textAlign = 'center';
-    titleCtx.textBaseline = 'middle';
-    titleCtx.fillText('PROJECTION', 128, 16);
-    const titleTexture = new CanvasTexture(titleCanvas);
-    const titleMaterial = new MeshBasicMaterial({
-      map: titleTexture,
-      transparent: false
-    });
-    const titleGeometry = new PlaneGeometry(0.35, 0.05);
-    const titleMesh = new Mesh(titleGeometry, titleMaterial);
-    titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.002);
-    this.projectionMenu.add(titleMesh);
-
     // Create projection option buttons
     this.projectionOptionButtons = [];
     const startY = menuHeight / 2 - 0.12;
     this.projectionModes.forEach((mode, index) => {
       const btnY = startY - index * 0.08;
 
-      // Button background
-      const btnGeometry = new PlaneGeometry(menuWidth - 0.06, 0.065);
+      // Button background with rounded corners for liquid glass style
+      const btnWidth = menuWidth - 0.06;
+      const btnHeight = 0.065;
+      const btnShape = this.createRoundedRectShape(btnWidth, btnHeight, 0.015);
+      const btnGeometry = new ShapeGeometry(btnShape);
+      btnGeometry.translate(-btnWidth / 2, -btnHeight / 2, 0);
       const btnMaterial = new MeshBasicMaterial({
         color: 0x1a1a3a,
         opacity: 0.9,
@@ -30159,7 +30188,64 @@ class VRHUD {
           this.onFavorite();
         }
         break;
+      case 'force-mono':
+        // Toggle force mono state (persists for VR session duration)
+        this.forceMonoEnabled = !this.forceMonoEnabled;
+        this.updateForceMonoButton();
+        if (this.onForceMonoToggle) {
+          this.onForceMonoToggle(this.forceMonoEnabled);
+        }
+        console.log('[VR HUD] Force Mono:', this.forceMonoEnabled ? 'ON' : 'OFF');
+        break;
     }
+  }
+
+  // Update force mono button visual state
+  updateForceMonoButton() {
+    if (!this.forceMonoBtn) return;
+
+    // Find the button mesh and label mesh
+    const btnMesh = this.forceMonoBtn.children.find(c => c.userData && c.userData.type === 'force-mono');
+    const labelMesh = this.forceMonoBtn.children.find(c => c.material && c.material.map);
+    if (btnMesh) {
+      // Update button color based on state
+      const activeColor = 0x00aa66; // Green when active
+      const inactiveColor = 0x2a3a5a; // Dark blue when inactive
+      btnMesh.material.color.setHex(this.forceMonoEnabled ? activeColor : inactiveColor);
+      btnMesh.userData.baseColor = this.forceMonoEnabled ? activeColor : inactiveColor;
+    }
+    if (labelMesh) {
+      // Update the label to show current state - larger icon for visibility
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      // Draw monocle-style icon - single eye symbol
+      ctx.fillStyle = this.forceMonoEnabled ? '#00ff88' : '#ffffff';
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Use filled circle for active, outlined for inactive
+      ctx.fillText(this.forceMonoEnabled ? '●' : '○', 32, 32);
+      const newTexture = new CanvasTexture(canvas);
+      if (labelMesh.material.map) {
+        labelMesh.material.map.dispose();
+      }
+      labelMesh.material.map = newTexture;
+      labelMesh.material.needsUpdate = true;
+    }
+  }
+
+  // Get force mono state
+  getForceMonoEnabled() {
+    return this.forceMonoEnabled;
+  }
+
+  // Set force mono state (for external control)
+  setForceMonoEnabled(enabled) {
+    this.forceMonoEnabled = enabled;
+    this.updateForceMonoButton();
   }
   resetAutoHideTimer() {
     // Clear existing timer
@@ -30523,6 +30609,19 @@ class VRHUD {
     this.isVisible = true;
     this.hudGroup.visible = true;
     this.cursor.visible = true;
+
+    // Ensure all HUD elements have proper layers for stereo rendering
+    // This prevents double vision issues when showing HUD after video changes
+    this.hudGroup.traverse(obj => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
+    this.cursor.traverse(obj => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
   }
   hide() {
     this.isVisible = false;
@@ -30609,6 +30708,10 @@ class VRGallery {
     this.clipMinY = 0;
     this.clipMaxY = 0;
 
+    // THREE.js clipping planes for proper overflow hidden effect
+    // These will be set in createGalleryFrame after dimensions are known
+    this.clippingPlanes = [];
+
     // Track failed loads to prevent infinite retries
     this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
     this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
@@ -30665,12 +30768,16 @@ class VRGallery {
     // Calculate frame dimensions
     const frameWidth = this.columns * (this.thumbnailWidth + this.thumbnailSpacing) + 0.3;
     const frameHeight = this.visibleRows * (this.thumbnailHeight + this.thumbnailSpacing) + 0.4;
+    const cornerRadius = 0.08;
 
-    // Background panel
-    const frameGeometry = new PlaneGeometry(frameWidth, frameHeight);
+    // Background panel with dark glassmorphic styling (no blue tint)
+    const frameShape = this.createRoundedRectShape(frameWidth, frameHeight, cornerRadius);
+    const frameGeometry = new ShapeGeometry(frameShape);
+    frameGeometry.translate(-frameWidth / 2, -frameHeight / 2, 0);
     const frameMaterial = new MeshBasicMaterial({
-      color: 0x0a0a1a,
-      opacity: 0.95,
+      color: 0x1a1a1a,
+      // Neutral dark gray, no blue tint
+      opacity: 0.85,
       transparent: true,
       side: DoubleSide
     });
@@ -30679,16 +30786,18 @@ class VRGallery {
     this.galleryFrame.position.set(0, 0, 0);
     this.galleryGroup.add(this.galleryFrame);
 
-    // Frame border with glow effect
-    const borderGeometry = new PlaneGeometry(frameWidth + 0.04, frameHeight + 0.04);
+    // Subtle white border (no cyan glow)
+    const borderShape = this.createRoundedRectShape(frameWidth + 0.02, frameHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new ShapeGeometry(borderShape);
+    borderGeometry.translate(-(frameWidth + 0.02) / 2, -(frameHeight + 0.02) / 2, 0);
     const borderMaterial = new MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.4,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: DoubleSide
     });
     const border = new Mesh(borderGeometry, borderMaterial);
-    border.position.z = -0.002;
+    border.position.z = -0.001;
     this.galleryFrame.add(border);
 
     // Close button
@@ -30723,23 +30832,47 @@ class VRGallery {
     const bottomMargin = 0.25; // Larger margin to keep thumbnails inside cyan border
     this.clipMaxY = frameHeight / 2 - topMargin; // Near top edge
     this.clipMinY = -frameHeight / 2 + bottomMargin; // Well above bottom edge
-  }
 
+    // Create THREE.js clipping planes for proper overflow clipping
+    // Top plane: clips anything above clipMaxY (normal points down, -Y direction)
+    // Bottom plane: clips anything below clipMinY (normal points up, +Y direction)
+    // Planes are in local coordinates relative to the thumbnailContainer
+    this.topClipPlane = new Plane(new Vector3(0, -1, 0), this.clipMaxY);
+    this.bottomClipPlane = new Plane(new Vector3(0, 1, 0), -this.clipMinY);
+    this.clippingPlanes = [this.topClipPlane, this.bottomClipPlane];
+
+    // Enable local clipping on the renderer
+    if (this.renderer) {
+      this.renderer.localClippingEnabled = true;
+    }
+  }
   createCloseButton() {
     const btnGroup = new Group();
     btnGroup.name = 'gallery-close-btn';
-    const btnGeometry = new CircleGeometry(0.06, 16);
+    const btnGeometry = new CircleGeometry(0.06, 32);
     const btnMaterial = new MeshBasicMaterial({
-      color: 0xff3366,
+      color: 0x2a2a2a,
+      // Neutral dark gray base
       opacity: 0.9,
       transparent: true
     });
     const btnMesh = new Mesh(btnGeometry, btnMaterial);
     btnMesh.userData.interactive = true;
     btnMesh.userData.type = 'gallery-close';
-    btnMesh.userData.baseColor = 0xff3366;
-    btnMesh.userData.hoverColor = 0xff6699;
+    btnMesh.userData.baseColor = 0x2a2a2a;
+    btnMesh.userData.hoverColor = 0xff3366; // Red on hover
     btnGroup.add(btnMesh);
+
+    // Subtle white border
+    const borderGeometry = new RingGeometry(0.058, 0.062, 32);
+    const borderMaterial = new MeshBasicMaterial({
+      color: 0xffffff,
+      opacity: 0.15,
+      transparent: true
+    });
+    const borderMesh = new Mesh(borderGeometry, borderMaterial);
+    borderMesh.position.z = 0.0005;
+    btnGroup.add(borderMesh);
 
     // X label
     const canvas = document.createElement('canvas');
@@ -30762,26 +30895,52 @@ class VRGallery {
     btnGroup.add(labelMesh);
     return btnGroup;
   }
+
+  // Helper to create vertical pill shape with true semicircular ends
+  createVerticalPillShape(width, height) {
+    const shape = new Shape();
+    const radius = width / 2;
+    // Start at bottom-left
+    shape.moveTo(0, radius);
+    // Left edge going up
+    shape.lineTo(0, height - radius);
+    // Top semicircle (clockwise from left to right)
+    shape.absarc(radius, height - radius, radius, Math.PI, 0, true);
+    // Right edge going down
+    shape.lineTo(width, radius);
+    // Bottom semicircle (clockwise from right to left)
+    shape.absarc(radius, radius, radius, 0, Math.PI, true);
+    return shape;
+  }
   createScrollIndicator() {
     const indicatorGroup = new Group();
     indicatorGroup.name = 'scroll-indicator';
 
-    // Track
+    // Track - dark neutral gray with true semicircular ends (vertical pill)
     const trackHeight = this.frameHeight - 0.4;
-    const trackGeometry = new PlaneGeometry(0.03, trackHeight);
+    const trackWidth = 0.03;
+    const trackShape = this.createVerticalPillShape(trackWidth, trackHeight);
+    const trackGeometry = new ShapeGeometry(trackShape);
+    trackGeometry.translate(-trackWidth / 2, -trackHeight / 2, 0);
     const trackMaterial = new MeshBasicMaterial({
-      color: 0x333355,
+      color: 0x333333,
+      // Neutral dark gray
       opacity: 0.8,
       transparent: true
     });
     const track = new Mesh(trackGeometry, trackMaterial);
     indicatorGroup.add(track);
 
-    // Thumb
-    const thumbGeometry = new PlaneGeometry(0.04, 0.15);
+    // Thumb - white scrollbar with true semicircular ends (vertical pill)
+    const thumbWidth = 0.04;
+    const thumbHeight = 0.15;
+    const thumbShape = this.createVerticalPillShape(thumbWidth, thumbHeight);
+    const thumbGeometry = new ShapeGeometry(thumbShape);
+    thumbGeometry.translate(-thumbWidth / 2, -thumbHeight / 2, 0);
     const thumbMaterial = new MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.9,
+      color: 0xffffff,
+      // White thumb
+      opacity: 0.7,
       transparent: true
     });
     this.scrollThumb = new Mesh(thumbGeometry, thumbMaterial);
@@ -30804,38 +30963,61 @@ class VRGallery {
     const y = -row * (this.thumbnailHeight + this.thumbnailSpacing);
     thumbnailGroup.position.set(x, y + 0.4, 0.01);
 
-    // Thumbnail background
-    const bgGeometry = new PlaneGeometry(this.thumbnailWidth, this.thumbnailHeight);
+    // Rounded corners using a custom shape
+    const cornerRadius = 0.02;
+    const thumbShape = this.createRoundedRectShape(this.thumbnailWidth, this.thumbnailHeight, cornerRadius);
+    const thumbShapeGeometry = new ShapeGeometry(thumbShape);
+
+    // Thumbnail background with dark glassmorphic styling (no blue tint)
+    // Apply clipping planes to keep thumbnails within gallery bounds
     const bgMaterial = new MeshBasicMaterial({
-      color: 0x1a1a3a,
+      color: 0x2a2a2a,
+      // Neutral dark gray
       opacity: 0.9,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
-    const bgMesh = new Mesh(bgGeometry, bgMaterial);
+    const bgMesh = new Mesh(thumbShapeGeometry.clone(), bgMaterial);
+    bgMesh.position.set(-this.thumbnailWidth / 2, -this.thumbnailHeight / 2, 0);
     thumbnailGroup.add(bgMesh);
 
-    // Thumbnail border
-    const borderGeometry = new PlaneGeometry(this.thumbnailWidth + 0.01, this.thumbnailHeight + 0.01);
+    // Subtle white border (no cyan glow)
+    const borderShape = this.createRoundedRectShape(this.thumbnailWidth + 0.01, this.thumbnailHeight + 0.01, cornerRadius + 0.003);
+    const borderGeometry = new ShapeGeometry(borderShape);
     const borderMaterial = new MeshBasicMaterial({
-      color: 0x3a3a5a,
-      opacity: 0.8,
-      transparent: true
+      color: 0xffffff,
+      opacity: 0.15,
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const borderMesh = new Mesh(borderGeometry, borderMaterial);
-    borderMesh.position.z = -0.001;
+    borderMesh.position.set(-this.thumbnailWidth / 2 - 0.005, -this.thumbnailHeight / 2 - 0.005, -0.001);
     thumbnailGroup.add(borderMesh);
 
-    // Image placeholder (will be replaced with actual thumbnail)
-    const imgGeometry = new PlaneGeometry(this.thumbnailWidth - 0.02, this.thumbnailHeight - 0.04);
+    // Image covers the entire card (use same shape as background)
+    const imgGeometry = new ShapeGeometry(thumbShape);
 
-    // Create loading texture
+    // Normalize UVs to 0-1 range - ShapeGeometry creates UVs based on shape coords
+    // which are in world units (0-0.5 x 0-0.3), not normalized for texture mapping
+    const uvAttr = imgGeometry.attributes.uv;
+    if (uvAttr) {
+      for (let i = 0; i < uvAttr.count; i++) {
+        uvAttr.setX(i, uvAttr.getX(i) / this.thumbnailWidth);
+        uvAttr.setY(i, uvAttr.getY(i) / this.thumbnailHeight);
+      }
+      uvAttr.needsUpdate = true;
+    }
+
+    // Create loading texture - neutral dark gray
     const loadingCanvas = document.createElement('canvas');
     loadingCanvas.width = 256;
     loadingCanvas.height = 144;
     const ctx = loadingCanvas.getContext('2d');
-    ctx.fillStyle = '#2a2a4a';
+    ctx.fillStyle = '#333333'; // Neutral dark gray
     ctx.fillRect(0, 0, 256, 144);
-    ctx.fillStyle = '#00ffff';
+    ctx.fillStyle = '#ffffff'; // White text
     ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -30843,10 +31025,13 @@ class VRGallery {
     const loadingTexture = new CanvasTexture(loadingCanvas);
     const imgMaterial = new MeshBasicMaterial({
       map: loadingTexture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const imgMesh = new Mesh(imgGeometry, imgMaterial);
-    imgMesh.position.set(0, 0.02, 0.002);
+    // Position at same spot as background so image covers entire card
+    imgMesh.position.set(-this.thumbnailWidth / 2, -this.thumbnailHeight / 2, 0.002);
     imgMesh.userData.interactive = true;
     imgMesh.userData.type = 'thumbnail';
     imgMesh.userData.index = index;
@@ -30858,26 +31043,47 @@ class VRGallery {
       imgMesh.userData.thumbnailUrl = item.thumbnail;
     }
 
-    // Title label
+    // Store stereo mode for texture UV cropping (sbs = left half, tb = top half)
+    if (item.stereoMode) {
+      imgMesh.userData.stereoMode = item.stereoMode;
+    }
+
+    // Title label - overlaid at bottom edge with semi-transparent background
+    // Rounded corners at bottom to match thumbnail card shape
     const titleCanvas = document.createElement('canvas');
     titleCanvas.width = 256;
-    titleCanvas.height = 32;
+    titleCanvas.height = 40;
     const titleCtx = titleCanvas.getContext('2d');
+    // Semi-transparent dark background with rounded bottom corners
+    const titleCornerRadius = 10; // Match thumbnail corner radius scaled to canvas
+    titleCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    titleCtx.beginPath();
+    titleCtx.moveTo(0, 0);
+    titleCtx.lineTo(256, 0);
+    titleCtx.lineTo(256, 40 - titleCornerRadius);
+    titleCtx.quadraticCurveTo(256, 40, 256 - titleCornerRadius, 40);
+    titleCtx.lineTo(titleCornerRadius, 40);
+    titleCtx.quadraticCurveTo(0, 40, 0, 40 - titleCornerRadius);
+    titleCtx.lineTo(0, 0);
+    titleCtx.fill();
     titleCtx.fillStyle = '#ffffff';
-    titleCtx.font = '18px Arial';
+    titleCtx.font = '16px Arial';
     titleCtx.textAlign = 'center';
     titleCtx.textBaseline = 'middle';
     const title = item.title || `Video ${index + 1}`;
     const truncatedTitle = title.length > 25 ? title.substring(0, 22) + '...' : title;
-    titleCtx.fillText(truncatedTitle, 128, 16);
+    titleCtx.fillText(truncatedTitle, 128, 20);
     const titleTexture = new CanvasTexture(titleCanvas);
     const titleMaterial = new MeshBasicMaterial({
       map: titleTexture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
-    const titleGeometry = new PlaneGeometry(this.thumbnailWidth - 0.02, 0.04);
+    const titleGeometry = new PlaneGeometry(this.thumbnailWidth, 0.05);
     const titleMesh = new Mesh(titleGeometry, titleMaterial);
-    titleMesh.position.set(0, -this.thumbnailHeight / 2 + 0.03, 0.002);
+    // Position at very bottom of the card
+    titleMesh.position.set(0, -this.thumbnailHeight / 2 + 0.025, 0.003);
     thumbnailGroup.add(titleMesh);
 
     // Duration badge (if provided)
@@ -30888,6 +31094,13 @@ class VRGallery {
     }
     this.thumbnailContainer.add(thumbnailGroup);
     this.thumbnailMeshes.push(imgMesh);
+
+    // Enable all layers for this thumbnail so it renders to both eyes
+    thumbnailGroup.traverse(obj => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
     return thumbnailGroup;
   }
   createDurationBadge(duration) {
@@ -30906,7 +31119,9 @@ class VRGallery {
     const texture = new CanvasTexture(canvas);
     const material = new MeshBasicMaterial({
       map: texture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const geometry = new PlaneGeometry(0.1, 0.04);
     return new Mesh(geometry, material);
@@ -30964,6 +31179,56 @@ class VRGallery {
         loader.load(resolvedUrl, texture => {
           texture.minFilter = LinearFilter;
           texture.magFilter = LinearFilter;
+          texture.wrapS = ClampToEdgeWrapping;
+          texture.wrapT = ClampToEdgeWrapping;
+
+          // Get texture dimensions for aspect-fill calculation
+          const imgWidth = texture.image.width;
+          const imgHeight = texture.image.height;
+
+          // Apply stereo cropping first, then aspect-fill
+          const stereoMode = mesh.userData.stereoMode;
+          let effectiveWidth = imgWidth;
+          let effectiveHeight = imgHeight;
+          let stereoOffsetX = 0;
+          let stereoOffsetY = 0;
+          let stereoScaleX = 1;
+          let stereoScaleY = 1;
+          if (stereoMode === 'sbs') {
+            // Left half only
+            effectiveWidth = imgWidth / 2;
+            stereoScaleX = 0.5;
+          } else if (stereoMode === 'tb') {
+            // Top half only
+            effectiveHeight = imgHeight / 2;
+            stereoScaleY = 0.5;
+            stereoOffsetY = 0.5; // Offset to top half
+          }
+
+          // Calculate aspect ratios
+          const textureAspect = effectiveWidth / effectiveHeight;
+          const cardAspect = _this.thumbnailWidth / _this.thumbnailHeight;
+
+          // Aspect-fill: scale texture to cover the entire card, cropping excess
+          let repeatX = stereoScaleX;
+          let repeatY = stereoScaleY;
+          let offsetX = stereoOffsetX;
+          let offsetY = stereoOffsetY;
+          if (textureAspect > cardAspect) {
+            // Texture is wider - need to crop horizontally
+            const scale = cardAspect / textureAspect;
+            repeatX = stereoScaleX * scale;
+            offsetX = stereoOffsetX + (stereoScaleX - repeatX) / 2; // Center horizontally
+          } else {
+            // Texture is taller - need to crop vertically
+            const scale = textureAspect / cardAspect;
+            repeatY = stereoScaleY * scale;
+            offsetY = stereoOffsetY + (stereoScaleY - repeatY) / 2; // Center vertically
+          }
+
+          texture.repeat.set(repeatX, repeatY);
+          texture.offset.set(offsetX, offsetY);
+          texture.needsUpdate = true;
           _this.loadedTextures.set(url, texture);
 
           // Clear failed count on success
@@ -31150,6 +31415,8 @@ class VRGallery {
   }
   handleClick(event) {
     if (!this.isVisible) return;
+    if (this.selectionCooldown) return; // Don't select during cooldown after opening
+
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1;
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -31175,6 +31442,8 @@ class VRGallery {
   }
   handleVRSelect(event) {
     if (!this.isVisible) return;
+    if (this.selectionCooldown) return; // Don't select during cooldown after opening
+
     const controller = event.target;
     const tempMatrix = new Matrix4();
     tempMatrix.identity().extractRotation(controller.matrixWorld);
@@ -31239,6 +31508,17 @@ class VRGallery {
   show() {
     this.isVisible = true;
     this.galleryGroup.visible = true;
+
+    // Enable local clipping on the renderer for thumbnail overflow
+    if (this.renderer) {
+      this.renderer.localClippingEnabled = true;
+    }
+
+    // Prevent immediate selection when gallery opens (cooldown period)
+    this.selectionCooldown = true;
+    setTimeout(() => {
+      this.selectionCooldown = false;
+    }, 300);
 
     // Load thumbnails when gallery is shown (deduplication in viewer prevents infinite loops)
     if (!this.thumbnailsLoaded) {
@@ -31350,19 +31630,41 @@ class VRGallery {
       this.galleryGroup.rotation.set(0, 0, 0);
     }
 
-    // Clip thumbnails outside visible area
-    // Account for thumbnail height - a thumbnail is visible if any part of it is in the clip region
+    // Update clipping planes to match gallery world transform
+    // The planes need to be in world space for proper clipping
+    if (this.topClipPlane && this.bottomClipPlane && this.galleryFrame) {
+      // Get the gallery frame's world matrix
+      this.galleryFrame.updateWorldMatrix(true, false);
+      const worldMatrix = this.galleryFrame.matrixWorld;
+
+      // Get world position and orientation
+      const worldPos = new Vector3();
+      const worldQuat = new Quaternion();
+      worldMatrix.decompose(worldPos, worldQuat, new Vector3());
+
+      // Transform the local clipping planes to world space
+      // Top plane clips above clipMaxY in local Y
+      const topNormal = new Vector3(0, -1, 0).applyQuaternion(worldQuat);
+      const topPoint = new Vector3(0, this.clipMaxY, 0).applyMatrix4(worldMatrix);
+      this.topClipPlane.setFromNormalAndCoplanarPoint(topNormal, topPoint);
+
+      // Bottom plane clips below clipMinY in local Y
+      const bottomNormal = new Vector3(0, 1, 0).applyQuaternion(worldQuat);
+      const bottomPoint = new Vector3(0, this.clipMinY, 0).applyMatrix4(worldMatrix);
+      this.bottomClipPlane.setFromNormalAndCoplanarPoint(bottomNormal, bottomPoint);
+    }
+
+    // Also use visibility toggle for performance (don't render completely hidden thumbnails)
     const halfHeight = this.thumbnailHeight / 2;
     this.thumbnailMeshes.forEach((thumbnail, index) => {
       if (thumbnail && thumbnail.parent) {
-        // Use parent group position (thumbnailGroup), not the imgMesh position
         const thumbnailGroup = thumbnail.parent;
         const thumbnailY = thumbnailGroup.position.y + this.scrollPosition;
-        // Check if thumbnail's top or bottom edge is within clip region
         const thumbnailTop = thumbnailY + halfHeight;
         const thumbnailBottom = thumbnailY - halfHeight;
-        const visible = thumbnailBottom <= this.clipMaxY && thumbnailTop >= this.clipMinY;
-        thumbnailGroup.visible = visible; // Hide the whole group, not just the img mesh
+        // Hide only when completely outside the visible region (with some buffer for partial clipping)
+        const visible = thumbnailBottom <= this.clipMaxY + halfHeight && thumbnailTop >= this.clipMinY - halfHeight;
+        thumbnailGroup.visible = visible;
       }
     });
 
@@ -31372,6 +31674,23 @@ class VRGallery {
       this.lastThumbnailLoad = now;
       this.loadVisibleThumbnails();
     }
+  }
+
+  // Helper to create rounded rectangle shapes for glassmorphic thumbnails
+  createRoundedRectShape(width, height, radius) {
+    const shape = new Shape();
+    const x = 0;
+    const y = 0;
+    shape.moveTo(x + radius, y);
+    shape.lineTo(x + width - radius, y);
+    shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+    shape.lineTo(x + width, y + height - radius);
+    shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    shape.lineTo(x + radius, y + height);
+    shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+    shape.lineTo(x, y + radius);
+    shape.quadraticCurveTo(x, y, x + radius, y);
+    return shape;
   }
   dispose() {
     this.clearThumbnails();
@@ -31492,6 +31811,18 @@ class CardboardButton extends Button {
           vr.renderer.xr.setSession(session);
           vr.xrSession_ = session;
           this.active_ = true;
+
+          // Rebuild SBS_MONO projection to create stereo meshes now that we're in XR
+          // This is needed because SBS_MONO creates different geometry in XR vs browser mode
+          if (vr.currentProjection_ === 'SBS_MONO') {
+            vr.log('Rebuilding SBS_MONO projection for WebXR stereo');
+            // Small delay to ensure XR is fully initialized
+            setTimeout(() => {
+              if (vr.renderer.xr.isPresenting) {
+                vr.setProjection('SBS_MONO');
+              }
+            }, 100);
+          }
           session.addEventListener('end', () => {
             vr.xrSession_ = null;
             this.active_ = false;
@@ -32321,7 +32652,102 @@ void main() {
       if (this.movieScreen) {
         this.scene.add(this.movieScreen);
       }
+
+      // Reapply force mono if it was enabled (meshes were just recreated)
+      if (this.forceMonoEnabled) {
+        this.originalLayerStates_ = null; // Clear old states
+        this.applyForceMonoProjection_();
+      }
+
+      // Ensure VR HUD and Gallery have proper layers after projection change
+      // This prevents double vision issues
+      if (this.vrHUD && this.vrHUD.hudGroup) {
+        this.vrHUD.hudGroup.traverse(obj => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+      if (this.vrGallery && this.vrGallery.galleryGroup) {
+        this.vrGallery.galleryGroup.traverse(obj => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
       this.log('Projection rebuilt successfully');
+    }
+  }
+
+  /**
+   * Apply force mono projection - uses left eye for both eyes in HMD
+   * This makes the left eye mesh visible to BOTH eyes in VR (layers 1 and 2)
+   * and hides the right eye mesh, so both eyes see the left half of stereo content
+   */
+  applyForceMonoProjection_() {
+    if (!this.renderer || !this.renderer.xr || !this.renderer.xr.isPresenting) {
+      return;
+    }
+    if (!this.scene) {
+      return;
+    }
+    this.log('Force Mono:', this.forceMonoEnabled ? 'ENABLING' : 'DISABLING');
+
+    // Use stored mesh references for SBS stereo content
+    const leftMesh = this.movieScreenLeft;
+    const rightMesh = this.movieScreenRight;
+    if (leftMesh && rightMesh) {
+      // SBS stereo mode - use direct mesh references
+      this.log('Using stored SBS mesh references');
+      if (this.forceMonoEnabled) {
+        // Make left eye mesh visible to BOTH eyes using .set() for definitive assignment
+        // .set() clears all layers first then enables the specified one
+        leftMesh.layers.set(1);
+        leftMesh.layers.enable(2); // Add layer 2 for right eye
+        // Hide right eye mesh completely - set to layer 0 only (not visible in VR)
+        rightMesh.layers.set(0);
+        this.log('Mono enabled: left mesh on layers 1+2, right mesh on layer 0');
+      } else {
+        // Restore stereoscopic - use .set() for definitive layer assignment
+        // This immediately sets the layer mask without any race conditions
+        leftMesh.layers.set(1); // Left eye only
+        rightMesh.layers.set(2); // Right eye only
+        this.log('Stereo restored: left on layer 1, right on layer 2');
+      }
+
+      // Force material update to ensure rendering reflects the layer changes
+      if (leftMesh.material) leftMesh.material.needsUpdate = true;
+      if (rightMesh.material) rightMesh.material.needsUpdate = true;
+    } else if (this.movieScreen) {
+      // Non-SBS mode (360, 180, flat) - single mesh
+      this.log('Using single movieScreen mesh');
+      if (this.forceMonoEnabled) {
+        // Ensure visible to both eyes
+        this.movieScreen.layers.set(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+        this.log('Mono enabled: movieScreen on all layers');
+      } else {
+        // Same for non-stereo content
+        this.movieScreen.layers.set(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+        this.log('Stereo mode: movieScreen on all layers (non-stereo content)');
+      }
+
+      // Force material update
+      if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+    } else {
+      this.log('No video meshes found - nothing to toggle');
+    }
+
+    // Ensure VR HUD maintains proper layer visibility after any mono/stereo change
+    if (this.vrHUD && this.vrHUD.hudGroup) {
+      this.vrHUD.hudGroup.traverse(obj => {
+        if (obj.isMesh || obj.isGroup) {
+          obj.layers.enableAll();
+        }
+      });
     }
   }
   init() {
@@ -32351,6 +32777,30 @@ void main() {
       // Dispose old texture after updating all references
       if (oldVideoTexture) {
         oldVideoTexture.dispose();
+      }
+
+      // Reapply force mono if it was enabled (mesh layer masks are preserved)
+      // Clear stored states so they get recaptured with new texture references
+      if (this.forceMonoEnabled) {
+        this.originalLayerStates_ = null;
+        this.applyForceMonoProjection_();
+      }
+
+      // Ensure VR HUD and Gallery have proper layers after video source change
+      // This prevents double vision issues during navigation
+      if (this.vrHUD && this.vrHUD.hudGroup) {
+        this.vrHUD.hudGroup.traverse(obj => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+      if (this.vrGallery && this.vrGallery.galleryGroup) {
+        this.vrGallery.galleryGroup.traverse(obj => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
       }
       return;
     }
@@ -32668,6 +33118,10 @@ void main() {
     // set the current projection to the default
     this.currentProjection_ = this.defaultProjection_;
 
+    // Initialize force mono state (persists for VR session)
+    this.forceMonoEnabled = false;
+    this.originalProjection_ = null;
+
     // reset the ios touch to click workaround
     if (this.iosRevertTouchToClick_) {
       this.iosRevertTouchToClick_();
@@ -32751,35 +33205,133 @@ void main() {
         this.options_.onFavorite();
         this.trigger('vr-favorite');
       } : null,
-      onOrientationChange: euler => {
-        // Apply rotation to ALL video meshes for real-time visual feedback
-        // In stereo modes (360_LR, 180_LR), there are separate meshes for each eye
-        // Ensure YXZ order to prevent horizon roll - only yaw (left/right) and pitch (up/down)
-        const safeEuler = new Euler(euler.x, euler.y, 0, 'YXZ');
-        const offsetQuat = new Quaternion().setFromEuler(safeEuler);
+      onForceMonoToggle: enabled => {
+        // Handle force mono toggle - uses left eye for both eyes
+        console.log('[VR Plugin] Force Mono toggle:', enabled);
+        this.forceMonoEnabled = enabled;
 
-        // Find all video screen meshes in the scene
-        // Check BOTH for videoTexture AND posterTexture to handle both eyes
-        this.scene.traverse(object => {
-          if (object.isMesh && object.material && object.material.map) {
-            // Match video meshes by checking for either videoTexture or posterTexture
-            const isVideoMesh = object.material.map === this.videoTexture || this.posterTexture && object.material.map === this.posterTexture;
-            if (isVideoMesh) {
-              // Get the base rotation (initial orientation)
-              const baseQuat = new Quaternion();
-              if (object.userData.baseQuaternion) {
-                baseQuat.copy(object.userData.baseQuaternion);
-              } else {
-                // Store initial quaternion on first use
-                object.userData.baseQuaternion = object.quaternion.clone();
-                baseQuat.copy(object.quaternion);
-              }
-
-              // Apply offset rotation on top of base rotation
-              object.quaternion.copy(baseQuat).multiply(offsetQuat);
-            }
+        // Always apply the projection immediately, checking for meshes
+        // Use immediate layer changes without waiting for next frame
+        const leftMesh = this.movieScreenLeft;
+        const rightMesh = this.movieScreenRight;
+        if (leftMesh && rightMesh) {
+          if (enabled) {
+            // Mono: show left eye to both eyes
+            leftMesh.layers.set(1);
+            leftMesh.layers.enable(2);
+            rightMesh.layers.set(0);
+          } else {
+            // Stereo: restore separate eyes
+            leftMesh.layers.set(1);
+            rightMesh.layers.set(2);
           }
+          if (leftMesh.material) leftMesh.material.needsUpdate = true;
+          if (rightMesh.material) rightMesh.material.needsUpdate = true;
+          console.log('[VR Plugin] Layer change applied - mono:', enabled);
+        } else if (this.movieScreen) {
+          // Non-SBS content - ensure visible to both eyes
+          this.movieScreen.layers.set(0);
+          this.movieScreen.layers.enable(1);
+          this.movieScreen.layers.enable(2);
+          if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+          console.log('[VR Plugin] Non-SBS movieScreen layers applied');
+        } else {
+          console.warn('[VR Plugin] No video meshes found for mono toggle');
+        }
+
+        // ALWAYS refresh VR HUD layers to prevent double vision
+        // This must happen regardless of whether applyForceMonoProjection_ runs
+        if (this.vrHUD && this.vrHUD.hudGroup) {
+          this.vrHUD.hudGroup.traverse(obj => {
+            if (obj.isMesh || obj.isGroup) {
+              obj.layers.enableAll();
+            }
+          });
+          console.log('[VR Plugin] VR HUD layers refreshed');
+        }
+
+        // Also refresh VR Gallery layers if it exists
+        if (this.vrGallery && this.vrGallery.galleryGroup) {
+          this.vrGallery.galleryGroup.traverse(obj => {
+            if (obj.isMesh || obj.isGroup) {
+              obj.layers.enableAll();
+            }
+          });
+        }
+        if (this.options_.onForceMonoToggle) {
+          this.options_.onForceMonoToggle(enabled);
+        }
+        this.trigger('vr-force-mono', {
+          enabled
         });
+      },
+      onOrientationChange: euler => {
+        // For SBS_MONO (flat screen): translate the plane position in space
+        // For other projections (360, 180, etc.): rotate the sphere/hemisphere
+        const isSBS = this.currentProjection_ === 'SBS_MONO';
+        if (isSBS) {
+          const distance = 3; // Base distance from camera
+
+          // Convert euler angles to position offset on a sphere around the camera
+          // x rotation moves up/down, y rotation moves left/right
+          const offsetX = -Math.sin(euler.y) * distance;
+          const offsetY = Math.sin(euler.x) * distance;
+          const offsetZ = -Math.cos(euler.y) * Math.cos(euler.x) * distance;
+
+          // Apply position to both SBS meshes
+          if (this.movieScreenLeft) {
+            if (!this.movieScreenLeft.userData.basePosition) {
+              this.movieScreenLeft.userData.basePosition = this.movieScreenLeft.position.clone();
+            }
+            this.movieScreenLeft.position.set(offsetX, offsetY, offsetZ);
+            // Make the plane face the camera
+            this.movieScreenLeft.lookAt(this.camera.position);
+          }
+          if (this.movieScreenRight) {
+            if (!this.movieScreenRight.userData.basePosition) {
+              this.movieScreenRight.userData.basePosition = this.movieScreenRight.position.clone();
+            }
+            this.movieScreenRight.position.set(offsetX, offsetY, offsetZ);
+            // Make the plane face the camera
+            this.movieScreenRight.lookAt(this.camera.position);
+          }
+          // Also handle single movieScreen for non-XR mode
+          if (this.movieScreen && !this.movieScreenLeft) {
+            if (!this.movieScreen.userData.basePosition) {
+              this.movieScreen.userData.basePosition = this.movieScreen.position.clone();
+            }
+            this.movieScreen.position.set(offsetX, offsetY, offsetZ);
+            this.movieScreen.lookAt(this.camera.position);
+          }
+        } else {
+          // Non-SBS mode: Apply rotation to video meshes
+          // Ensure YXZ order to prevent horizon roll - only yaw (left/right) and pitch (up/down)
+          const safeEuler = new Euler(euler.x, euler.y, 0, 'YXZ');
+          const offsetQuat = new Quaternion().setFromEuler(safeEuler);
+
+          // Find all video screen meshes in the scene
+          // Check BOTH for videoTexture AND posterTexture to handle both eyes
+          this.scene.traverse(object => {
+            if (object.isMesh && object.material && object.material.map) {
+              // Match video meshes by checking for either videoTexture or posterTexture
+              const isVideoMesh = object.material.map === this.videoTexture || this.posterTexture && object.material.map === this.posterTexture;
+              if (isVideoMesh) {
+                // Get the base rotation (initial orientation)
+                const baseQuat = new Quaternion();
+                if (object.userData.baseQuaternion) {
+                  baseQuat.copy(object.userData.baseQuaternion);
+                } else {
+                  // Store initial quaternion on first use
+                  object.userData.baseQuaternion = object.quaternion.clone();
+                  baseQuat.copy(object.quaternion);
+                }
+
+                // Apply offset rotation on top of base rotation
+                object.quaternion.copy(baseQuat).multiply(offsetQuat);
+              }
+            }
+          });
+        }
         this.trigger('vr-orientation-change', euler);
       }
     });

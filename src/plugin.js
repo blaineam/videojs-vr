@@ -851,7 +851,108 @@ void main() {
         this.scene.add(this.movieScreen);
       }
 
+      // Reapply force mono if it was enabled (meshes were just recreated)
+      if (this.forceMonoEnabled) {
+        this.originalLayerStates_ = null; // Clear old states
+        this.applyForceMonoProjection_();
+      }
+
+      // Ensure VR HUD and Gallery have proper layers after projection change
+      // This prevents double vision issues
+      if (this.vrHUD && this.vrHUD.hudGroup) {
+        this.vrHUD.hudGroup.traverse((obj) => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+      if (this.vrGallery && this.vrGallery.galleryGroup) {
+        this.vrGallery.galleryGroup.traverse((obj) => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+
       this.log('Projection rebuilt successfully');
+    }
+  }
+
+  /**
+   * Apply force mono projection - uses left eye for both eyes in HMD
+   * This makes the left eye mesh visible to BOTH eyes in VR (layers 1 and 2)
+   * and hides the right eye mesh, so both eyes see the left half of stereo content
+   */
+  applyForceMonoProjection_() {
+    if (!this.renderer || !this.renderer.xr || !this.renderer.xr.isPresenting) {
+      return;
+    }
+
+    if (!this.scene) {
+      return;
+    }
+
+    this.log('Force Mono:', this.forceMonoEnabled ? 'ENABLING' : 'DISABLING');
+
+    // Use stored mesh references for SBS stereo content
+    const leftMesh = this.movieScreenLeft;
+    const rightMesh = this.movieScreenRight;
+
+    if (leftMesh && rightMesh) {
+      // SBS stereo mode - use direct mesh references
+      this.log('Using stored SBS mesh references');
+
+      if (this.forceMonoEnabled) {
+        // Make left eye mesh visible to BOTH eyes using .set() for definitive assignment
+        // .set() clears all layers first then enables the specified one
+        leftMesh.layers.set(1);
+        leftMesh.layers.enable(2); // Add layer 2 for right eye
+        // Hide right eye mesh completely - set to layer 0 only (not visible in VR)
+        rightMesh.layers.set(0);
+        this.log('Mono enabled: left mesh on layers 1+2, right mesh on layer 0');
+      } else {
+        // Restore stereoscopic - use .set() for definitive layer assignment
+        // This immediately sets the layer mask without any race conditions
+        leftMesh.layers.set(1); // Left eye only
+        rightMesh.layers.set(2); // Right eye only
+        this.log('Stereo restored: left on layer 1, right on layer 2');
+      }
+
+      // Force material update to ensure rendering reflects the layer changes
+      if (leftMesh.material) leftMesh.material.needsUpdate = true;
+      if (rightMesh.material) rightMesh.material.needsUpdate = true;
+
+    } else if (this.movieScreen) {
+      // Non-SBS mode (360, 180, flat) - single mesh
+      this.log('Using single movieScreen mesh');
+
+      if (this.forceMonoEnabled) {
+        // Ensure visible to both eyes
+        this.movieScreen.layers.set(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+        this.log('Mono enabled: movieScreen on all layers');
+      } else {
+        // Same for non-stereo content
+        this.movieScreen.layers.set(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+        this.log('Stereo mode: movieScreen on all layers (non-stereo content)');
+      }
+
+      // Force material update
+      if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+    } else {
+      this.log('No video meshes found - nothing to toggle');
+    }
+
+    // Ensure VR HUD maintains proper layer visibility after any mono/stereo change
+    if (this.vrHUD && this.vrHUD.hudGroup) {
+      this.vrHUD.hudGroup.traverse((obj) => {
+        if (obj.isMesh || obj.isGroup) {
+          obj.layers.enableAll();
+        }
+      });
     }
   }
 
@@ -884,6 +985,31 @@ void main() {
       if (oldVideoTexture) {
         oldVideoTexture.dispose();
       }
+
+      // Reapply force mono if it was enabled (mesh layer masks are preserved)
+      // Clear stored states so they get recaptured with new texture references
+      if (this.forceMonoEnabled) {
+        this.originalLayerStates_ = null;
+        this.applyForceMonoProjection_();
+      }
+
+      // Ensure VR HUD and Gallery have proper layers after video source change
+      // This prevents double vision issues during navigation
+      if (this.vrHUD && this.vrHUD.hudGroup) {
+        this.vrHUD.hudGroup.traverse((obj) => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+      if (this.vrGallery && this.vrGallery.galleryGroup) {
+        this.vrGallery.galleryGroup.traverse((obj) => {
+          if (obj.isMesh || obj.isGroup) {
+            obj.layers.enableAll();
+          }
+        });
+      }
+
       return;
     }
 
@@ -1238,6 +1364,10 @@ void main() {
     // set the current projection to the default
     this.currentProjection_ = this.defaultProjection_;
 
+    // Initialize force mono state (persists for VR session)
+    this.forceMonoEnabled = false;
+    this.originalProjection_ = null;
+
     // reset the ios touch to click workaround
     if (this.iosRevertTouchToClick_) {
       this.iosRevertTouchToClick_();
@@ -1320,38 +1450,142 @@ void main() {
         this.options_.onFavorite();
         this.trigger('vr-favorite');
       } : null,
-      onOrientationChange: (euler) => {
-        // Apply rotation to ALL video meshes for real-time visual feedback
-        // In stereo modes (360_LR, 180_LR), there are separate meshes for each eye
-        // Ensure YXZ order to prevent horizon roll - only yaw (left/right) and pitch (up/down)
-        const safeEuler = new THREE.Euler(euler.x, euler.y, 0, 'YXZ');
-        const offsetQuat = new THREE.Quaternion().setFromEuler(safeEuler);
+      onForceMonoToggle: (enabled) => {
+        // Handle force mono toggle - uses left eye for both eyes
+        console.log('[VR Plugin] Force Mono toggle:', enabled);
+        this.forceMonoEnabled = enabled;
 
-        // Find all video screen meshes in the scene
-        // Check BOTH for videoTexture AND posterTexture to handle both eyes
-        this.scene.traverse((object) => {
-          if (object.isMesh && object.material && object.material.map) {
-            // Match video meshes by checking for either videoTexture or posterTexture
-            const isVideoMesh = object.material.map === this.videoTexture ||
-                               (this.posterTexture && object.material.map === this.posterTexture);
+        // Always apply the projection immediately, checking for meshes
+        // Use immediate layer changes without waiting for next frame
+        const leftMesh = this.movieScreenLeft;
+        const rightMesh = this.movieScreenRight;
 
-            if (isVideoMesh) {
-              // Get the base rotation (initial orientation)
-              const baseQuat = new THREE.Quaternion();
-
-              if (object.userData.baseQuaternion) {
-                baseQuat.copy(object.userData.baseQuaternion);
-              } else {
-                // Store initial quaternion on first use
-                object.userData.baseQuaternion = object.quaternion.clone();
-                baseQuat.copy(object.quaternion);
-              }
-
-              // Apply offset rotation on top of base rotation
-              object.quaternion.copy(baseQuat).multiply(offsetQuat);
-            }
+        if (leftMesh && rightMesh) {
+          if (enabled) {
+            // Mono: show left eye to both eyes
+            leftMesh.layers.set(1);
+            leftMesh.layers.enable(2);
+            rightMesh.layers.set(0);
+          } else {
+            // Stereo: restore separate eyes
+            leftMesh.layers.set(1);
+            rightMesh.layers.set(2);
           }
-        });
+          if (leftMesh.material) leftMesh.material.needsUpdate = true;
+          if (rightMesh.material) rightMesh.material.needsUpdate = true;
+          console.log('[VR Plugin] Layer change applied - mono:', enabled);
+        } else if (this.movieScreen) {
+          // Non-SBS content - ensure visible to both eyes
+          this.movieScreen.layers.set(0);
+          this.movieScreen.layers.enable(1);
+          this.movieScreen.layers.enable(2);
+          if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+          console.log('[VR Plugin] Non-SBS movieScreen layers applied');
+        } else {
+          console.warn('[VR Plugin] No video meshes found for mono toggle');
+        }
+
+        // ALWAYS refresh VR HUD layers to prevent double vision
+        // This must happen regardless of whether applyForceMonoProjection_ runs
+        if (this.vrHUD && this.vrHUD.hudGroup) {
+          this.vrHUD.hudGroup.traverse((obj) => {
+            if (obj.isMesh || obj.isGroup) {
+              obj.layers.enableAll();
+            }
+          });
+          console.log('[VR Plugin] VR HUD layers refreshed');
+        }
+
+        // Also refresh VR Gallery layers if it exists
+        if (this.vrGallery && this.vrGallery.galleryGroup) {
+          this.vrGallery.galleryGroup.traverse((obj) => {
+            if (obj.isMesh || obj.isGroup) {
+              obj.layers.enableAll();
+            }
+          });
+        }
+
+        if (this.options_.onForceMonoToggle) {
+          this.options_.onForceMonoToggle(enabled);
+        }
+        this.trigger('vr-force-mono', { enabled });
+      },
+      onOrientationChange: (euler) => {
+        // For SBS_MONO (flat screen): translate the plane position in space
+        // For other projections (360, 180, etc.): rotate the sphere/hemisphere
+        const isSBS = this.currentProjection_ === 'SBS_MONO';
+
+        if (isSBS) {
+          // SBS mode: Move the 2D plane in space
+          // This allows positioning the screen on ceiling for lying down viewing
+          // euler.x (pitch): moves screen up/down (positive = up)
+          // euler.y (yaw): moves screen left/right (positive = left)
+          const moveScale = 3; // Scale factor for position movement
+          const distance = 3; // Base distance from camera
+
+          // Convert euler angles to position offset on a sphere around the camera
+          // x rotation moves up/down, y rotation moves left/right
+          const offsetX = -Math.sin(euler.y) * distance;
+          const offsetY = Math.sin(euler.x) * distance;
+          const offsetZ = -Math.cos(euler.y) * Math.cos(euler.x) * distance;
+
+          // Apply position to both SBS meshes
+          if (this.movieScreenLeft) {
+            if (!this.movieScreenLeft.userData.basePosition) {
+              this.movieScreenLeft.userData.basePosition = this.movieScreenLeft.position.clone();
+            }
+            this.movieScreenLeft.position.set(offsetX, offsetY, offsetZ);
+            // Make the plane face the camera
+            this.movieScreenLeft.lookAt(this.camera.position);
+          }
+          if (this.movieScreenRight) {
+            if (!this.movieScreenRight.userData.basePosition) {
+              this.movieScreenRight.userData.basePosition = this.movieScreenRight.position.clone();
+            }
+            this.movieScreenRight.position.set(offsetX, offsetY, offsetZ);
+            // Make the plane face the camera
+            this.movieScreenRight.lookAt(this.camera.position);
+          }
+          // Also handle single movieScreen for non-XR mode
+          if (this.movieScreen && !this.movieScreenLeft) {
+            if (!this.movieScreen.userData.basePosition) {
+              this.movieScreen.userData.basePosition = this.movieScreen.position.clone();
+            }
+            this.movieScreen.position.set(offsetX, offsetY, offsetZ);
+            this.movieScreen.lookAt(this.camera.position);
+          }
+        } else {
+          // Non-SBS mode: Apply rotation to video meshes
+          // Ensure YXZ order to prevent horizon roll - only yaw (left/right) and pitch (up/down)
+          const safeEuler = new THREE.Euler(euler.x, euler.y, 0, 'YXZ');
+          const offsetQuat = new THREE.Quaternion().setFromEuler(safeEuler);
+
+          // Find all video screen meshes in the scene
+          // Check BOTH for videoTexture AND posterTexture to handle both eyes
+          this.scene.traverse((object) => {
+            if (object.isMesh && object.material && object.material.map) {
+              // Match video meshes by checking for either videoTexture or posterTexture
+              const isVideoMesh = object.material.map === this.videoTexture ||
+                                 (this.posterTexture && object.material.map === this.posterTexture);
+
+              if (isVideoMesh) {
+                // Get the base rotation (initial orientation)
+                const baseQuat = new THREE.Quaternion();
+
+                if (object.userData.baseQuaternion) {
+                  baseQuat.copy(object.userData.baseQuaternion);
+                } else {
+                  // Store initial quaternion on first use
+                  object.userData.baseQuaternion = object.quaternion.clone();
+                  baseQuat.copy(object.quaternion);
+                }
+
+                // Apply offset rotation on top of base rotation
+                object.quaternion.copy(baseQuat).multiply(offsetQuat);
+              }
+            }
+          });
+        }
 
         this.trigger('vr-orientation-change', euler);
       }

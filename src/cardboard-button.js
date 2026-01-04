@@ -111,6 +111,18 @@ class CardboardButton extends Button {
           vr.xrSession_ = session;
           this.active_ = true;
 
+          // Rebuild SBS_MONO projection to create stereo meshes now that we're in XR
+          // This is needed because SBS_MONO creates different geometry in XR vs browser mode
+          if (vr.currentProjection_ === 'SBS_MONO') {
+            vr.log('Rebuilding SBS_MONO projection for WebXR stereo');
+            // Small delay to ensure XR is fully initialized
+            setTimeout(() => {
+              if (vr.renderer.xr.isPresenting) {
+                vr.setProjection('SBS_MONO');
+              }
+            }, 100);
+          }
+
           session.addEventListener('end', () => {
             vr.xrSession_ = null;
             this.active_ = false;

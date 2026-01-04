@@ -31,6 +31,10 @@ class VRGallery {
     this.clipMinY = 0;
     this.clipMaxY = 0;
 
+    // THREE.js clipping planes for proper overflow hidden effect
+    // These will be set in createGalleryFrame after dimensions are known
+    this.clippingPlanes = [];
+
     // Track failed loads to prevent infinite retries
     this.failedLoads = new Map(); // url -> {retries: number, lastAttempt: timestamp}
     this.permanentlyFailedThumbnails = new Set(); // URLs that have exceeded max retries - NEVER retry
@@ -90,12 +94,15 @@ class VRGallery {
     // Calculate frame dimensions
     const frameWidth = this.columns * (this.thumbnailWidth + this.thumbnailSpacing) + 0.3;
     const frameHeight = this.visibleRows * (this.thumbnailHeight + this.thumbnailSpacing) + 0.4;
+    const cornerRadius = 0.08;
 
-    // Background panel
-    const frameGeometry = new THREE.PlaneGeometry(frameWidth, frameHeight);
+    // Background panel with dark glassmorphic styling (no blue tint)
+    const frameShape = this.createRoundedRectShape(frameWidth, frameHeight, cornerRadius);
+    const frameGeometry = new THREE.ShapeGeometry(frameShape);
+    frameGeometry.translate(-frameWidth / 2, -frameHeight / 2, 0);
     const frameMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0a0a1a,
-      opacity: 0.95,
+      color: 0x1a1a1a, // Neutral dark gray, no blue tint
+      opacity: 0.85,
       transparent: true,
       side: THREE.DoubleSide
     });
@@ -105,16 +112,18 @@ class VRGallery {
     this.galleryFrame.position.set(0, 0, 0);
     this.galleryGroup.add(this.galleryFrame);
 
-    // Frame border with glow effect
-    const borderGeometry = new THREE.PlaneGeometry(frameWidth + 0.04, frameHeight + 0.04);
+    // Subtle white border (no cyan glow)
+    const borderShape = this.createRoundedRectShape(frameWidth + 0.02, frameHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new THREE.ShapeGeometry(borderShape);
+    borderGeometry.translate(-(frameWidth + 0.02) / 2, -(frameHeight + 0.02) / 2, 0);
     const borderMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.4,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: THREE.DoubleSide
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
-    border.position.z = -0.002;
+    border.position.z = -0.001;
     this.galleryFrame.add(border);
 
     // Close button
@@ -153,24 +162,48 @@ class VRGallery {
     const bottomMargin = 0.25; // Larger margin to keep thumbnails inside cyan border
     this.clipMaxY = frameHeight / 2 - topMargin; // Near top edge
     this.clipMinY = -frameHeight / 2 + bottomMargin; // Well above bottom edge
+
+    // Create THREE.js clipping planes for proper overflow clipping
+    // Top plane: clips anything above clipMaxY (normal points down, -Y direction)
+    // Bottom plane: clips anything below clipMinY (normal points up, +Y direction)
+    // Planes are in local coordinates relative to the thumbnailContainer
+    this.topClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), this.clipMaxY);
+    this.bottomClipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.clipMinY);
+    this.clippingPlanes = [this.topClipPlane, this.bottomClipPlane];
+
+    // Enable local clipping on the renderer
+    if (this.renderer) {
+      this.renderer.localClippingEnabled = true;
+    }
   }
 
   createCloseButton() {
     const btnGroup = new THREE.Group();
     btnGroup.name = 'gallery-close-btn';
 
-    const btnGeometry = new THREE.CircleGeometry(0.06, 16);
+    const btnGeometry = new THREE.CircleGeometry(0.06, 32);
     const btnMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff3366,
+      color: 0x2a2a2a, // Neutral dark gray base
       opacity: 0.9,
       transparent: true
     });
     const btnMesh = new THREE.Mesh(btnGeometry, btnMaterial);
     btnMesh.userData.interactive = true;
     btnMesh.userData.type = 'gallery-close';
-    btnMesh.userData.baseColor = 0xff3366;
-    btnMesh.userData.hoverColor = 0xff6699;
+    btnMesh.userData.baseColor = 0x2a2a2a;
+    btnMesh.userData.hoverColor = 0xff3366; // Red on hover
     btnGroup.add(btnMesh);
+
+    // Subtle white border
+    const borderGeometry = new THREE.RingGeometry(0.058, 0.062, 32);
+    const borderMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      opacity: 0.15,
+      transparent: true
+    });
+    const borderMesh = new THREE.Mesh(borderGeometry, borderMaterial);
+    borderMesh.position.z = 0.0005;
+    btnGroup.add(borderMesh);
 
     // X label
     const canvas = document.createElement('canvas');
@@ -196,26 +229,50 @@ class VRGallery {
     return btnGroup;
   }
 
+  // Helper to create vertical pill shape with true semicircular ends
+  createVerticalPillShape(width, height) {
+    const shape = new THREE.Shape();
+    const radius = width / 2;
+    // Start at bottom-left
+    shape.moveTo(0, radius);
+    // Left edge going up
+    shape.lineTo(0, height - radius);
+    // Top semicircle (clockwise from left to right)
+    shape.absarc(radius, height - radius, radius, Math.PI, 0, true);
+    // Right edge going down
+    shape.lineTo(width, radius);
+    // Bottom semicircle (clockwise from right to left)
+    shape.absarc(radius, radius, radius, 0, Math.PI, true);
+    return shape;
+  }
+
   createScrollIndicator() {
     const indicatorGroup = new THREE.Group();
     indicatorGroup.name = 'scroll-indicator';
 
-    // Track
+    // Track - dark neutral gray with true semicircular ends (vertical pill)
     const trackHeight = this.frameHeight - 0.4;
-    const trackGeometry = new THREE.PlaneGeometry(0.03, trackHeight);
+    const trackWidth = 0.03;
+    const trackShape = this.createVerticalPillShape(trackWidth, trackHeight);
+    const trackGeometry = new THREE.ShapeGeometry(trackShape);
+    trackGeometry.translate(-trackWidth / 2, -trackHeight / 2, 0);
     const trackMaterial = new THREE.MeshBasicMaterial({
-      color: 0x333355,
+      color: 0x333333, // Neutral dark gray
       opacity: 0.8,
       transparent: true
     });
     const track = new THREE.Mesh(trackGeometry, trackMaterial);
     indicatorGroup.add(track);
 
-    // Thumb
-    const thumbGeometry = new THREE.PlaneGeometry(0.04, 0.15);
+    // Thumb - white scrollbar with true semicircular ends (vertical pill)
+    const thumbWidth = 0.04;
+    const thumbHeight = 0.15;
+    const thumbShape = this.createVerticalPillShape(thumbWidth, thumbHeight);
+    const thumbGeometry = new THREE.ShapeGeometry(thumbShape);
+    thumbGeometry.translate(-thumbWidth / 2, -thumbHeight / 2, 0);
     const thumbMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.9,
+      color: 0xffffff, // White thumb
+      opacity: 0.7,
       transparent: true
     });
     this.scrollThumb = new THREE.Mesh(thumbGeometry, thumbMaterial);
@@ -243,44 +300,60 @@ class VRGallery {
 
     thumbnailGroup.position.set(x, y + 0.4, 0.01);
 
-    // Thumbnail background
-    const bgGeometry = new THREE.PlaneGeometry(this.thumbnailWidth, this.thumbnailHeight);
+    // Rounded corners using a custom shape
+    const cornerRadius = 0.02;
+    const thumbShape = this.createRoundedRectShape(this.thumbnailWidth, this.thumbnailHeight, cornerRadius);
+    const thumbShapeGeometry = new THREE.ShapeGeometry(thumbShape);
+
+    // Thumbnail background with dark glassmorphic styling (no blue tint)
+    // Apply clipping planes to keep thumbnails within gallery bounds
     const bgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a3a,
+      color: 0x2a2a2a, // Neutral dark gray
       opacity: 0.9,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
-    const bgMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+    const bgMesh = new THREE.Mesh(thumbShapeGeometry.clone(), bgMaterial);
+    bgMesh.position.set(-this.thumbnailWidth / 2, -this.thumbnailHeight / 2, 0);
     thumbnailGroup.add(bgMesh);
 
-    // Thumbnail border
-    const borderGeometry = new THREE.PlaneGeometry(
-      this.thumbnailWidth + 0.01,
-      this.thumbnailHeight + 0.01
-    );
+    // Subtle white border (no cyan glow)
+    const borderShape = this.createRoundedRectShape(this.thumbnailWidth + 0.01, this.thumbnailHeight + 0.01, cornerRadius + 0.003);
+    const borderGeometry = new THREE.ShapeGeometry(borderShape);
     const borderMaterial = new THREE.MeshBasicMaterial({
-      color: 0x3a3a5a,
-      opacity: 0.8,
-      transparent: true
+      color: 0xffffff,
+      opacity: 0.15,
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const borderMesh = new THREE.Mesh(borderGeometry, borderMaterial);
-    borderMesh.position.z = -0.001;
+    borderMesh.position.set(-this.thumbnailWidth / 2 - 0.005, -this.thumbnailHeight / 2 - 0.005, -0.001);
     thumbnailGroup.add(borderMesh);
 
-    // Image placeholder (will be replaced with actual thumbnail)
-    const imgGeometry = new THREE.PlaneGeometry(
-      this.thumbnailWidth - 0.02,
-      this.thumbnailHeight - 0.04
-    );
+    // Image covers the entire card (use same shape as background)
+    const imgGeometry = new THREE.ShapeGeometry(thumbShape);
 
-    // Create loading texture
+    // Normalize UVs to 0-1 range - ShapeGeometry creates UVs based on shape coords
+    // which are in world units (0-0.5 x 0-0.3), not normalized for texture mapping
+    const uvAttr = imgGeometry.attributes.uv;
+    if (uvAttr) {
+      for (let i = 0; i < uvAttr.count; i++) {
+        uvAttr.setX(i, uvAttr.getX(i) / this.thumbnailWidth);
+        uvAttr.setY(i, uvAttr.getY(i) / this.thumbnailHeight);
+      }
+      uvAttr.needsUpdate = true;
+    }
+
+    // Create loading texture - neutral dark gray
     const loadingCanvas = document.createElement('canvas');
     loadingCanvas.width = 256;
     loadingCanvas.height = 144;
     const ctx = loadingCanvas.getContext('2d');
-    ctx.fillStyle = '#2a2a4a';
+    ctx.fillStyle = '#333333'; // Neutral dark gray
     ctx.fillRect(0, 0, 256, 144);
-    ctx.fillStyle = '#00ffff';
+    ctx.fillStyle = '#ffffff'; // White text
     ctx.font = '20px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -289,10 +362,13 @@ class VRGallery {
     const loadingTexture = new THREE.CanvasTexture(loadingCanvas);
     const imgMaterial = new THREE.MeshBasicMaterial({
       map: loadingTexture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const imgMesh = new THREE.Mesh(imgGeometry, imgMaterial);
-    imgMesh.position.set(0, 0.02, 0.002);
+    // Position at same spot as background so image covers entire card
+    imgMesh.position.set(-this.thumbnailWidth / 2, -this.thumbnailHeight / 2, 0.002);
     imgMesh.userData.interactive = true;
     imgMesh.userData.type = 'thumbnail';
     imgMesh.userData.index = index;
@@ -304,28 +380,49 @@ class VRGallery {
       imgMesh.userData.thumbnailUrl = item.thumbnail;
     }
 
-    // Title label
+    // Store stereo mode for texture UV cropping (sbs = left half, tb = top half)
+    if (item.stereoMode) {
+      imgMesh.userData.stereoMode = item.stereoMode;
+    }
+
+    // Title label - overlaid at bottom edge with semi-transparent background
+    // Rounded corners at bottom to match thumbnail card shape
     const titleCanvas = document.createElement('canvas');
     titleCanvas.width = 256;
-    titleCanvas.height = 32;
+    titleCanvas.height = 40;
     const titleCtx = titleCanvas.getContext('2d');
+    // Semi-transparent dark background with rounded bottom corners
+    const titleCornerRadius = 10; // Match thumbnail corner radius scaled to canvas
+    titleCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    titleCtx.beginPath();
+    titleCtx.moveTo(0, 0);
+    titleCtx.lineTo(256, 0);
+    titleCtx.lineTo(256, 40 - titleCornerRadius);
+    titleCtx.quadraticCurveTo(256, 40, 256 - titleCornerRadius, 40);
+    titleCtx.lineTo(titleCornerRadius, 40);
+    titleCtx.quadraticCurveTo(0, 40, 0, 40 - titleCornerRadius);
+    titleCtx.lineTo(0, 0);
+    titleCtx.fill();
     titleCtx.fillStyle = '#ffffff';
-    titleCtx.font = '18px Arial';
+    titleCtx.font = '16px Arial';
     titleCtx.textAlign = 'center';
     titleCtx.textBaseline = 'middle';
 
     const title = item.title || `Video ${index + 1}`;
     const truncatedTitle = title.length > 25 ? title.substring(0, 22) + '...' : title;
-    titleCtx.fillText(truncatedTitle, 128, 16);
+    titleCtx.fillText(truncatedTitle, 128, 20);
 
     const titleTexture = new THREE.CanvasTexture(titleCanvas);
     const titleMaterial = new THREE.MeshBasicMaterial({
       map: titleTexture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
-    const titleGeometry = new THREE.PlaneGeometry(this.thumbnailWidth - 0.02, 0.04);
+    const titleGeometry = new THREE.PlaneGeometry(this.thumbnailWidth, 0.05);
     const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-    titleMesh.position.set(0, -this.thumbnailHeight / 2 + 0.03, 0.002);
+    // Position at very bottom of the card
+    titleMesh.position.set(0, -this.thumbnailHeight / 2 + 0.025, 0.003);
     thumbnailGroup.add(titleMesh);
 
     // Duration badge (if provided)
@@ -341,6 +438,13 @@ class VRGallery {
 
     this.thumbnailContainer.add(thumbnailGroup);
     this.thumbnailMeshes.push(imgMesh);
+
+    // Enable all layers for this thumbnail so it renders to both eyes
+    thumbnailGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
 
     return thumbnailGroup;
   }
@@ -364,7 +468,9 @@ class VRGallery {
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.MeshBasicMaterial({
       map: texture,
-      transparent: true
+      transparent: true,
+      clippingPlanes: this.clippingPlanes,
+      clipShadows: true
     });
     const geometry = new THREE.PlaneGeometry(0.1, 0.04);
     return new THREE.Mesh(geometry, material);
@@ -426,6 +532,58 @@ class VRGallery {
         (texture) => {
           texture.minFilter = THREE.LinearFilter;
           texture.magFilter = THREE.LinearFilter;
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+
+          // Get texture dimensions for aspect-fill calculation
+          const imgWidth = texture.image.width;
+          const imgHeight = texture.image.height;
+
+          // Apply stereo cropping first, then aspect-fill
+          const stereoMode = mesh.userData.stereoMode;
+          let effectiveWidth = imgWidth;
+          let effectiveHeight = imgHeight;
+          let stereoOffsetX = 0;
+          let stereoOffsetY = 0;
+          let stereoScaleX = 1;
+          let stereoScaleY = 1;
+
+          if (stereoMode === 'sbs') {
+            // Left half only
+            effectiveWidth = imgWidth / 2;
+            stereoScaleX = 0.5;
+          } else if (stereoMode === 'tb') {
+            // Top half only
+            effectiveHeight = imgHeight / 2;
+            stereoScaleY = 0.5;
+            stereoOffsetY = 0.5; // Offset to top half
+          }
+
+          // Calculate aspect ratios
+          const textureAspect = effectiveWidth / effectiveHeight;
+          const cardAspect = this.thumbnailWidth / this.thumbnailHeight;
+
+          // Aspect-fill: scale texture to cover the entire card, cropping excess
+          let repeatX = stereoScaleX;
+          let repeatY = stereoScaleY;
+          let offsetX = stereoOffsetX;
+          let offsetY = stereoOffsetY;
+
+          if (textureAspect > cardAspect) {
+            // Texture is wider - need to crop horizontally
+            const scale = cardAspect / textureAspect;
+            repeatX = stereoScaleX * scale;
+            offsetX = stereoOffsetX + (stereoScaleX - repeatX) / 2; // Center horizontally
+          } else {
+            // Texture is taller - need to crop vertically
+            const scale = textureAspect / cardAspect;
+            repeatY = stereoScaleY * scale;
+            offsetY = stereoOffsetY + (stereoScaleY - repeatY) / 2; // Center vertically
+          }
+
+          texture.repeat.set(repeatX, repeatY);
+          texture.offset.set(offsetX, offsetY);
+          texture.needsUpdate = true;
 
           this.loadedTextures.set(url, texture);
 
@@ -642,6 +800,7 @@ class VRGallery {
 
   handleClick(event) {
     if (!this.isVisible) return;
+    if (this.selectionCooldown) return; // Don't select during cooldown after opening
 
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -672,6 +831,7 @@ class VRGallery {
 
   handleVRSelect(event) {
     if (!this.isVisible) return;
+    if (this.selectionCooldown) return; // Don't select during cooldown after opening
 
     const controller = event.target;
     const tempMatrix = new THREE.Matrix4();
@@ -745,6 +905,17 @@ class VRGallery {
   show() {
     this.isVisible = true;
     this.galleryGroup.visible = true;
+
+    // Enable local clipping on the renderer for thumbnail overflow
+    if (this.renderer) {
+      this.renderer.localClippingEnabled = true;
+    }
+
+    // Prevent immediate selection when gallery opens (cooldown period)
+    this.selectionCooldown = true;
+    setTimeout(() => {
+      this.selectionCooldown = false;
+    }, 300);
 
     // Load thumbnails when gallery is shown (deduplication in viewer prevents infinite loops)
     if (!this.thumbnailsLoaded) {
@@ -862,19 +1033,41 @@ class VRGallery {
       this.galleryGroup.rotation.set(0, 0, 0);
     }
 
-    // Clip thumbnails outside visible area
-    // Account for thumbnail height - a thumbnail is visible if any part of it is in the clip region
+    // Update clipping planes to match gallery world transform
+    // The planes need to be in world space for proper clipping
+    if (this.topClipPlane && this.bottomClipPlane && this.galleryFrame) {
+      // Get the gallery frame's world matrix
+      this.galleryFrame.updateWorldMatrix(true, false);
+      const worldMatrix = this.galleryFrame.matrixWorld;
+
+      // Get world position and orientation
+      const worldPos = new THREE.Vector3();
+      const worldQuat = new THREE.Quaternion();
+      worldMatrix.decompose(worldPos, worldQuat, new THREE.Vector3());
+
+      // Transform the local clipping planes to world space
+      // Top plane clips above clipMaxY in local Y
+      const topNormal = new THREE.Vector3(0, -1, 0).applyQuaternion(worldQuat);
+      const topPoint = new THREE.Vector3(0, this.clipMaxY, 0).applyMatrix4(worldMatrix);
+      this.topClipPlane.setFromNormalAndCoplanarPoint(topNormal, topPoint);
+
+      // Bottom plane clips below clipMinY in local Y
+      const bottomNormal = new THREE.Vector3(0, 1, 0).applyQuaternion(worldQuat);
+      const bottomPoint = new THREE.Vector3(0, this.clipMinY, 0).applyMatrix4(worldMatrix);
+      this.bottomClipPlane.setFromNormalAndCoplanarPoint(bottomNormal, bottomPoint);
+    }
+
+    // Also use visibility toggle for performance (don't render completely hidden thumbnails)
     const halfHeight = this.thumbnailHeight / 2;
     this.thumbnailMeshes.forEach((thumbnail, index) => {
       if (thumbnail && thumbnail.parent) {
-        // Use parent group position (thumbnailGroup), not the imgMesh position
         const thumbnailGroup = thumbnail.parent;
         const thumbnailY = thumbnailGroup.position.y + this.scrollPosition;
-        // Check if thumbnail's top or bottom edge is within clip region
         const thumbnailTop = thumbnailY + halfHeight;
         const thumbnailBottom = thumbnailY - halfHeight;
-        const visible = thumbnailBottom <= this.clipMaxY && thumbnailTop >= this.clipMinY;
-        thumbnailGroup.visible = visible; // Hide the whole group, not just the img mesh
+        // Hide only when completely outside the visible region (with some buffer for partial clipping)
+        const visible = thumbnailBottom <= (this.clipMaxY + halfHeight) && thumbnailTop >= (this.clipMinY - halfHeight);
+        thumbnailGroup.visible = visible;
       }
     });
 
@@ -884,6 +1077,25 @@ class VRGallery {
       this.lastThumbnailLoad = now;
       this.loadVisibleThumbnails();
     }
+  }
+
+  // Helper to create rounded rectangle shapes for glassmorphic thumbnails
+  createRoundedRectShape(width, height, radius) {
+    const shape = new THREE.Shape();
+    const x = 0;
+    const y = 0;
+
+    shape.moveTo(x + radius, y);
+    shape.lineTo(x + width - radius, y);
+    shape.quadraticCurveTo(x + width, y, x + width, y + radius);
+    shape.lineTo(x + width, y + height - radius);
+    shape.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    shape.lineTo(x + radius, y + height);
+    shape.quadraticCurveTo(x, y + height, x, y + height - radius);
+    shape.lineTo(x, y + radius);
+    shape.quadraticCurveTo(x, y, x + radius, y);
+
+    return shape;
   }
 
   dispose() {

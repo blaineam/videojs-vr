@@ -22,6 +22,10 @@ class VRHUD {
     this.onExit = options.onExit || (() => {});
     this.onProjectionChange = options.onProjectionChange || (() => {});
     this.onFavorite = options.onFavorite || null; // Optional favorite callback
+    this.onForceMonoToggle = options.onForceMonoToggle || null; // Callback for force mono toggle
+
+    // Force mono state (persists for VR session duration)
+    this.forceMonoEnabled = false;
 
     // Projection modes available
     this.projectionModes = [
@@ -174,13 +178,20 @@ class VRHUD {
   }
 
   createControlPanel() {
-    // Background panel for controls
-    const panelWidth = 2.4;
+    // Background panel for controls - Dark glassmorphic design (no blue tint)
+    const panelWidth = 2.6;
     const panelHeight = 0.6;
+    const cornerRadius = 0.08;
 
-    const panelGeometry = new THREE.PlaneGeometry(panelWidth, panelHeight);
+    // Create rounded rectangle shape
+    const shape = this.createRoundedRectShape(panelWidth, panelHeight, cornerRadius);
+    const panelGeometry = new THREE.ShapeGeometry(shape);
+    // Center the geometry
+    panelGeometry.translate(-panelWidth / 2, -panelHeight / 2, 0);
+
+    // Main panel - dark semi-transparent (like dark mode glass)
     const panelMaterial = new THREE.MeshBasicMaterial({
-      color: 0x1a1a2e,
+      color: 0x1a1a1a, // Neutral dark gray, no blue tint
       opacity: 0.85,
       transparent: true,
       side: THREE.DoubleSide
@@ -188,23 +199,55 @@ class VRHUD {
 
     this.controlPanel = new THREE.Mesh(panelGeometry, panelMaterial);
     this.controlPanel.name = 'control-panel';
-    this.controlPanel.position.set(0, 0, 0); // HUD group is positioned, panel is at origin within group
-    // No rotation - panel is vertical like a wall facing the camera
+    this.controlPanel.position.set(0, 0, 0);
 
-    // Panel border/glow
-    const borderGeometry = new THREE.PlaneGeometry(panelWidth + 0.02, panelHeight + 0.02);
+    // Subtle border - very faint white
+    const borderShape = this.createRoundedRectShape(panelWidth + 0.02, panelHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new THREE.ShapeGeometry(borderShape);
+    borderGeometry.translate(-(panelWidth + 0.02) / 2, -(panelHeight + 0.02) / 2, 0);
     const borderMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.3,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: THREE.DoubleSide
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
-
     border.position.z = -0.001;
     this.controlPanel.add(border);
 
     this.hudGroup.add(this.controlPanel);
+  }
+
+  // Helper to create rounded rectangle shape
+  createRoundedRectShape(width, height, radius) {
+    const shape = new THREE.Shape();
+    shape.moveTo(radius, 0);
+    shape.lineTo(width - radius, 0);
+    shape.quadraticCurveTo(width, 0, width, radius);
+    shape.lineTo(width, height - radius);
+    shape.quadraticCurveTo(width, height, width - radius, height);
+    shape.lineTo(radius, height);
+    shape.quadraticCurveTo(0, height, 0, height - radius);
+    shape.lineTo(0, radius);
+    shape.quadraticCurveTo(0, 0, radius, 0);
+    return shape;
+  }
+
+  // Helper to create horizontal pill shape with true semicircular ends
+  createPillShape(width, height) {
+    const shape = new THREE.Shape();
+    const radius = height / 2;
+    // Start at top-left (after left semicircle)
+    shape.moveTo(radius, height);
+    // Top edge to right
+    shape.lineTo(width - radius, height);
+    // Right semicircle (clockwise from top to bottom)
+    shape.absarc(width - radius, radius, radius, Math.PI / 2, -Math.PI / 2, true);
+    // Bottom edge to left
+    shape.lineTo(radius, 0);
+    // Left semicircle (clockwise from bottom to top)
+    shape.absarc(radius, radius, radius, -Math.PI / 2, Math.PI / 2, true);
+    return shape;
   }
 
   createScrubBar() {
@@ -212,11 +255,13 @@ class VRHUD {
 
     scrubGroup.name = 'scrub-bar-group';
 
-    // Track background
+    // Track background with true semicircular ends (pill shape)
     const trackWidth = 1.8;
     const trackHeight = 0.08;
 
-    const trackGeometry = new THREE.PlaneGeometry(trackWidth, trackHeight);
+    const trackShape = this.createPillShape(trackWidth, trackHeight);
+    const trackGeometry = new THREE.ShapeGeometry(trackShape);
+    trackGeometry.translate(-trackWidth / 2, -trackHeight / 2, 0);
     const trackMaterial = new THREE.MeshBasicMaterial({
       color: 0x333344,
       opacity: 0.9,
@@ -287,15 +332,15 @@ class VRHUD {
 
     buttonGroup.name = 'navigation-buttons';
 
-    // Calculate button positions to fit within panel (width 2.4, so max x ~1.1)
-    // With favorite button: 9 buttons, spacing ~0.22
-    // Without favorite: 8 buttons, spacing ~0.25
+    // Calculate button positions to fit within panel (width 2.6)
+    // With favorite button: 10 buttons (including force mono), spacing ~0.22
+    // Without favorite: 9 buttons, spacing ~0.24
     const hasOnFavorite = !!this.onFavorite;
-    const buttonSpacing = hasOnFavorite ? 0.22 : 0.25;
-    const startX = hasOnFavorite ? -0.88 : -0.875;
+    const buttonSpacing = hasOnFavorite ? 0.22 : 0.24;
+    const startX = hasOnFavorite ? -0.99 : -0.96;
 
-    // Exit VR button (leftmost)
-    this.exitBtn = this.createButton('✕', startX, -0.15, 'exit-vr', 0xff3366);
+    // Exit VR button (leftmost) - neutral base, red on hover
+    this.exitBtn = this.createButton('✕', startX, -0.15, 'exit-vr', 0x2a2a2a, 0xff3366);
     buttonGroup.add(this.exitBtn);
 
     // Gallery button
@@ -314,21 +359,25 @@ class VRHUD {
     this.nextBtn = this.createButton('⏭', startX + buttonSpacing * 4, -0.15, 'next');
     buttonGroup.add(this.nextBtn);
 
+    // Force Mono toggle button - shows larger single eye icon
+    this.forceMonoBtn = this.createButton('○', startX + buttonSpacing * 5, -0.15, 'force-mono', 0x2a3a5a);
+    buttonGroup.add(this.forceMonoBtn);
+
     // Orientation reset button
-    this.orientResetBtn = this.createButton('⟲', startX + buttonSpacing * 5, -0.15, 'reset-orientation');
+    this.orientResetBtn = this.createButton('⟲', startX + buttonSpacing * 6, -0.15, 'reset-orientation');
     buttonGroup.add(this.orientResetBtn);
 
     // Orientation drag handle
-    this.orientDragBtn = this.createButton('✋', startX + buttonSpacing * 6, -0.15, 'orientation-handle');
+    this.orientDragBtn = this.createButton('✋', startX + buttonSpacing * 7, -0.15, 'orientation-handle');
     buttonGroup.add(this.orientDragBtn);
 
     // Projection menu button
-    this.projectionBtn = this.createButton('🎬', startX + buttonSpacing * 7, -0.15, 'projection-menu');
+    this.projectionBtn = this.createButton('🎬', startX + buttonSpacing * 8, -0.15, 'projection-menu');
     buttonGroup.add(this.projectionBtn);
 
     // Favorite button (only if callback is provided) - rightmost
     if (hasOnFavorite) {
-      this.favoriteBtn = this.createButton('☆', startX + buttonSpacing * 8, -0.15, 'favorite');
+      this.favoriteBtn = this.createButton('☆', startX + buttonSpacing * 9, -0.15, 'favorite');
       this.favoriteBtnMesh = this.favoriteBtn.children.find(c => c.userData && c.userData.type === 'favorite');
       buttonGroup.add(this.favoriteBtn);
     }
@@ -336,14 +385,14 @@ class VRHUD {
     this.controlPanel.add(buttonGroup);
   }
 
-  createButton(label, x, y, type, customColor) {
+  createButton(label, x, y, type, customColor, customHoverColor) {
     const btnGroup = new THREE.Group();
 
     btnGroup.name = `btn-${type}`;
 
-    // Button background
+    // Button background - dark glassmorphic circle (no blue tint)
     const btnGeometry = new THREE.CircleGeometry(0.08, 32);
-    const baseColor = customColor || 0x2a2a4a;
+    const baseColor = customColor || 0x2a2a2a; // Neutral dark gray
     const btnMaterial = new THREE.MeshBasicMaterial({
       color: baseColor,
       opacity: 0.9,
@@ -355,14 +404,15 @@ class VRHUD {
     btnMesh.userData.interactive = true;
     btnMesh.userData.type = type;
     btnMesh.userData.baseColor = baseColor;
-    btnMesh.userData.hoverColor = customColor ? 0xff6699 : 0x00ffff;
+    btnMesh.userData.hoverColor = customHoverColor || 0x444444; // Lighter gray on hover (or custom)
+
     btnGroup.add(btnMesh);
 
-    // Button border
-    const borderGeometry = new THREE.RingGeometry(0.075, 0.085, 32);
+    // Subtle white border
+    const borderGeometry = new THREE.RingGeometry(0.078, 0.082, 32);
     const borderMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.5,
+      color: 0xffffff,
+      opacity: 0.15,
       transparent: true
     });
     const border = new THREE.Mesh(borderGeometry, borderMaterial);
@@ -402,18 +452,22 @@ class VRHUD {
   }
 
   createProjectionMenu() {
-    // Create projection selection menu (hidden by default)
+    // Create projection selection menu (hidden by default) - Dark glassmorphic design
     this.projectionMenu = new THREE.Group();
     this.projectionMenu.name = 'projection-menu';
     this.projectionMenu.visible = false;
 
-    // Menu background
+    // Menu background - dark semi-transparent (no blue tint)
     const menuWidth = 0.5;
     const menuHeight = this.projectionModes.length * 0.08 + 0.15;
-    const menuGeometry = new THREE.PlaneGeometry(menuWidth, menuHeight);
+    const cornerRadius = 0.04;
+
+    const menuShape = this.createRoundedRectShape(menuWidth, menuHeight, cornerRadius);
+    const menuGeometry = new THREE.ShapeGeometry(menuShape);
+    menuGeometry.translate(-menuWidth / 2, -menuHeight / 2, 0);
     const menuMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0a0a1a,
-      opacity: 0.95,
+      color: 0x1a1a1a, // Neutral dark gray
+      opacity: 0.9,
       transparent: true,
       side: THREE.DoubleSide
     });
@@ -421,11 +475,13 @@ class VRHUD {
 
     this.projectionMenu.add(menuBg);
 
-    // Menu border
-    const borderGeometry = new THREE.PlaneGeometry(menuWidth + 0.02, menuHeight + 0.02);
+    // Subtle white border
+    const borderShape = this.createRoundedRectShape(menuWidth + 0.02, menuHeight + 0.02, cornerRadius + 0.01);
+    const borderGeometry = new THREE.ShapeGeometry(borderShape);
+    borderGeometry.translate(-(menuWidth + 0.02) / 2, -(menuHeight + 0.02) / 2, 0);
     const borderMaterial = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
-      opacity: 0.4,
+      color: 0xffffff,
+      opacity: 0.1,
       transparent: true,
       side: THREE.DoubleSide
     });
@@ -434,42 +490,6 @@ class VRHUD {
     border.position.z = -0.001;
     this.projectionMenu.add(border);
 
-    // Title with solid background for readability
-    const titleBgGeometry = new THREE.PlaneGeometry(menuWidth - 0.04, 0.07);
-    const titleBgMaterial = new THREE.MeshBasicMaterial({
-      color: 0x003344,
-      opacity: 1.0,
-      transparent: false
-    });
-    const titleBgMesh = new THREE.Mesh(titleBgGeometry, titleBgMaterial);
-
-    titleBgMesh.position.set(0, menuHeight / 2 - 0.05, 0.001);
-    this.projectionMenu.add(titleBgMesh);
-
-    const titleCanvas = document.createElement('canvas');
-
-    titleCanvas.width = 256;
-    titleCanvas.height = 32;
-    const titleCtx = titleCanvas.getContext('2d');
-    // Solid background
-
-    titleCtx.fillStyle = '#003344';
-    titleCtx.fillRect(0, 0, 256, 32);
-    // Text
-    titleCtx.fillStyle = '#00ffff';
-    titleCtx.font = 'bold 20px Arial';
-    titleCtx.textAlign = 'center';
-    titleCtx.textBaseline = 'middle';
-    titleCtx.fillText('PROJECTION', 128, 16);
-
-    const titleTexture = new THREE.CanvasTexture(titleCanvas);
-    const titleMaterial = new THREE.MeshBasicMaterial({ map: titleTexture, transparent: false });
-    const titleGeometry = new THREE.PlaneGeometry(0.35, 0.05);
-    const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-
-    titleMesh.position.set(0, menuHeight / 2 - 0.05, 0.002);
-    this.projectionMenu.add(titleMesh);
-
     // Create projection option buttons
     this.projectionOptionButtons = [];
     const startY = menuHeight / 2 - 0.12;
@@ -477,8 +497,12 @@ class VRHUD {
     this.projectionModes.forEach((mode, index) => {
       const btnY = startY - index * 0.08;
 
-      // Button background
-      const btnGeometry = new THREE.PlaneGeometry(menuWidth - 0.06, 0.065);
+      // Button background with rounded corners for liquid glass style
+      const btnWidth = menuWidth - 0.06;
+      const btnHeight = 0.065;
+      const btnShape = this.createRoundedRectShape(btnWidth, btnHeight, 0.015);
+      const btnGeometry = new THREE.ShapeGeometry(btnShape);
+      btnGeometry.translate(-btnWidth / 2, -btnHeight / 2, 0);
       const btnMaterial = new THREE.MeshBasicMaterial({
         color: 0x1a1a3a,
         opacity: 0.9,
@@ -955,7 +979,68 @@ class VRHUD {
         this.onFavorite();
       }
       break;
+
+    case 'force-mono':
+      // Toggle force mono state (persists for VR session duration)
+      this.forceMonoEnabled = !this.forceMonoEnabled;
+      this.updateForceMonoButton();
+      if (this.onForceMonoToggle) {
+        this.onForceMonoToggle(this.forceMonoEnabled);
+      }
+      console.log('[VR HUD] Force Mono:', this.forceMonoEnabled ? 'ON' : 'OFF');
+      break;
     }
+  }
+
+  // Update force mono button visual state
+  updateForceMonoButton() {
+    if (!this.forceMonoBtn) return;
+
+    // Find the button mesh and label mesh
+    const btnMesh = this.forceMonoBtn.children.find(c => c.userData && c.userData.type === 'force-mono');
+    const labelMesh = this.forceMonoBtn.children.find(c => c.material && c.material.map);
+
+    if (btnMesh) {
+      // Update button color based on state
+      const activeColor = 0x00aa66; // Green when active
+      const inactiveColor = 0x2a3a5a; // Dark blue when inactive
+      btnMesh.material.color.setHex(this.forceMonoEnabled ? activeColor : inactiveColor);
+      btnMesh.userData.baseColor = this.forceMonoEnabled ? activeColor : inactiveColor;
+    }
+
+    if (labelMesh) {
+      // Update the label to show current state - larger icon for visibility
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+
+      // Draw monocle-style icon - single eye symbol
+      ctx.fillStyle = this.forceMonoEnabled ? '#00ff88' : '#ffffff';
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Use filled circle for active, outlined for inactive
+      ctx.fillText(this.forceMonoEnabled ? '●' : '○', 32, 32);
+
+      const newTexture = new THREE.CanvasTexture(canvas);
+      if (labelMesh.material.map) {
+        labelMesh.material.map.dispose();
+      }
+      labelMesh.material.map = newTexture;
+      labelMesh.material.needsUpdate = true;
+    }
+  }
+
+  // Get force mono state
+  getForceMonoEnabled() {
+    return this.forceMonoEnabled;
+  }
+
+  // Set force mono state (for external control)
+  setForceMonoEnabled(enabled) {
+    this.forceMonoEnabled = enabled;
+    this.updateForceMonoButton();
   }
 
   resetAutoHideTimer() {
@@ -1372,6 +1457,19 @@ class VRHUD {
     this.isVisible = true;
     this.hudGroup.visible = true;
     this.cursor.visible = true;
+
+    // Ensure all HUD elements have proper layers for stereo rendering
+    // This prevents double vision issues when showing HUD after video changes
+    this.hudGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
+    this.cursor.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
   }
 
   hide() {
