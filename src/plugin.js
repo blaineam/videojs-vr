@@ -858,20 +858,11 @@ void main() {
       }
 
       // Ensure VR HUD and Gallery have proper layers after projection change
-      // This prevents double vision issues
-      if (this.vrHUD && this.vrHUD.hudGroup) {
-        this.vrHUD.hudGroup.traverse((obj) => {
-          if (obj.isMesh || obj.isGroup) {
-            obj.layers.enableAll();
-          }
-        });
+      if (this.vrHUD && this.vrHUD.refreshLayers) {
+        this.vrHUD.refreshLayers();
       }
-      if (this.vrGallery && this.vrGallery.galleryGroup) {
-        this.vrGallery.galleryGroup.traverse((obj) => {
-          if (obj.isMesh || obj.isGroup) {
-            obj.layers.enableAll();
-          }
-        });
+      if (this.vrGallery && this.vrGallery.refreshLayers) {
+        this.vrGallery.refreshLayers();
       }
 
       this.log('Projection rebuilt successfully');
@@ -947,12 +938,8 @@ void main() {
     }
 
     // Ensure VR HUD maintains proper layer visibility after any mono/stereo change
-    if (this.vrHUD && this.vrHUD.hudGroup) {
-      this.vrHUD.hudGroup.traverse((obj) => {
-        if (obj.isMesh || obj.isGroup) {
-          obj.layers.enableAll();
-        }
-      });
+    if (this.vrHUD && this.vrHUD.refreshLayers) {
+      this.vrHUD.refreshLayers();
     }
   }
 
@@ -994,20 +981,11 @@ void main() {
       }
 
       // Ensure VR HUD and Gallery have proper layers after video source change
-      // This prevents double vision issues during navigation
-      if (this.vrHUD && this.vrHUD.hudGroup) {
-        this.vrHUD.hudGroup.traverse((obj) => {
-          if (obj.isMesh || obj.isGroup) {
-            obj.layers.enableAll();
-          }
-        });
+      if (this.vrHUD && this.vrHUD.refreshLayers) {
+        this.vrHUD.refreshLayers();
       }
-      if (this.vrGallery && this.vrGallery.galleryGroup) {
-        this.vrGallery.galleryGroup.traverse((obj) => {
-          if (obj.isMesh || obj.isGroup) {
-            obj.layers.enableAll();
-          }
-        });
+      if (this.vrGallery && this.vrGallery.refreshLayers) {
+        this.vrGallery.refreshLayers();
       }
 
       return;
@@ -1456,53 +1434,49 @@ void main() {
         this.forceMonoEnabled = enabled;
 
         // Always apply the projection immediately, checking for meshes
-        // Use immediate layer changes without waiting for next frame
         const leftMesh = this.movieScreenLeft;
         const rightMesh = this.movieScreenRight;
 
         if (leftMesh && rightMesh) {
+          console.log('[VR Plugin] Found SBS meshes, applying layers');
           if (enabled) {
             // Mono: show left eye to both eyes
             leftMesh.layers.set(1);
             leftMesh.layers.enable(2);
-            rightMesh.layers.set(0);
+            // Hide right mesh from both eyes
+            rightMesh.layers.disableAll();
+            console.log('[VR Plugin] Mono ON: left mesh on layers 1+2, right mesh hidden');
           } else {
-            // Stereo: restore separate eyes
-            leftMesh.layers.set(1);
-            rightMesh.layers.set(2);
+            // Stereo: restore separate eyes - use disableAll first for clean state
+            leftMesh.layers.disableAll();
+            leftMesh.layers.enable(1);
+            rightMesh.layers.disableAll();
+            rightMesh.layers.enable(2);
+            console.log('[VR Plugin] Mono OFF: left on layer 1 only, right on layer 2 only');
           }
           if (leftMesh.material) leftMesh.material.needsUpdate = true;
           if (rightMesh.material) rightMesh.material.needsUpdate = true;
-          console.log('[VR Plugin] Layer change applied - mono:', enabled);
         } else if (this.movieScreen) {
           // Non-SBS content - ensure visible to both eyes
-          this.movieScreen.layers.set(0);
-          this.movieScreen.layers.enable(1);
-          this.movieScreen.layers.enable(2);
+          console.log('[VR Plugin] Using single movieScreen');
+          this.movieScreen.layers.enableAll();
           if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
-          console.log('[VR Plugin] Non-SBS movieScreen layers applied');
         } else {
           console.warn('[VR Plugin] No video meshes found for mono toggle');
+          // Try to rebuild projection if meshes are missing
+          if (this.currentProjection_ === 'SBS_MONO' && this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
+            console.log('[VR Plugin] Rebuilding SBS_MONO to create stereo meshes');
+            this.setProjection('SBS_MONO');
+          }
         }
 
-        // ALWAYS refresh VR HUD layers to prevent double vision
-        // This must happen regardless of whether applyForceMonoProjection_ runs
-        if (this.vrHUD && this.vrHUD.hudGroup) {
-          this.vrHUD.hudGroup.traverse((obj) => {
-            if (obj.isMesh || obj.isGroup) {
-              obj.layers.enableAll();
-            }
-          });
+        // ALWAYS refresh VR HUD and Gallery layers to prevent double vision
+        if (this.vrHUD && this.vrHUD.refreshLayers) {
+          this.vrHUD.refreshLayers();
           console.log('[VR Plugin] VR HUD layers refreshed');
         }
-
-        // Also refresh VR Gallery layers if it exists
-        if (this.vrGallery && this.vrGallery.galleryGroup) {
-          this.vrGallery.galleryGroup.traverse((obj) => {
-            if (obj.isMesh || obj.isGroup) {
-              obj.layers.enableAll();
-            }
-          });
+        if (this.vrGallery && this.vrGallery.refreshLayers) {
+          this.vrGallery.refreshLayers();
         }
 
         if (this.options_.onForceMonoToggle) {

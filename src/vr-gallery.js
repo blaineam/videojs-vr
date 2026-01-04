@@ -1009,8 +1009,24 @@ class VRGallery {
     }
   }
 
+  // Refresh all layer masks to ensure proper stereo rendering
+  refreshLayers() {
+    this.galleryGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
+  }
+
   update() {
     if (!this.isVisible) return;
+
+    // Periodically refresh layers as a safety net against double vision
+    this.layerRefreshCounter = (this.layerRefreshCounter || 0) + 1;
+    if (this.layerRefreshCounter >= 120) { // Every ~2 seconds at 60fps
+      this.layerRefreshCounter = 0;
+      this.refreshLayers();
+    }
 
     // Position gallery relative to VR HUD if available (stays fixed in scene)
     if (this.vrHUD && this.vrHUD.hudGroup) {

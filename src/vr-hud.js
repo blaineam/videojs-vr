@@ -542,8 +542,8 @@ class VRHUD {
       this.projectionMenu.add(labelMesh);
     });
 
-    // Position menu above the projection button
-    this.projectionMenu.position.set(0.8, 0.4, 0.02);
+    // Position menu above the projection button - raised higher to avoid clipping
+    this.projectionMenu.position.set(0.8, 0.55, 0.02);
 
     this.controlPanel.add(this.projectionMenu);
   }
@@ -1155,6 +1155,23 @@ class VRHUD {
     }
   }
 
+  // Refresh all layer masks to ensure proper stereo rendering
+  // Call this when double vision issues occur
+  refreshLayers() {
+    this.hudGroup.traverse((obj) => {
+      if (obj.isMesh || obj.isGroup) {
+        obj.layers.enableAll();
+      }
+    });
+    if (this.cursor) {
+      this.cursor.traverse((obj) => {
+        if (obj.isMesh || obj.isGroup) {
+          obj.layers.enableAll();
+        }
+      });
+    }
+  }
+
   update() {
     // Poll gamepad inputs (joysticks, buttons)
     this.pollGamepads();
@@ -1167,6 +1184,14 @@ class VRHUD {
 
     if (!this.isVisible) {
       return;
+    }
+
+    // Periodically refresh layers as a safety net against double vision
+    // This catches any cases where layers got reset unexpectedly
+    this.layerRefreshCounter = (this.layerRefreshCounter || 0) + 1;
+    if (this.layerRefreshCounter >= 120) { // Every ~2 seconds at 60fps
+      this.layerRefreshCounter = 0;
+      this.refreshLayers();
     }
 
     this.updateScrubBar();
