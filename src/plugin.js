@@ -167,7 +167,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
       // Left eye view - use SphereBufferGeometry and modify UVs directly
-      let leftGeometry = new THREE.SphereBufferGeometry(
+      const leftGeometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
@@ -284,6 +284,7 @@ class VR extends Plugin {
         Math.PI, // phiStart
         Math.PI // phiLength
       );
+
       geometry.scale(-1, 1, 1);
 
       this.movieGeometry = geometry;
@@ -305,11 +306,13 @@ class VR extends Plugin {
         Math.PI, // phiStart
         Math.PI // phiLength
       );
+
       leftGeometry.scale(-1, 1, 1);
 
       // Modify UVs for left eye (left half of video)
       let uvAttribute = leftGeometry.getAttribute('uv');
       let uvArray = uvAttribute.array;
+
       for (let i = 0; i < uvArray.length; i += 2) {
         uvArray[i] *= 0.5; // x coordinate
       }
@@ -318,6 +321,7 @@ class VR extends Plugin {
       const leftMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture
       });
+
       this.movieScreenLeft = new THREE.Mesh(leftGeometry, leftMaterial);
       this.movieScreenLeft.layers.set(1); // Left eye only
       this.scene.add(this.movieScreenLeft);
@@ -330,6 +334,7 @@ class VR extends Plugin {
         Math.PI, // phiStart
         Math.PI // phiLength
       );
+
       rightGeometry.scale(-1, 1, 1);
 
       // Modify UVs for right eye (right half of video)
@@ -343,6 +348,7 @@ class VR extends Plugin {
       const rightMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture
       });
+
       this.movieScreenRight = new THREE.Mesh(rightGeometry, rightMaterial);
       this.movieScreenRight.layers.set(2); // Right eye only
       this.scene.add(this.movieScreenRight);
@@ -804,6 +810,11 @@ void main() {
   }
 
   handleResize_() {
+    // Skip if not initialized or player is disposed
+    if (!this.initialized_ || !this.player_ || !this.player_.el()) {
+      return;
+    }
+
     // Skip resize if in XR session - XR controls the size
     if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
       return;
@@ -932,8 +943,12 @@ void main() {
       }
 
       // Force material update to ensure rendering reflects the layer changes
-      if (leftMesh.material) leftMesh.material.needsUpdate = true;
-      if (rightMesh.material) rightMesh.material.needsUpdate = true;
+      if (leftMesh.material) {
+        leftMesh.material.needsUpdate = true;
+      }
+      if (rightMesh.material) {
+        rightMesh.material.needsUpdate = true;
+      }
 
     } else if (this.movieScreen) {
       // Non-SBS mode (360, 180, flat) - single mesh
@@ -954,7 +969,9 @@ void main() {
       }
 
       // Force material update
-      if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+      if (this.movieScreen.material) {
+        this.movieScreen.material.needsUpdate = true;
+      }
     } else {
       this.log('No video meshes found - nothing to toggle');
     }
@@ -1476,13 +1493,19 @@ void main() {
             rightMesh.layers.enable(2);
             console.log('[VR Plugin] Mono OFF: left on layer 1 only, right on layer 2 only');
           }
-          if (leftMesh.material) leftMesh.material.needsUpdate = true;
-          if (rightMesh.material) rightMesh.material.needsUpdate = true;
+          if (leftMesh.material) {
+            leftMesh.material.needsUpdate = true;
+          }
+          if (rightMesh.material) {
+            rightMesh.material.needsUpdate = true;
+          }
         } else if (this.movieScreen) {
           // Non-SBS content - ensure visible to both eyes
           console.log('[VR Plugin] Using single movieScreen');
           this.movieScreen.layers.enableAll();
-          if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+          if (this.movieScreen.material) {
+            this.movieScreen.material.needsUpdate = true;
+          }
         } else {
           console.warn('[VR Plugin] No video meshes found for mono toggle');
           // Try to rebuild projection if meshes are missing

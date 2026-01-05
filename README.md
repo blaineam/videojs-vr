@@ -16,8 +16,9 @@ npm install @blaineam/videojs-vr
 
 - **Full WebXR Support**: Modern WebXR API support for immersive VR experiences on Quest, Vive, and other headsets
 - **Multiple Projections**: Support for 360, 180, side-by-side (SBS), and equi-angular cubemap (EAC) video formats
+- **Glassmorphic VR UI**: Beautiful frosted-glass design with translucent panels and subtle gradients for an immersive, non-intrusive interface
 - **VR HUD Controls**: In-VR user interface with scrub bar, play/pause, and navigation controls
-- **VR Gallery Panel**: Browse and select media while in VR mode with scrollable thumbnails
+- **VR Gallery Panel**: Browse and select media while in VR mode with scrollable thumbnails and pill-shaped duration badges
 - **Controller Support**: Full VR controller interaction with pointer rays and grip toggle
 - **Orientation Controls**: Adjust viewing angle for comfortable viewing in any position
 - **Stereo 3D Support**: Proper left/right eye rendering for stereoscopic content

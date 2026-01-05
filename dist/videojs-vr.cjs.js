@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.0.0 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.1.0 @license MIT */
 'use strict';
 
 var window$1 = require('global/window');
@@ -17,7 +17,7 @@ var videojs__default = /*#__PURE__*/_interopDefaultLegacy(videojs);
 var _asyncToGenerator__default = /*#__PURE__*/_interopDefaultLegacy(_asyncToGenerator);
 var _extends__default = /*#__PURE__*/_interopDefaultLegacy(_extends);
 
-var version = "3.0.0";
+var version = "3.1.0";
 
 // threejs.org/license
 const REVISION = '125';
@@ -31277,7 +31277,7 @@ class VRGallery {
           const stereoMode = mesh.userData.stereoMode;
           let effectiveWidth = imgWidth;
           let effectiveHeight = imgHeight;
-          let stereoOffsetX = 0;
+          const stereoOffsetX = 0;
           let stereoOffsetY = 0;
           let stereoScaleX = 1;
           let stereoScaleY = 1;
@@ -32114,7 +32114,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
       // Left eye view - use SphereBufferGeometry and modify UVs directly
-      let leftGeometry = new SphereGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
+      const leftGeometry = new SphereGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
 
       // Get UV attribute from buffer geometry
       let uvAttribute = leftGeometry.getAttribute('uv');
@@ -32714,6 +32714,11 @@ void main() {
     }
   }
   handleResize_() {
+    // Skip if not initialized or player is disposed
+    if (!this.initialized_ || !this.player_ || !this.player_.el()) {
+      return;
+    }
+
     // Skip resize if in XR session - XR controls the size
     if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
       return;
@@ -32831,8 +32836,12 @@ void main() {
       }
 
       // Force material update to ensure rendering reflects the layer changes
-      if (leftMesh.material) leftMesh.material.needsUpdate = true;
-      if (rightMesh.material) rightMesh.material.needsUpdate = true;
+      if (leftMesh.material) {
+        leftMesh.material.needsUpdate = true;
+      }
+      if (rightMesh.material) {
+        rightMesh.material.needsUpdate = true;
+      }
     } else if (this.movieScreen) {
       // Non-SBS mode (360, 180, flat) - single mesh
       this.log('Using single movieScreen mesh');
@@ -32851,7 +32860,9 @@ void main() {
       }
 
       // Force material update
-      if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+      if (this.movieScreen.material) {
+        this.movieScreen.material.needsUpdate = true;
+      }
     } else {
       this.log('No video meshes found - nothing to toggle');
     }
@@ -33332,13 +33343,19 @@ void main() {
             rightMesh.layers.enable(2);
             console.log('[VR Plugin] Mono OFF: left on layer 1 only, right on layer 2 only');
           }
-          if (leftMesh.material) leftMesh.material.needsUpdate = true;
-          if (rightMesh.material) rightMesh.material.needsUpdate = true;
+          if (leftMesh.material) {
+            leftMesh.material.needsUpdate = true;
+          }
+          if (rightMesh.material) {
+            rightMesh.material.needsUpdate = true;
+          }
         } else if (this.movieScreen) {
           // Non-SBS content - ensure visible to both eyes
           console.log('[VR Plugin] Using single movieScreen');
           this.movieScreen.layers.enableAll();
-          if (this.movieScreen.material) this.movieScreen.material.needsUpdate = true;
+          if (this.movieScreen.material) {
+            this.movieScreen.material.needsUpdate = true;
+          }
         } else {
           console.warn('[VR Plugin] No video meshes found for mono toggle');
           // Try to rebuild projection if meshes are missing

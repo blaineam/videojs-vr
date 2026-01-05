@@ -577,7 +577,7 @@ class VRGallery {
           const stereoMode = mesh.userData.stereoMode;
           let effectiveWidth = imgWidth;
           let effectiveHeight = imgHeight;
-          let stereoOffsetX = 0;
+          const stereoOffsetX = 0;
           let stereoOffsetY = 0;
           let stereoScaleX = 1;
           let stereoScaleY = 1;
