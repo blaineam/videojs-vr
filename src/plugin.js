@@ -136,13 +136,14 @@ class VR extends Plugin {
 
     if (this.scene) {
       this.scene.remove(this.movieScreen);
-      // Also remove SBS stereo right eye mesh if it exists
+      // Also remove stereo eye meshes if they exist
+      if (this.movieScreenLeft) {
+        this.scene.remove(this.movieScreenLeft);
+        this.movieScreenLeft = null;
+      }
       if (this.movieScreenRight) {
         this.scene.remove(this.movieScreenRight);
         this.movieScreenRight = null;
-      }
-      if (this.movieScreenLeft) {
-        this.movieScreenLeft = null;
       }
     }
     if (projection === 'AUTO') {
@@ -166,14 +167,14 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
       // Left eye view - use SphereBufferGeometry and modify UVs directly
-      let geometry = new THREE.SphereBufferGeometry(
+      let leftGeometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
       );
 
       // Get UV attribute from buffer geometry
-      let uvAttribute = geometry.getAttribute('uv');
+      let uvAttribute = leftGeometry.getAttribute('uv');
       let uvArray = uvAttribute.array;
 
       // Modify UVs for left eye
@@ -186,25 +187,24 @@ class VR extends Plugin {
       }
       uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = geometry;
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
+      const leftMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
-      this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
-      this.movieScreen.scale.x = -1;
-      this.movieScreen.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
+      this.movieScreenLeft = new THREE.Mesh(leftGeometry, leftMaterial);
+      this.movieScreenLeft.scale.x = -1;
+      this.movieScreenLeft.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
       // display in left eye only
-      this.movieScreen.layers.set(1);
-      this.scene.add(this.movieScreen);
+      this.movieScreenLeft.layers.set(1);
+      this.scene.add(this.movieScreenLeft);
 
       // Right eye view - use SphereBufferGeometry and modify UVs directly
-      geometry = new THREE.SphereBufferGeometry(
+      const rightGeometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
       );
 
       // Get UV attribute from buffer geometry
-      uvAttribute = geometry.getAttribute('uv');
+      uvAttribute = rightGeometry.getAttribute('uv');
       uvArray = uvAttribute.array;
 
       // Modify UVs for right eye
@@ -217,15 +217,19 @@ class VR extends Plugin {
       }
       uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = geometry;
-      this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
+      const rightMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
-      this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
-      this.movieScreen.scale.x = -1;
-      this.movieScreen.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
+      this.movieScreenRight = new THREE.Mesh(rightGeometry, rightMaterial);
+      this.movieScreenRight.scale.x = -1;
+      this.movieScreenRight.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
       // display in right eye only
-      this.movieScreen.layers.set(2);
-      this.scene.add(this.movieScreen);
+      this.movieScreenRight.layers.set(2);
+      this.scene.add(this.movieScreenRight);
+
+      // Store references for cleanup and mono toggle
+      this.movieScreen = this.movieScreenLeft;
+      this.movieGeometry = leftGeometry;
+      this.movieMaterial = leftMaterial;
     } else if (projection === '360_CUBE') {
       // Use BoxBufferGeometry instead of deprecated BoxGeometry
       this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
@@ -271,68 +275,82 @@ class VR extends Plugin {
       this.movieScreen.rotation.y = -Math.PI;
 
       this.scene.add(this.movieScreen);
-    } else if (projection === '180' || projection === '180_LR' || projection === '180_MONO') {
-      // Left eye view - use SphereBufferGeometry with phiStart and phiLength for 180 degrees
-      let geometry = new THREE.SphereBufferGeometry(
+    } else if (projection === '180_MONO') {
+      // 180 MONO: Single mesh showing full video, visible to both eyes
+      const geometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
         Math.PI, // phiStart
         Math.PI // phiLength
       );
-
-      // Scale to flip for inside viewing
       geometry.scale(-1, 1, 1);
-
-      // Get UV attribute from buffer geometry
-      let uvAttribute = geometry.getAttribute('uv');
-      let uvArray = uvAttribute.array;
-
-      // Modify UVs for left eye (only if not mono)
-      if (projection !== '180_MONO') {
-        for (let i = 0; i < uvArray.length; i += 2) {
-          uvArray[i] *= 0.5; // x coordinate
-        }
-        uvAttribute.needsUpdate = true;
-      }
 
       this.movieGeometry = geometry;
       this.movieMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture
       });
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
-      // display in left eye only
-      this.movieScreen.layers.set(1);
+      // Visible to all layers (mono)
+      this.movieScreen.layers.enable(0);
+      this.movieScreen.layers.enable(1);
+      this.movieScreen.layers.enable(2);
       this.scene.add(this.movieScreen);
-
-      // Right eye view - use SphereBufferGeometry
-      geometry = new THREE.SphereBufferGeometry(
+    } else if (projection === '180' || projection === '180_LR') {
+      // 180 Stereo: Left eye view
+      const leftGeometry = new THREE.SphereBufferGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
         Math.PI, // phiStart
         Math.PI // phiLength
       );
-      geometry.scale(-1, 1, 1);
+      leftGeometry.scale(-1, 1, 1);
 
-      // Get UV attribute from buffer geometry
-      uvAttribute = geometry.getAttribute('uv');
+      // Modify UVs for left eye (left half of video)
+      let uvAttribute = leftGeometry.getAttribute('uv');
+      let uvArray = uvAttribute.array;
+      for (let i = 0; i < uvArray.length; i += 2) {
+        uvArray[i] *= 0.5; // x coordinate
+      }
+      uvAttribute.needsUpdate = true;
+
+      const leftMaterial = new THREE.MeshBasicMaterial({
+        map: this.videoTexture
+      });
+      this.movieScreenLeft = new THREE.Mesh(leftGeometry, leftMaterial);
+      this.movieScreenLeft.layers.set(1); // Left eye only
+      this.scene.add(this.movieScreenLeft);
+
+      // Right eye view
+      const rightGeometry = new THREE.SphereBufferGeometry(
+        256,
+        this.options_.sphereDetail,
+        this.options_.sphereDetail,
+        Math.PI, // phiStart
+        Math.PI // phiLength
+      );
+      rightGeometry.scale(-1, 1, 1);
+
+      // Modify UVs for right eye (right half of video)
+      uvAttribute = rightGeometry.getAttribute('uv');
       uvArray = uvAttribute.array;
-
-      // Modify UVs for right eye
       for (let i = 0; i < uvArray.length; i += 2) {
         uvArray[i] = uvArray[i] * 0.5 + 0.5; // x coordinate
       }
       uvAttribute.needsUpdate = true;
 
-      this.movieGeometry = geometry;
-      this.movieMaterial = new THREE.MeshBasicMaterial({
+      const rightMaterial = new THREE.MeshBasicMaterial({
         map: this.videoTexture
       });
-      this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
-      // display in right eye only
-      this.movieScreen.layers.set(2);
-      this.scene.add(this.movieScreen);
+      this.movieScreenRight = new THREE.Mesh(rightGeometry, rightMaterial);
+      this.movieScreenRight.layers.set(2); // Right eye only
+      this.scene.add(this.movieScreenRight);
+
+      // Store references for cleanup and mono toggle
+      this.movieScreen = this.movieScreenLeft;
+      this.movieGeometry = leftGeometry;
+      this.movieMaterial = leftMaterial;
     } else if (projection === 'EAC' || projection === 'EAC_LR') {
       const makeScreen = (mapMatrix, scaleMatrix) => {
         // "Continuity correction?": because of discontinuous faces and aliasing,
@@ -448,29 +466,33 @@ void main() {
       if (projection === 'EAC') {
         this.scene.add(makeScreen(new THREE.Matrix3(), new THREE.Matrix3()));
       } else {
+        // EAC_LR: Stereo equi-angular cubemap
         const scaleMatrix = new THREE.Matrix3().set(
           0, 0.5, 0,
           1, 0, 0,
           0, 0, 1
         );
 
-        makeScreen(new THREE.Matrix3().set(
+        // Left eye mesh
+        this.movieScreenLeft = makeScreen(new THREE.Matrix3().set(
           0, -0.5, 0.5,
           1, 0, 0,
           0, 0, 1
         ), scaleMatrix);
-        // display in left eye only
-        this.movieScreen.layers.set(1);
-        this.scene.add(this.movieScreen);
+        this.movieScreenLeft.layers.set(1); // Left eye only
+        this.scene.add(this.movieScreenLeft);
 
-        makeScreen(new THREE.Matrix3().set(
+        // Right eye mesh
+        this.movieScreenRight = makeScreen(new THREE.Matrix3().set(
           0, -0.5, 1,
           1, 0, 0,
           0, 0, 1
         ), scaleMatrix);
-        // display in right eye only
-        this.movieScreen.layers.set(2);
-        this.scene.add(this.movieScreen);
+        this.movieScreenRight.layers.set(2); // Right eye only
+        this.scene.add(this.movieScreenRight);
+
+        // Store reference for cleanup
+        this.movieScreen = this.movieScreenLeft;
       }
     } else if (projection === 'SBS_MONO') {
       // SBS_MONO: Flat screen projection for side-by-side video

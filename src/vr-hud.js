@@ -1186,13 +1186,10 @@ class VRHUD {
       return;
     }
 
-    // Periodically refresh layers as a safety net against double vision
-    // This catches any cases where layers got reset unexpectedly
-    this.layerRefreshCounter = (this.layerRefreshCounter || 0) + 1;
-    if (this.layerRefreshCounter >= 120) { // Every ~2 seconds at 60fps
-      this.layerRefreshCounter = 0;
-      this.refreshLayers();
-    }
+    // Refresh layers every frame to prevent double vision
+    // This ensures HUD is always visible to both eyes identically
+    // The overhead is minimal compared to the rendering cost
+    this.refreshLayers();
 
     this.updateScrubBar();
     this.updateTimeDisplay();
@@ -1200,30 +1197,29 @@ class VRHUD {
 
     // HUD stays FIXED in world space at the video content orientation
     // It does NOT follow the camera/head - user must turn their head to see it
-    // This keeps the controls always aligned with the video content
-    // Using reduced distance (1.5m) and lower position to minimize parallax
+    // CRITICAL: Do NOT use camera.position for HUD position - in WebXR the camera
+    // position can differ per-eye which causes double vision issues
 
     // Calculate the direction based ONLY on the orientation offset (where video is pointing)
     const forward = new THREE.Vector3(0, 0, -1);
 
     // Apply orientation offset to get the direction video is facing
     const orientationQuat = new THREE.Quaternion();
-
     orientationQuat.setFromEuler(new THREE.Euler(this.orientationOffset.x, this.orientationOffset.y, 0, 'YXZ'));
     forward.applyQuaternion(orientationQuat);
 
-    // Position HUD at a fixed world position in the video content direction
-    // Use camera height as reference, but position MUCH LOWER so user can see gallery top
-    const cameraHeight = this.camera.position.y;
+    // Position HUD at a FIXED world position - use constant height, not camera height
+    // This prevents any per-eye differences that could cause double vision
+    const fixedHeight = 0.7; // Fixed height above floor level
 
     this.hudGroup.position.set(
       forward.x * this.hudDistance,
-      cameraHeight - 0.8, // Much lower - was -0.3, now -0.8 for better visibility
+      fixedHeight,
       forward.z * this.hudDistance
     );
 
     // Make HUD face the origin (where user is standing)
-    this.hudGroup.lookAt(0, this.hudGroup.position.y, 0);
+    this.hudGroup.lookAt(0, fixedHeight, 0);
   }
 
   updateControllerDragging() {
