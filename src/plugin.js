@@ -1516,12 +1516,11 @@ void main() {
           // This allows positioning the screen on ceiling for lying down viewing
           // euler.x (pitch): moves screen up/down (positive = up)
           // euler.y (yaw): moves screen left/right (positive = left)
-          const moveScale = 3; // Scale factor for position movement
           const distance = 3; // Base distance from camera
 
-          // Convert euler angles to position offset on a sphere around the camera
-          // x rotation moves up/down, y rotation moves left/right
-          const offsetX = -Math.sin(euler.y) * distance;
+          // Use proper spherical coordinates to maintain constant distance from camera
+          // regardless of pitch/yaw angle - screen stays on a sphere around the viewer
+          const offsetX = -Math.sin(euler.y) * Math.cos(euler.x) * distance;
           const offsetY = Math.sin(euler.x) * distance;
           const offsetZ = -Math.cos(euler.y) * Math.cos(euler.x) * distance;
 

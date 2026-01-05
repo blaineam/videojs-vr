@@ -30402,11 +30402,22 @@ class VRHUD {
     orientationQuat.setFromEuler(new Euler(this.orientationOffset.x, this.orientationOffset.y, 0, 'YXZ'));
     forward.applyQuaternion(orientationQuat);
 
+    // Project forward onto XZ plane and normalize to maintain constant distance
+    // This prevents HUD from getting closer when looking up/down
+    const forwardXZ = new Vector2(forward.x, forward.z);
+    const xzLength = forwardXZ.length();
+    if (xzLength > 0.001) {
+      forwardXZ.normalize();
+    } else {
+      // Looking straight up/down, default to forward
+      forwardXZ.set(0, -1);
+    }
+
     // Position HUD at a FIXED world position - use constant height, not camera height
     // This prevents any per-eye differences that could cause double vision
     const fixedHeight = 0.7; // Fixed height above floor level
 
-    this.hudGroup.position.set(forward.x * this.hudDistance, fixedHeight, forward.z * this.hudDistance);
+    this.hudGroup.position.set(forwardXZ.x * this.hudDistance, fixedHeight, forwardXZ.y * this.hudDistance);
 
     // Make HUD face the origin (where user is standing)
     this.hudGroup.lookAt(0, fixedHeight, 0);
@@ -31140,26 +31151,44 @@ class VRGallery {
     return thumbnailGroup;
   }
   createDurationBadge(duration) {
+    // Create pill-shaped geometry using Shape
+    const width = 0.1;
+    const height = 0.04;
+    const radius = height / 2; // Full semicircle on ends
+
+    const shape = new Shape();
+    // Start at top-left, just after the curve
+    shape.moveTo(-width / 2 + radius, height / 2);
+    // Top edge
+    shape.lineTo(width / 2 - radius, height / 2);
+    // Right semicircle
+    shape.absarc(width / 2 - radius, 0, radius, Math.PI / 2, -Math.PI / 2, true);
+    // Bottom edge
+    shape.lineTo(-width / 2 + radius, -height / 2);
+    // Left semicircle
+    shape.absarc(-width / 2 + radius, 0, radius, -Math.PI / 2, Math.PI / 2, true);
+    const geometry = new ShapeGeometry(shape);
+
+    // Create canvas texture for the text
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 24;
+    canvas.width = 128;
+    canvas.height = 48;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.roundRect(0, 0, 64, 24, 4);
-    ctx.fill();
+
+    // Fill entire canvas with solid black (no transparency issues)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillRect(0, 0, 128, 48);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 28px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.formatDuration(duration), 32, 12);
+    ctx.fillText(this.formatDuration(duration), 64, 24);
     const texture = new CanvasTexture(canvas);
     const material = new MeshBasicMaterial({
       map: texture,
-      transparent: true,
       clippingPlanes: this.clippingPlanes,
       clipShadows: true
     });
-    const geometry = new PlaneGeometry(0.1, 0.04);
     return new Mesh(geometry, material);
   }
   formatDuration(seconds) {
@@ -33317,11 +33346,15 @@ void main() {
         // For other projections (360, 180, etc.): rotate the sphere/hemisphere
         const isSBS = this.currentProjection_ === 'SBS_MONO';
         if (isSBS) {
+          // SBS mode: Move the 2D plane in space
+          // This allows positioning the screen on ceiling for lying down viewing
+          // euler.x (pitch): moves screen up/down (positive = up)
+          // euler.y (yaw): moves screen left/right (positive = left)
           const distance = 3; // Base distance from camera
 
-          // Convert euler angles to position offset on a sphere around the camera
-          // x rotation moves up/down, y rotation moves left/right
-          const offsetX = -Math.sin(euler.y) * distance;
+          // Use proper spherical coordinates to maintain constant distance from camera
+          // regardless of pitch/yaw angle - screen stays on a sphere around the viewer
+          const offsetX = -Math.sin(euler.y) * Math.cos(euler.x) * distance;
           const offsetY = Math.sin(euler.x) * distance;
           const offsetZ = -Math.cos(euler.y) * Math.cos(euler.x) * distance;
 

@@ -454,29 +454,48 @@ class VRGallery {
   }
 
   createDurationBadge(duration) {
+    // Create pill-shaped geometry using Shape
+    const width = 0.1;
+    const height = 0.04;
+    const radius = height / 2; // Full semicircle on ends
+
+    const shape = new THREE.Shape();
+    // Start at top-left, just after the curve
+    shape.moveTo(-width / 2 + radius, height / 2);
+    // Top edge
+    shape.lineTo(width / 2 - radius, height / 2);
+    // Right semicircle
+    shape.absarc(width / 2 - radius, 0, radius, Math.PI / 2, -Math.PI / 2, true);
+    // Bottom edge
+    shape.lineTo(-width / 2 + radius, -height / 2);
+    // Left semicircle
+    shape.absarc(-width / 2 + radius, 0, radius, -Math.PI / 2, Math.PI / 2, true);
+
+    const geometry = new THREE.ShapeGeometry(shape);
+
+    // Create canvas texture for the text
     const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 24;
+    canvas.width = 128;
+    canvas.height = 48;
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.roundRect(0, 0, 64, 24, 4);
-    ctx.fill();
+    // Fill entire canvas with solid black (no transparency issues)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillRect(0, 0, 128, 48);
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 28px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(this.formatDuration(duration), 32, 12);
+    ctx.fillText(this.formatDuration(duration), 64, 24);
 
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.MeshBasicMaterial({
       map: texture,
-      transparent: true,
       clippingPlanes: this.clippingPlanes,
       clipShadows: true
     });
-    const geometry = new THREE.PlaneGeometry(0.1, 0.04);
+
     return new THREE.Mesh(geometry, material);
   }
 

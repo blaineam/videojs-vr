@@ -1215,14 +1215,25 @@ class VRHUD {
     orientationQuat.setFromEuler(new THREE.Euler(this.orientationOffset.x, this.orientationOffset.y, 0, 'YXZ'));
     forward.applyQuaternion(orientationQuat);
 
+    // Project forward onto XZ plane and normalize to maintain constant distance
+    // This prevents HUD from getting closer when looking up/down
+    const forwardXZ = new THREE.Vector2(forward.x, forward.z);
+    const xzLength = forwardXZ.length();
+    if (xzLength > 0.001) {
+      forwardXZ.normalize();
+    } else {
+      // Looking straight up/down, default to forward
+      forwardXZ.set(0, -1);
+    }
+
     // Position HUD at a FIXED world position - use constant height, not camera height
     // This prevents any per-eye differences that could cause double vision
     const fixedHeight = 0.7; // Fixed height above floor level
 
     this.hudGroup.position.set(
-      forward.x * this.hudDistance,
+      forwardXZ.x * this.hudDistance,
       fixedHeight,
-      forward.z * this.hudDistance
+      forwardXZ.y * this.hudDistance
     );
 
     // Make HUD face the origin (where user is standing)
