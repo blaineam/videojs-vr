@@ -473,6 +473,17 @@ class VRGallery {
 
     const geometry = new THREE.ShapeGeometry(shape);
 
+    // Fix UVs - ShapeGeometry creates UVs based on vertex positions
+    // We need to normalize them to 0-1 range for the texture
+    const uvAttribute = geometry.attributes.uv;
+    for (let i = 0; i < uvAttribute.count; i++) {
+      const u = uvAttribute.getX(i);
+      const v = uvAttribute.getY(i);
+      // Normalize from shape coordinates to 0-1 range
+      uvAttribute.setXY(i, (u + width / 2) / width, (v + height / 2) / height);
+    }
+    uvAttribute.needsUpdate = true;
+
     // Create canvas texture for the text
     const canvas = document.createElement('canvas');
     canvas.width = 128;
