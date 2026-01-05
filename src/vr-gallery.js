@@ -74,11 +74,13 @@ class VRGallery {
 
     this.scene.add(this.galleryGroup);
 
-    // Enable gallery to be visible on all camera layers (0, 1, 2)
+    // Enable gallery to be visible on camera layers 0, 1, 2
     // This ensures it renders correctly for both eyes in stereoscopic mode
     this.galleryGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
 
@@ -439,10 +441,12 @@ class VRGallery {
     this.thumbnailContainer.add(thumbnailGroup);
     this.thumbnailMeshes.push(imgMesh);
 
-    // Enable all layers for this thumbnail so it renders to both eyes
+    // Enable layers 0, 1, 2 for this thumbnail so it renders to both eyes
     thumbnailGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
 
@@ -1010,10 +1014,13 @@ class VRGallery {
   }
 
   // Refresh all layer masks to ensure proper stereo rendering
+  // Use explicit layers 0, 1, 2 for WebXR compatibility
   refreshLayers() {
     this.galleryGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
   }

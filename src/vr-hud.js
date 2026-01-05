@@ -89,11 +89,13 @@ class VRHUD {
 
     this.scene.add(this.hudGroup);
 
-    // Enable HUD to be visible on all camera layers (0, 1, 2)
+    // Enable HUD to be visible on camera layers 0, 1, 2
     // This ensures it renders correctly for both eyes in stereoscopic mode
     this.hudGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
 
@@ -1156,17 +1158,22 @@ class VRHUD {
   }
 
   // Refresh all layer masks to ensure proper stereo rendering
-  // Call this when double vision issues occur
+  // Use explicit layers 0, 1, 2 for WebXR compatibility
   refreshLayers() {
     this.hudGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        // Set layer 0 first, then enable 1 and 2 for stereo
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
     if (this.cursor) {
       this.cursor.traverse((obj) => {
         if (obj.isMesh || obj.isGroup) {
-          obj.layers.enableAll();
+          obj.layers.set(0);
+          obj.layers.enable(1);
+          obj.layers.enable(2);
         }
       });
     }
@@ -1480,15 +1487,19 @@ class VRHUD {
     this.cursor.visible = true;
 
     // Ensure all HUD elements have proper layers for stereo rendering
-    // This prevents double vision issues when showing HUD after video changes
+    // Use explicit layers 0, 1, 2 instead of enableAll for WebXR compatibility
     this.hudGroup.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
     this.cursor.traverse((obj) => {
       if (obj.isMesh || obj.isGroup) {
-        obj.layers.enableAll();
+        obj.layers.set(0);
+        obj.layers.enable(1);
+        obj.layers.enable(2);
       }
     });
   }
