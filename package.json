@@ -1,6 +1,6 @@
 {
   "name": "@blaineam/videojs-vr",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "A plugin to add 360, 180, and VR video support to video.js with full WebXR support, VR HUD controls, and in-VR media gallery.",
   "author": {
     "name": "Blaine Miller"

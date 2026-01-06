@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.1.0 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.1.1 @license MIT */
 import window$1 from 'global/window';
 import document$1 from 'global/document';
 import WebVRPolyfill from 'webvr-polyfill/src/webvr-polyfill';
@@ -6,7 +6,7 @@ import videojs from 'video.js';
 import _asyncToGenerator from '@babel/runtime/helpers/asyncToGenerator';
 import _extends from '@babel/runtime/helpers/extends';
 
-var version = "3.1.0";
+var version = "3.1.1";
 
 // threejs.org/license
 const REVISION = '125';

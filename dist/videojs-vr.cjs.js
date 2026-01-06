@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.1.0 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.1.1 @license MIT */
 'use strict';
 
 var window$1 = require('global/window');
@@ -17,7 +17,7 @@ var videojs__default = /*#__PURE__*/_interopDefaultLegacy(videojs);
 var _asyncToGenerator__default = /*#__PURE__*/_interopDefaultLegacy(_asyncToGenerator);
 var _extends__default = /*#__PURE__*/_interopDefaultLegacy(_extends);
 
-var version = "3.1.0";
+var version = "3.1.1";
 
 // threejs.org/license
 const REVISION = '125';
