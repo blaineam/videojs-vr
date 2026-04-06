@@ -910,8 +910,6 @@ class VRHUD {
   handleInteraction(object, point) {
     const type = object.userData.type;
 
-    console.log('[VR HUD] handleInteraction type:', type);
-
     // Reset auto-hide timer on any interaction
     this.resetAutoHideTimer();
 
@@ -933,7 +931,6 @@ class VRHUD {
       break;
 
     case 'gallery':
-      console.log('[VR HUD] Gallery button clicked');
       this.onGallery();
       break;
 
@@ -970,7 +967,6 @@ class VRHUD {
       // Select a projection from the menu
       const selectedProjection = object.userData.projectionId;
 
-      console.log('[VR HUD] Selecting projection:', selectedProjection);
       this.setProjection(selectedProjection);
       this.onProjectionChange(selectedProjection);
       this.hideProjectionMenu();
@@ -989,7 +985,6 @@ class VRHUD {
       if (this.onForceMonoToggle) {
         this.onForceMonoToggle(this.forceMonoEnabled);
       }
-      console.log('[VR HUD] Force Mono:', this.forceMonoEnabled ? 'ON' : 'OFF');
       break;
     }
   }

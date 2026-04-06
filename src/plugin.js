@@ -1,8 +1,7 @@
-/* global navigator */
+/* global navigator, DOMParser */
 /* eslint-disable no-inline-comments, no-console */
 import {version as VERSION} from '../package.json';
 import window from 'global/window';
-import document from 'global/document';
 import WebVRPolyfill from 'webvr-polyfill/src/webvr-polyfill';
 import videojs from 'video.js';
 import * as THREE from 'three';
@@ -49,17 +48,17 @@ const errors = {
   'web-vr-out-of-date': {
     headline: '360 is out of date',
     type: '360_OUT_OF_DATE',
-    message: "Your browser supports 360 but not the latest version. See <a href='http://webvr.info'>http://webvr.info</a> for more info."
+    message: "Your browser supports 360 but not the latest version. See <a href='https://webvr.info'>https://webvr.info</a> for more info."
   },
   'web-vr-not-supported': {
     headline: '360 not supported on this device',
     type: '360_NOT_SUPPORTED',
-    message: "Your browser does not support 360. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
+    message: "Your browser does not support 360. See <a href='https://webvr.info'>https://webvr.info</a> for assistance."
   },
   'web-vr-hls-cors-not-supported': {
     headline: '360 HLS video not supported on this device',
     type: '360_NOT_SUPPORTED',
-    message: "Your browser/device does not support HLS 360 video. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
+    message: "Your browser/device does not support HLS 360 video. See <a href='https://webvr.info'>https://webvr.info</a> for assistance."
   }
 };
 
@@ -156,7 +155,7 @@ class VR extends Plugin {
       }
       return this.changeProjection_('NONE');
     } else if (projection === '360') {
-      this.movieGeometry = new THREE.SphereBufferGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
+      this.movieGeometry = new THREE.SphereGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
@@ -166,8 +165,8 @@ class VR extends Plugin {
       this.movieScreen.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
-      // Left eye view - use SphereBufferGeometry and modify UVs directly
-      const leftGeometry = new THREE.SphereBufferGeometry(
+      // Left eye view - use SphereGeometry and modify UVs directly
+      const leftGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
@@ -196,8 +195,8 @@ class VR extends Plugin {
       this.movieScreenLeft.layers.set(1);
       this.scene.add(this.movieScreenLeft);
 
-      // Right eye view - use SphereBufferGeometry and modify UVs directly
-      const rightGeometry = new THREE.SphereBufferGeometry(
+      // Right eye view - use SphereGeometry and modify UVs directly
+      const rightGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
@@ -231,8 +230,8 @@ class VR extends Plugin {
       this.movieGeometry = leftGeometry;
       this.movieMaterial = leftMaterial;
     } else if (projection === '360_CUBE') {
-      // Use BoxBufferGeometry instead of deprecated BoxGeometry
-      this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
+      // Use BoxGeometry instead of deprecated BoxGeometry
+      this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       // Define UV coordinates for each face
@@ -243,16 +242,16 @@ class VR extends Plugin {
       const front = [new THREE.Vector2(0.333, 0), new THREE.Vector2(0.666, 0), new THREE.Vector2(0.666, 0.5), new THREE.Vector2(0.333, 0.5)];
       const back = [new THREE.Vector2(0.666, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 0.5), new THREE.Vector2(0.666, 0.5)];
 
-      // BoxBufferGeometry has 24 vertices (4 per face, 6 faces)
+      // BoxGeometry has 24 vertices (4 per face, 6 faces)
       // UV attribute has 48 values (2 per vertex)
-      // Face order in BoxBufferGeometry: +X, -X, +Y, -Y, +Z, -Z (right, left, top, bottom, front, back)
+      // Face order in BoxGeometry: +X, -X, +Y, -Y, +Z, -Z (right, left, top, bottom, front, back)
       const uvAttribute = this.movieGeometry.getAttribute('uv');
       const uvArray = uvAttribute.array;
 
       // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
       const setFaceUVs = (faceIndex, corners) => {
         const baseIdx = faceIndex * 8;
-        // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+        // Vertex order for each face in BoxGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
 
         uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
         uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
@@ -277,7 +276,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '180_MONO') {
       // 180 MONO: Single mesh showing full video, visible to both eyes
-      const geometry = new THREE.SphereBufferGeometry(
+      const geometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -299,7 +298,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '180' || projection === '180_LR') {
       // 180 Stereo: Left eye view
-      const leftGeometry = new THREE.SphereBufferGeometry(
+      const leftGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -327,7 +326,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreenLeft);
 
       // Right eye view
-      const rightGeometry = new THREE.SphereBufferGeometry(
+      const rightGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -363,8 +362,8 @@ class VR extends Plugin {
         // we truncate the 2-pixel-wide strips on all discontinuous edges,
         const contCorrect = 2;
 
-        // Use BoxBufferGeometry instead of deprecated BoxGeometry
-        this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
+        // Use BoxGeometry instead of deprecated BoxGeometry
+        this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
         this.movieMaterial = new THREE.ShaderMaterial({
           side: THREE.BackSide,
           uniforms: {
@@ -445,7 +444,7 @@ void main() {
         // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
         const setFaceUVs = (faceIndex, corners) => {
           const baseIdx = faceIndex * 8;
-          // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+          // Vertex order for each face in BoxGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
 
           uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
           uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
@@ -537,7 +536,7 @@ void main() {
       if (isInWebXR) {
         // WebXR mode: Create two separate meshes for left and right eyes
         // Left eye mesh (layer 1) - shows left half of video
-        const leftGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const leftGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
         const leftUvAttribute = leftGeometry.getAttribute('uv');
         const leftUvArray = leftUvAttribute.array;
 
@@ -557,7 +556,7 @@ void main() {
         this.scene.add(this.movieScreenLeft);
 
         // Right eye mesh (layer 2) - shows right half of video
-        const rightGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const rightGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
         const rightUvAttribute = rightGeometry.getAttribute('uv');
         const rightUvArray = rightUvAttribute.array;
 
@@ -582,7 +581,7 @@ void main() {
         this.movieMaterial = leftMaterial;
       } else {
         // Browser mode: Show left half only (mono)
-        this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        this.movieGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
 
         // Map UVs to left half of video only (U: 0 to 0.5)
         const uvAttribute = this.movieGeometry.getAttribute('uv');
@@ -627,11 +626,9 @@ void main() {
     } else {
       // strip any html content from the error message
       // as it is not supported outside of videojs-errors
-      const div = document.createElement('div');
-
-      div.innerHTML = errors[errorObj.code].message;
-
-      const message = div.textContent || div.innerText || '';
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(errors[errorObj.code].message, 'text/html');
+      const message = doc.body.textContent || '';
 
       this.player_.error({
         code: errorObj.code,
@@ -873,7 +870,7 @@ void main() {
         this.videoTexture.generateMipmaps = false;
         this.videoTexture.minFilter = THREE.LinearFilter;
         this.videoTexture.magFilter = THREE.LinearFilter;
-        this.videoTexture.format = THREE.RGBFormat;
+        this.videoTexture.format = THREE.RGBAFormat;
       }
 
       // Rebuild the mesh with new projection
@@ -994,7 +991,7 @@ void main() {
       this.videoTexture.generateMipmaps = false;
       this.videoTexture.minFilter = THREE.LinearFilter;
       this.videoTexture.magFilter = THREE.LinearFilter;
-      this.videoTexture.format = THREE.RGBFormat;
+      this.videoTexture.format = THREE.RGBAFormat;
 
       // Update ALL materials in the scene using video texture (both eyes in stereo modes)
       // This ensures both left and right eye meshes get the new texture
@@ -1049,7 +1046,7 @@ void main() {
     this.videoTexture.generateMipmaps = false;
     this.videoTexture.minFilter = THREE.LinearFilter;
     this.videoTexture.magFilter = THREE.LinearFilter;
-    this.videoTexture.format = THREE.RGBFormat;
+    this.videoTexture.format = THREE.RGBAFormat;
 
     // Handle poster image - show poster until video starts playing
     this.posterTexture = null;
@@ -1437,12 +1434,12 @@ void main() {
         this.trigger('vr-previous');
       },
       onGallery: () => {
-        console.log('[VR Plugin] onGallery called, vrGallery:', !!this.vrGallery);
+        this.log('onGallery called, vrGallery:', !!this.vrGallery);
         if (this.vrGallery) {
           this.vrGallery.toggle();
-          console.log('[VR Plugin] Gallery toggled, now visible:', this.vrGallery.isVisible);
+          this.log('Gallery toggled, now visible:', this.vrGallery.isVisible);
         } else {
-          console.warn('[VR Plugin] vrGallery not available');
+          this.log('vrGallery not available');
         }
         if (this.options_.onGallery) {
           this.options_.onGallery();
@@ -1456,7 +1453,7 @@ void main() {
         this.trigger('vr-exit');
       },
       onProjectionChange: (projection) => {
-        console.log('[VR Plugin] Projection change requested:', projection);
+        this.log('Projection change requested:', projection);
         this.setProjection(projection);
         if (this.options_.onProjectionChange) {
           this.options_.onProjectionChange(projection);
@@ -1469,7 +1466,7 @@ void main() {
       } : null,
       onForceMonoToggle: (enabled) => {
         // Handle force mono toggle - uses left eye for both eyes
-        console.log('[VR Plugin] Force Mono toggle:', enabled);
+        this.log('Force Mono toggle:', enabled);
         this.forceMonoEnabled = enabled;
 
         // Always apply the projection immediately, checking for meshes
@@ -1477,21 +1474,21 @@ void main() {
         const rightMesh = this.movieScreenRight;
 
         if (leftMesh && rightMesh) {
-          console.log('[VR Plugin] Found SBS meshes, applying layers');
+          this.log('Found SBS meshes, applying layers');
           if (enabled) {
             // Mono: show left eye to both eyes
             leftMesh.layers.set(1);
             leftMesh.layers.enable(2);
             // Hide right mesh from both eyes
             rightMesh.layers.disableAll();
-            console.log('[VR Plugin] Mono ON: left mesh on layers 1+2, right mesh hidden');
+            this.log('Mono ON: left mesh on layers 1+2, right mesh hidden');
           } else {
             // Stereo: restore separate eyes - use disableAll first for clean state
             leftMesh.layers.disableAll();
             leftMesh.layers.enable(1);
             rightMesh.layers.disableAll();
             rightMesh.layers.enable(2);
-            console.log('[VR Plugin] Mono OFF: left on layer 1 only, right on layer 2 only');
+            this.log('Mono OFF: left on layer 1 only, right on layer 2 only');
           }
           if (leftMesh.material) {
             leftMesh.material.needsUpdate = true;
@@ -1501,16 +1498,16 @@ void main() {
           }
         } else if (this.movieScreen) {
           // Non-SBS content - ensure visible to both eyes
-          console.log('[VR Plugin] Using single movieScreen');
+          this.log('Using single movieScreen');
           this.movieScreen.layers.enableAll();
           if (this.movieScreen.material) {
             this.movieScreen.material.needsUpdate = true;
           }
         } else {
-          console.warn('[VR Plugin] No video meshes found for mono toggle');
+          this.log('No video meshes found for mono toggle');
           // Try to rebuild projection if meshes are missing
           if (this.currentProjection_ === 'SBS_MONO' && this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
-            console.log('[VR Plugin] Rebuilding SBS_MONO to create stereo meshes');
+            this.log('Rebuilding SBS_MONO to create stereo meshes');
             this.setProjection('SBS_MONO');
           }
         }
@@ -1518,7 +1515,7 @@ void main() {
         // ALWAYS refresh VR HUD and Gallery layers to prevent double vision
         if (this.vrHUD && this.vrHUD.refreshLayers) {
           this.vrHUD.refreshLayers();
-          console.log('[VR Plugin] VR HUD layers refreshed');
+          this.log('VR HUD layers refreshed');
         }
         if (this.vrGallery && this.vrGallery.refreshLayers) {
           this.vrGallery.refreshLayers();
@@ -1630,7 +1627,7 @@ void main() {
     const getSrcFunc = this.options_.getSrc || null;
 
     if (getSrcFunc) {
-      console.log('[VR Plugin] VR Gallery initialized with getSrc function');
+      this.log('VR Gallery initialized with getSrc function');
     }
 
     this.vrGallery = new VRGallery({
@@ -1639,7 +1636,7 @@ void main() {
       renderer: this.renderer,
       getSrc: getSrcFunc,
       onMediaSelect: (item, index) => {
-        console.log('[VR Gallery] Media selected:', item, index);
+        this.log('Media selected:', item, index);
         if (this.options_.onMediaSelect) {
           this.options_.onMediaSelect(item, index);
         }
@@ -1775,6 +1772,9 @@ void main() {
    * @param {Array} items - Array of media items with thumbnail, title, url, etc.
    */
   setGalleryItems(items) {
+    if (!Array.isArray(items)) {
+      return;
+    }
     if (this.vrGallery) {
       this.vrGallery.setMediaItems(items);
     }
@@ -1786,6 +1786,9 @@ void main() {
    * @param {Object|THREE.Euler} offset - Orientation offset {x, y, z} or Euler
    */
   setOrientationOffset(offset) {
+    if (!offset || typeof offset !== 'object') {
+      return;
+    }
     if (this.controls3d && this.controls3d.setOrientationOffset) {
       this.controls3d.setOrientationOffset(offset);
     }
