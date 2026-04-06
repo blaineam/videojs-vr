@@ -194,7 +194,7 @@ const GLSL3 = '300 es';
  */
 
 function EventDispatcher() {}
-_extends__default['default'](EventDispatcher.prototype, {
+_extends__default["default"](EventDispatcher.prototype, {
   addEventListener: function (type, listener) {
     if (this._listeners === undefined) this._listeners = {};
     const listeners = this._listeners;
@@ -973,7 +973,7 @@ function Texture(image = Texture.DEFAULT_IMAGE, mapping = Texture.DEFAULT_MAPPIN
 }
 Texture.DEFAULT_IMAGE = undefined;
 Texture.DEFAULT_MAPPING = UVMapping;
-Texture.prototype = _extends__default['default'](Object.create(EventDispatcher.prototype), {
+Texture.prototype = _extends__default["default"](Object.create(EventDispatcher.prototype), {
   constructor: Texture,
   isTexture: true,
   updateMatrix: function () {
@@ -1044,7 +1044,6 @@ Texture.prototype = _extends__default['default'](Object.create(EventDispatcher.p
       if (image.uuid === undefined) {
         image.uuid = MathUtils.generateUUID(); // UGH
       }
-
       if (!isRootObject && meta.images[image.uuid] === undefined) {
         let url;
         if (Array.isArray(image)) {
@@ -2772,7 +2771,6 @@ class Box3 {
       console.error('THREE.Box3: .getBoundingSphere() target is now required');
       //target = new Sphere(); // removed to avoid cyclic dependency
     }
-
     this.getCenter(target.center);
     target.radius = this.getSize(_vector$1).length() * 0.5;
     return target;
@@ -4259,7 +4257,7 @@ function Object3D() {
 }
 Object3D.DefaultUp = new Vector3(0, 1, 0);
 Object3D.DefaultMatrixAutoUpdate = true;
-Object3D.prototype = _extends__default['default'](Object.create(EventDispatcher.prototype), {
+Object3D.prototype = _extends__default["default"](Object.create(EventDispatcher.prototype), {
   constructor: Object3D,
   isObject3D: true,
   onBeforeRender: function () {},
@@ -5646,7 +5644,7 @@ function Material() {
   this.userData = {};
   this.version = 0;
 }
-Material.prototype = _extends__default['default'](Object.create(EventDispatcher.prototype), {
+Material.prototype = _extends__default["default"](Object.create(EventDispatcher.prototype), {
   constructor: Material,
   isMaterial: true,
   onBeforeCompile: function /* shaderobject, renderer */ () {},
@@ -5991,7 +5989,7 @@ Object.defineProperty(BufferAttribute.prototype, 'needsUpdate', {
     if (value === true) this.version++;
   }
 });
-_extends__default['default'](BufferAttribute.prototype, {
+_extends__default["default"](BufferAttribute.prototype, {
   isBufferAttribute: true,
   onUploadCallback: function () {},
   setUsage: function (value) {
@@ -6298,7 +6296,7 @@ function BufferGeometry() {
   };
   this.userData = {};
 }
-BufferGeometry.prototype = _extends__default['default'](Object.create(EventDispatcher.prototype), {
+BufferGeometry.prototype = _extends__default["default"](Object.create(EventDispatcher.prototype), {
   constructor: BufferGeometry,
   isBufferGeometry: true,
   getIndex: function () {
@@ -6996,7 +6994,7 @@ function Mesh(geometry = new BufferGeometry(), material = new MeshBasicMaterial(
   this.material = material;
   this.updateMorphTargets();
 }
-Mesh.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Mesh.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Mesh,
   isMesh: true,
   copy: function (source) {
@@ -7005,7 +7003,7 @@ Mesh.prototype = _extends__default['default'](Object.create(Object3D.prototype),
       this.morphTargetInfluences = source.morphTargetInfluences.slice();
     }
     if (source.morphTargetDictionary !== undefined) {
-      this.morphTargetDictionary = _extends__default['default']({}, source.morphTargetDictionary);
+      this.morphTargetDictionary = _extends__default["default"]({}, source.morphTargetDictionary);
     }
     this.material = source.material;
     this.geometry = source.geometry;
@@ -7466,7 +7464,7 @@ ShaderMaterial.prototype.copy = function (source) {
   this.fragmentShader = source.fragmentShader;
   this.vertexShader = source.vertexShader;
   this.uniforms = cloneUniforms(source.uniforms);
-  this.defines = _extends__default['default']({}, source.defines);
+  this.defines = _extends__default["default"]({}, source.defines);
   this.wireframe = source.wireframe;
   this.wireframeLinewidth = source.wireframeLinewidth;
   this.lights = source.lights;
@@ -7474,7 +7472,7 @@ ShaderMaterial.prototype.copy = function (source) {
   this.skinning = source.skinning;
   this.morphTargets = source.morphTargets;
   this.morphNormals = source.morphNormals;
-  this.extensions = _extends__default['default']({}, source.extensions);
+  this.extensions = _extends__default["default"]({}, source.extensions);
   this.glslVersion = source.glslVersion;
   return this;
 };
@@ -7528,7 +7526,6 @@ ShaderMaterial.prototype.toJSON = function (meta) {
       // note: the array variants v2v, v3v, v4v, m4v and tv are not supported so far
     }
   }
-
   if (Object.keys(this.defines).length > 0) data.defines = this.defines;
   data.vertexShader = this.vertexShader;
   data.fragmentShader = this.fragmentShader;
@@ -7546,7 +7543,7 @@ function Camera() {
   this.projectionMatrix = new Matrix4();
   this.projectionMatrixInverse = new Matrix4();
 }
-Camera.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Camera.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Camera,
   isCamera: true,
   copy: function (source, recursive) {
@@ -7592,7 +7589,7 @@ function PerspectiveCamera(fov = 50, aspect = 1, near = 0.1, far = 2000) {
 
   this.updateProjectionMatrix();
 }
-PerspectiveCamera.prototype = _extends__default['default'](Object.create(Camera.prototype), {
+PerspectiveCamera.prototype = _extends__default["default"](Object.create(Camera.prototype), {
   constructor: PerspectiveCamera,
   isPerspectiveCamera: true,
   copy: function (source, recursive) {
@@ -7603,7 +7600,7 @@ PerspectiveCamera.prototype = _extends__default['default'](Object.create(Camera.
     this.far = source.far;
     this.focus = source.focus;
     this.aspect = source.aspect;
-    this.view = source.view === null ? null : _extends__default['default']({}, source.view);
+    this.view = source.view === null ? null : _extends__default["default"]({}, source.view);
     this.filmGauge = source.filmGauge;
     this.filmOffset = source.filmOffset;
     return this;
@@ -7731,7 +7728,7 @@ PerspectiveCamera.prototype = _extends__default['default'](Object.create(Camera.
     data.object.far = this.far;
     data.object.focus = this.focus;
     data.object.aspect = this.aspect;
-    if (this.view !== null) data.object.view = _extends__default['default']({}, this.view);
+    if (this.view !== null) data.object.view = _extends__default["default"]({}, this.view);
     data.object.filmGauge = this.filmGauge;
     data.object.filmOffset = this.filmOffset;
     return data;
@@ -8815,7 +8812,6 @@ const ShaderLib = {
         value: 1
       } // temporary
     }]),
-
     vertexShader: ShaderChunk.meshphysical_vert,
     fragmentShader: ShaderChunk.meshphysical_frag
   },
@@ -10635,7 +10631,6 @@ function SingleUniform(id, activeInfo, addr) {
 
   // this.path = activeInfo.name; // DEBUG
 }
-
 function PureArrayUniform(id, activeInfo, addr) {
   this.id = id;
   this.addr = addr;
@@ -10645,7 +10640,6 @@ function PureArrayUniform(id, activeInfo, addr) {
 
   // this.path = activeInfo.name; // DEBUG
 }
-
 PureArrayUniform.prototype.updateCache = function (data) {
   const cache = this.cache;
   if (data instanceof Float32Array && cache.length !== data.length) {
@@ -11632,7 +11626,6 @@ function ShadowUniformsCache() {
 
         // TODO (abelnation): set RectAreaLight shadow uniforms
       }
-
       lights[light.id] = uniforms;
       return uniforms;
     }
@@ -12368,7 +12361,6 @@ function WebGLState(gl, extensions, capabilities) {
       }
     };
   }
-
   function DepthBuffer() {
     let locked = false;
     let currentDepthMask = null;
@@ -13770,7 +13762,7 @@ function ArrayCamera(array = []) {
   PerspectiveCamera.call(this);
   this.cameras = array;
 }
-ArrayCamera.prototype = _extends__default['default'](Object.create(PerspectiveCamera.prototype), {
+ArrayCamera.prototype = _extends__default["default"](Object.create(PerspectiveCamera.prototype), {
   constructor: ArrayCamera,
   isArrayCamera: true
 });
@@ -13778,7 +13770,7 @@ function Group() {
   Object3D.call(this);
   this.type = 'Group';
 }
-Group.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Group.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Group,
   isGroup: true
 });
@@ -13787,7 +13779,7 @@ function WebXRController() {
   this._grip = null;
   this._hand = null;
 }
-_extends__default['default'](WebXRController.prototype, {
+_extends__default["default"](WebXRController.prototype, {
   constructor: WebXRController,
   getHandSpace: function () {
     if (this._hand === null) {
@@ -14030,7 +14022,7 @@ function WebXRManager(renderer, gl) {
     return session;
   };
   this.setSession = /*#__PURE__*/function () {
-    var _ref = _asyncToGenerator__default['default'](function* (value) {
+    var _ref = _asyncToGenerator__default["default"](function* (value) {
       session = value;
       if (session !== null) {
         session.addEventListener('select', onSessionEvent);
@@ -14261,7 +14253,7 @@ function WebXRManager(renderer, gl) {
   };
   this.dispose = function () {};
 }
-_extends__default['default'](WebXRManager.prototype, EventDispatcher.prototype);
+_extends__default["default"](WebXRManager.prototype, EventDispatcher.prototype);
 function WebGLMaterials(properties) {
   function refreshFogUniforms(uniforms, fog) {
     uniforms.fogColor.value.copy(fog.color);
@@ -14319,7 +14311,6 @@ function WebGLMaterials(properties) {
       material.uniformsNeedUpdate = false; // #15581
     }
   }
-
   function refreshUniformsCommon(uniforms, material) {
     uniforms.opacity.value = material.opacity;
     if (material.color) {
@@ -14859,7 +14850,7 @@ function WebGLRenderer(parameters) {
     state = new WebGLState(_gl, extensions, capabilities);
     state.scissor(_currentScissor.copy(_scissor).multiplyScalar(_pixelRatio).floor());
     state.viewport(_currentViewport.copy(_viewport).multiplyScalar(_pixelRatio).floor());
-    info = new WebGLInfo(_gl);
+    info = new WebGLInfo();
     properties = new WebGLProperties();
     textures = new WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info);
     cubemaps = new WebGLCubeMaps(_this);
@@ -15056,7 +15047,7 @@ function WebGLRenderer(parameters) {
     console.log('THREE.WebGLRenderer: Context Lost.');
     _isContextLost = true;
   }
-  function onContextRestore( /* event */
+  function onContextRestore(/* event */
   ) {
     console.log('THREE.WebGLRenderer: Context Restored.');
     _isContextLost = false;
@@ -15548,7 +15539,6 @@ function WebGLRenderer(parameters) {
       uniforms.pointShadowMatrix.value = lights.state.pointShadowMatrix;
       // TODO (abelnation): add area lights shadow info to uniforms
     }
-
     const progUniforms = materialProperties.program.getUniforms();
     const uniformsList = WebGLUniforms.seqWithValue(progUniforms.seq, uniforms);
     materialProperties.uniformsList = uniformsList;
@@ -15893,11 +15883,10 @@ function WebGLRenderer(parameters) {
     })); // eslint-disable-line no-undef
   }
 }
-
 function WebGL1Renderer(parameters) {
   WebGLRenderer.call(this, parameters);
 }
-WebGL1Renderer.prototype = _extends__default['default'](Object.create(WebGLRenderer.prototype), {
+WebGL1Renderer.prototype = _extends__default["default"](Object.create(WebGLRenderer.prototype), {
   constructor: WebGL1Renderer,
   isWebGL1Renderer: true
 });
@@ -15920,7 +15909,6 @@ class Scene extends Object3D {
       })); // eslint-disable-line no-undef
     }
   }
-
   copy(source, recursive) {
     super.copy(source, recursive);
     if (source.background !== null) this.background = source.background.clone();
@@ -15956,7 +15944,7 @@ Object.defineProperty(InterleavedBuffer.prototype, 'needsUpdate', {
     if (value === true) this.version++;
   }
 });
-_extends__default['default'](InterleavedBuffer.prototype, {
+_extends__default["default"](InterleavedBuffer.prototype, {
   isInterleavedBuffer: true,
   onUploadCallback: function () {},
   setUsage: function (value) {
@@ -16050,7 +16038,7 @@ Object.defineProperties(InterleavedBufferAttribute.prototype, {
     }
   }
 });
-_extends__default['default'](InterleavedBufferAttribute.prototype, {
+_extends__default["default"](InterleavedBufferAttribute.prototype, {
   isInterleavedBufferAttribute: true,
   applyMatrix4: function (m) {
     for (let i = 0, l = this.data.count; i < l; i++) {
@@ -16232,7 +16220,7 @@ function Sprite(material) {
   this.material = material !== undefined ? material : new SpriteMaterial();
   this.center = new Vector2(0.5, 0.5);
 }
-Sprite.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Sprite.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Sprite,
   isSprite: true,
   raycast: function (raycaster, intersects) {
@@ -16320,7 +16308,7 @@ function LOD() {
   });
   this.autoUpdate = true;
 }
-LOD.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+LOD.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: LOD,
   isLOD: true,
   copy: function (source) {
@@ -16425,7 +16413,7 @@ function SkinnedMesh(geometry, material) {
   this.bindMatrix = new Matrix4();
   this.bindMatrixInverse = new Matrix4();
 }
-SkinnedMesh.prototype = _extends__default['default'](Object.create(Mesh.prototype), {
+SkinnedMesh.prototype = _extends__default["default"](Object.create(Mesh.prototype), {
   constructor: SkinnedMesh,
   isSkinnedMesh: true,
   copy: function (source) {
@@ -16463,7 +16451,6 @@ SkinnedMesh.prototype = _extends__default['default'](Object.create(Mesh.prototyp
       } else {
         vector.set(1, 0, 0, 0); // do something reasonable
       }
-
       skinWeight.setXYZW(i, vector.x, vector.y, vector.z, vector.w);
     }
   },
@@ -16499,7 +16486,7 @@ function Bone() {
   Object3D.call(this);
   this.type = 'Bone';
 }
-Bone.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Bone.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Bone,
   isBone: true
 });
@@ -16515,7 +16502,7 @@ function Skeleton(bones = [], boneInverses = []) {
   this.frame = -1;
   this.init();
 }
-_extends__default['default'](Skeleton.prototype, {
+_extends__default["default"](Skeleton.prototype, {
   init: function () {
     const bones = this.bones;
     const boneInverses = this.boneInverses;
@@ -16657,7 +16644,7 @@ function InstancedMesh(geometry, material, count) {
   this.count = count;
   this.frustumCulled = false;
 }
-InstancedMesh.prototype = _extends__default['default'](Object.create(Mesh.prototype), {
+InstancedMesh.prototype = _extends__default["default"](Object.create(Mesh.prototype), {
   constructor: InstancedMesh,
   isInstancedMesh: true,
   copy: function (source) {
@@ -16763,7 +16750,7 @@ function Line(geometry = new BufferGeometry(), material = new LineBasicMaterial(
   this.material = material;
   this.updateMorphTargets();
 }
-Line.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Line.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Line,
   isLine: true,
   copy: function (source) {
@@ -16904,7 +16891,7 @@ function LineSegments(geometry, material) {
   Line.call(this, geometry, material);
   this.type = 'LineSegments';
 }
-LineSegments.prototype = _extends__default['default'](Object.create(Line.prototype), {
+LineSegments.prototype = _extends__default["default"](Object.create(Line.prototype), {
   constructor: LineSegments,
   isLineSegments: true,
   computeLineDistances: function () {
@@ -16935,7 +16922,7 @@ function LineLoop(geometry, material) {
   Line.call(this, geometry, material);
   this.type = 'LineLoop';
 }
-LineLoop.prototype = _extends__default['default'](Object.create(Line.prototype), {
+LineLoop.prototype = _extends__default["default"](Object.create(Line.prototype), {
   constructor: LineLoop,
   isLineLoop: true
 });
@@ -16989,7 +16976,7 @@ function Points(geometry = new BufferGeometry(), material = new PointsMaterial()
   this.material = material;
   this.updateMorphTargets();
 }
-Points.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Points.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Points,
   isPoints: true,
   copy: function (source) {
@@ -17096,7 +17083,7 @@ function VideoTexture(video, mapping, wrapS, wrapT, magFilter, minFilter, format
     video.requestVideoFrameCallback(updateVideo);
   }
 }
-VideoTexture.prototype = _extends__default['default'](Object.create(Texture.prototype), {
+VideoTexture.prototype = _extends__default["default"](Object.create(Texture.prototype), {
   constructor: VideoTexture,
   clone: function () {
     return new this.constructor(this.image).copy(this);
@@ -17104,7 +17091,7 @@ VideoTexture.prototype = _extends__default['default'](Object.create(Texture.prot
   isVideoTexture: true,
   update: function () {
     const video = this.image;
-    const hasVideoFrameCallback = ('requestVideoFrameCallback' in video);
+    const hasVideoFrameCallback = 'requestVideoFrameCallback' in video;
     if (hasVideoFrameCallback === false && video.readyState >= video.HAVE_CURRENT_DATA) {
       this.needsUpdate = true;
     }
@@ -19746,10 +19733,8 @@ const AnimationUtils = {
     if (typeof type.BYTES_PER_ELEMENT === 'number') {
       return new type(array); // create typed array
     }
-
     return Array.prototype.slice.call(array); // create Array
   },
-
   isTypedArray: function (object) {
     return ArrayBuffer.isView(object) && !(object instanceof DataView);
   },
@@ -19795,7 +19780,6 @@ const AnimationUtils = {
           times.push(key.time);
           values.push.apply(values, value); // push all elements
         }
-
         key = jsonKeys[i++];
       } while (key !== undefined);
     } else if (value.toArray !== undefined) {
@@ -19971,7 +19955,7 @@ function Interpolant(parameterPositions, sampleValues, sampleSize, resultBuffer)
   this.sampleValues = sampleValues;
   this.valueSize = sampleSize;
 }
-_extends__default['default'](Interpolant.prototype, {
+_extends__default["default"](Interpolant.prototype, {
   evaluate: function (t) {
     const pp = this.parameterPositions;
     let i1 = this._cachedIndex,
@@ -20113,7 +20097,6 @@ _extends__default['default'](Interpolant.prototype, {
     throw new Error('call to abstract method');
     // implementations shall return this.resultBuffer
   },
-
   intervalChanged_: function /* i1, t0, t1 */
   () {
 
@@ -20122,7 +20105,7 @@ _extends__default['default'](Interpolant.prototype, {
 });
 
 // DECLARE ALIAS AFTER assign prototype
-_extends__default['default'](Interpolant.prototype, {
+_extends__default["default"](Interpolant.prototype, {
   //( 0, t, t0 ), returns this.resultBuffer
   beforeStart_: Interpolant.prototype.copySampleValue_,
   //( N-1, tN-1, t ), returns this.resultBuffer
@@ -20144,7 +20127,7 @@ function CubicInterpolant(parameterPositions, sampleValues, sampleSize, resultBu
   this._weightNext = -0;
   this._offsetNext = -0;
 }
-CubicInterpolant.prototype = _extends__default['default'](Object.create(Interpolant.prototype), {
+CubicInterpolant.prototype = _extends__default["default"](Object.create(Interpolant.prototype), {
   constructor: CubicInterpolant,
   DefaultSettings_: {
     endingStart: ZeroCurvatureEnding,
@@ -20235,7 +20218,7 @@ CubicInterpolant.prototype = _extends__default['default'](Object.create(Interpol
 function LinearInterpolant(parameterPositions, sampleValues, sampleSize, resultBuffer) {
   Interpolant.call(this, parameterPositions, sampleValues, sampleSize, resultBuffer);
 }
-LinearInterpolant.prototype = _extends__default['default'](Object.create(Interpolant.prototype), {
+LinearInterpolant.prototype = _extends__default["default"](Object.create(Interpolant.prototype), {
   constructor: LinearInterpolant,
   interpolate_: function (i1, t0, t, t1) {
     const result = this.resultBuffer,
@@ -20261,7 +20244,7 @@ LinearInterpolant.prototype = _extends__default['default'](Object.create(Interpo
 function DiscreteInterpolant(parameterPositions, sampleValues, sampleSize, resultBuffer) {
   Interpolant.call(this, parameterPositions, sampleValues, sampleSize, resultBuffer);
 }
-DiscreteInterpolant.prototype = _extends__default['default'](Object.create(Interpolant.prototype), {
+DiscreteInterpolant.prototype = _extends__default["default"](Object.create(Interpolant.prototype), {
   constructor: DiscreteInterpolant,
   interpolate_: function (i1 /*, t0, t, t1 */) {
     return this.copySampleValue_(i1 - 1);
@@ -20278,7 +20261,7 @@ function KeyframeTrack(name, times, values, interpolation) {
 
 // Static methods
 
-_extends__default['default'](KeyframeTrack, {
+_extends__default["default"](KeyframeTrack, {
   // Serialization (in static context, because of constructor invocation
   // and automatic invocation of .toJSON):
 
@@ -20306,7 +20289,7 @@ _extends__default['default'](KeyframeTrack, {
     return json;
   }
 });
-_extends__default['default'](KeyframeTrack.prototype, {
+_extends__default["default"](KeyframeTrack.prototype, {
   constructor: KeyframeTrack,
   TimeBufferType: Float32Array,
   ValueBufferType: Float32Array,
@@ -20343,7 +20326,6 @@ _extends__default['default'](KeyframeTrack.prototype, {
           throw new Error(message); // fatal, in this case
         }
       }
-
       console.warn('THREE.KeyframeTrack:', message);
       return this;
     }
@@ -20542,7 +20524,7 @@ _extends__default['default'](KeyframeTrack.prototype, {
 function BooleanKeyframeTrack(name, times, values) {
   KeyframeTrack.call(this, name, times, values);
 }
-BooleanKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+BooleanKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: BooleanKeyframeTrack,
   ValueTypeName: 'bool',
   ValueBufferType: Array,
@@ -20562,7 +20544,7 @@ BooleanKeyframeTrack.prototype = _extends__default['default'](Object.create(Keyf
 function ColorKeyframeTrack(name, times, values, interpolation) {
   KeyframeTrack.call(this, name, times, values, interpolation);
 }
-ColorKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+ColorKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: ColorKeyframeTrack,
   ValueTypeName: 'color'
 
@@ -20581,7 +20563,7 @@ ColorKeyframeTrack.prototype = _extends__default['default'](Object.create(Keyfra
 function NumberKeyframeTrack(name, times, values, interpolation) {
   KeyframeTrack.call(this, name, times, values, interpolation);
 }
-NumberKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+NumberKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: NumberKeyframeTrack,
   ValueTypeName: 'number'
 
@@ -20597,7 +20579,7 @@ NumberKeyframeTrack.prototype = _extends__default['default'](Object.create(Keyfr
 function QuaternionLinearInterpolant(parameterPositions, sampleValues, sampleSize, resultBuffer) {
   Interpolant.call(this, parameterPositions, sampleValues, sampleSize, resultBuffer);
 }
-QuaternionLinearInterpolant.prototype = _extends__default['default'](Object.create(Interpolant.prototype), {
+QuaternionLinearInterpolant.prototype = _extends__default["default"](Object.create(Interpolant.prototype), {
   constructor: QuaternionLinearInterpolant,
   interpolate_: function (i1, t0, t, t1) {
     const result = this.resultBuffer,
@@ -20619,7 +20601,7 @@ QuaternionLinearInterpolant.prototype = _extends__default['default'](Object.crea
 function QuaternionKeyframeTrack(name, times, values, interpolation) {
   KeyframeTrack.call(this, name, times, values, interpolation);
 }
-QuaternionKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+QuaternionKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: QuaternionKeyframeTrack,
   ValueTypeName: 'quaternion',
   // ValueBufferType is inherited
@@ -20638,7 +20620,7 @@ QuaternionKeyframeTrack.prototype = _extends__default['default'](Object.create(K
 function StringKeyframeTrack(name, times, values, interpolation) {
   KeyframeTrack.call(this, name, times, values, interpolation);
 }
-StringKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+StringKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: StringKeyframeTrack,
   ValueTypeName: 'string',
   ValueBufferType: Array,
@@ -20654,7 +20636,7 @@ StringKeyframeTrack.prototype = _extends__default['default'](Object.create(Keyfr
 function VectorKeyframeTrack(name, times, values, interpolation) {
   KeyframeTrack.call(this, name, times, values, interpolation);
 }
-VectorKeyframeTrack.prototype = _extends__default['default'](Object.create(KeyframeTrack.prototype), {
+VectorKeyframeTrack.prototype = _extends__default["default"](Object.create(KeyframeTrack.prototype), {
   constructor: VectorKeyframeTrack,
   ValueTypeName: 'vector'
 
@@ -20662,7 +20644,6 @@ VectorKeyframeTrack.prototype = _extends__default['default'](Object.create(Keyfr
 
   // DefaultInterpolation is inherited
 });
-
 function AnimationClip(name, duration = -1, tracks, blendMode = NormalAnimationBlendMode) {
   this.name = name;
   this.tracks = tracks;
@@ -20721,7 +20702,7 @@ function parseKeyframeTrack(json) {
     return new trackType(json.name, json.times, json.values, json.interpolation);
   }
 }
-_extends__default['default'](AnimationClip, {
+_extends__default["default"](AnimationClip, {
   parse: function (json) {
     const tracks = [],
       jsonTracks = json.tracks,
@@ -20886,7 +20867,7 @@ _extends__default['default'](AnimationClip, {
     return clip;
   }
 });
-_extends__default['default'](AnimationClip.prototype, {
+_extends__default["default"](AnimationClip.prototype, {
   resetDuration: function () {
     const tracks = this.tracks;
     let duration = 0;
@@ -21035,7 +21016,7 @@ function Loader(manager) {
   this.resourcePath = '';
   this.requestHeader = {};
 }
-_extends__default['default'](Loader.prototype, {
+_extends__default["default"](Loader.prototype, {
   load: function /* url, onLoad, onProgress, onError */ () {},
   loadAsync: function (url, onProgress) {
     const scope = this;
@@ -21069,7 +21050,7 @@ const loading = {};
 function FileLoader(manager) {
   Loader.call(this, manager);
 }
-FileLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+FileLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: FileLoader,
   load: function (url, onLoad, onProgress, onError) {
     if (url === undefined) url = '';
@@ -21242,7 +21223,7 @@ FileLoader.prototype = _extends__default['default'](Object.create(Loader.prototy
 function AnimationLoader(manager) {
   Loader.call(this, manager);
 }
-AnimationLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+AnimationLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: AnimationLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -21282,7 +21263,7 @@ AnimationLoader.prototype = _extends__default['default'](Object.create(Loader.pr
 function CompressedTextureLoader(manager) {
   Loader.call(this, manager);
 }
-CompressedTextureLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+CompressedTextureLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: CompressedTextureLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -21355,7 +21336,7 @@ CompressedTextureLoader.prototype = _extends__default['default'](Object.create(L
 function ImageLoader(manager) {
   Loader.call(this, manager);
 }
-ImageLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+ImageLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: ImageLoader,
   load: function (url, onLoad, onProgress, onError) {
     if (this.path !== undefined) url = this.path + url;
@@ -21398,7 +21379,7 @@ ImageLoader.prototype = _extends__default['default'](Object.create(Loader.protot
 function CubeTextureLoader(manager) {
   Loader.call(this, manager);
 }
-CubeTextureLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+CubeTextureLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: CubeTextureLoader,
   load: function (urls, onLoad, onProgress, onError) {
     const texture = new CubeTexture();
@@ -21432,7 +21413,7 @@ CubeTextureLoader.prototype = _extends__default['default'](Object.create(Loader.
 function DataTextureLoader(manager) {
   Loader.call(this, manager);
 }
-DataTextureLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+DataTextureLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: DataTextureLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -21473,7 +21454,6 @@ DataTextureLoader.prototype = _extends__default['default'](Object.create(Loader.
         texture.mipmaps = texData.mipmaps;
         texture.minFilter = LinearMipmapLinearFilter; // presumably...
       }
-
       if (texData.mipmapCount === 1) {
         texture.minFilter = LinearFilter;
       }
@@ -21486,7 +21466,7 @@ DataTextureLoader.prototype = _extends__default['default'](Object.create(Loader.
 function TextureLoader(manager) {
   Loader.call(this, manager);
 }
-TextureLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+TextureLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: TextureLoader,
   load: function (url, onLoad, onProgress, onError) {
     const texture = new Texture();
@@ -21542,7 +21522,7 @@ function Curve() {
   this.type = 'Curve';
   this.arcLengthDivisions = 200;
 }
-_extends__default['default'](Curve.prototype, {
+_extends__default["default"](Curve.prototype, {
   // Virtual base class method to overwrite and implement in subclasses
   //	- t [0 .. 1]
 
@@ -21604,7 +21584,6 @@ _extends__default['default'](Curve.prototype, {
     this.cacheArcLengths = cache;
     return cache; // { sums: cache, sum: sum }; Sum is in the last element.
   },
-
   updateArcLengths: function () {
     this.needsUpdate = true;
     this.getLengths();
@@ -21643,7 +21622,6 @@ _extends__default['default'](Curve.prototype, {
         // DONE
       }
     }
-
     i = high;
     if (arcLengths[i] === targetArcLength) {
       return i / (il - 1);
@@ -22432,8 +22410,7 @@ function CurvePath() {
   this.curves = [];
   this.autoClose = false; // Automatically closes the path
 }
-
-CurvePath.prototype = _extends__default['default'](Object.create(Curve.prototype), {
+CurvePath.prototype = _extends__default["default"](Object.create(Curve.prototype), {
   constructor: CurvePath,
   add: function (curve) {
     this.curves.push(curve);
@@ -22476,7 +22453,6 @@ CurvePath.prototype = _extends__default['default'](Object.create(Curve.prototype
 
     // loop where sum != 0, sum > d , sum+1 <d
   },
-
   // We cannot use the default THREE.Curve getPoint() with getLength() because in
   // THREE.Curve, getLength() depends on getPoint() but in THREE.CurvePath
   // getPoint() depends on getLength
@@ -22582,7 +22558,7 @@ function Path(points) {
     this.setFromPoints(points);
   }
 }
-Path.prototype = _extends__default['default'](Object.create(CurvePath.prototype), {
+Path.prototype = _extends__default["default"](Object.create(CurvePath.prototype), {
   constructor: Path,
   setFromPoints: function (points) {
     this.moveTo(points[0].x, points[0].y);
@@ -22673,7 +22649,7 @@ function Shape(points) {
   this.type = 'Shape';
   this.holes = [];
 }
-Shape.prototype = _extends__default['default'](Object.create(Path.prototype), {
+Shape.prototype = _extends__default["default"](Object.create(Path.prototype), {
   constructor: Shape,
   getPointsHoles: function (divisions) {
     const holesPts = [];
@@ -22726,7 +22702,7 @@ function Light(color, intensity = 1) {
   this.color = new Color(color);
   this.intensity = intensity;
 }
-Light.prototype = _extends__default['default'](Object.create(Object3D.prototype), {
+Light.prototype = _extends__default["default"](Object.create(Object3D.prototype), {
   constructor: Light,
   isLight: true,
   copy: function (source) {
@@ -22755,7 +22731,7 @@ function HemisphereLight(skyColor, groundColor, intensity) {
   this.updateMatrix();
   this.groundColor = new Color(groundColor);
 }
-HemisphereLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+HemisphereLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: HemisphereLight,
   isHemisphereLight: true,
   copy: function (source) {
@@ -22780,7 +22756,7 @@ function LightShadow(camera) {
   this._viewportCount = 1;
   this._viewports = [new Vector4(0, 0, 1, 1)];
 }
-_extends__default['default'](LightShadow.prototype, {
+_extends__default["default"](LightShadow.prototype, {
   _projScreenMatrix: new Matrix4(),
   _lightPositionWorld: new Vector3(),
   _lookTarget: new Vector3(),
@@ -22838,7 +22814,7 @@ function SpotLightShadow() {
   LightShadow.call(this, new PerspectiveCamera(50, 1, 0.5, 500));
   this.focus = 1;
 }
-SpotLightShadow.prototype = _extends__default['default'](Object.create(LightShadow.prototype), {
+SpotLightShadow.prototype = _extends__default["default"](Object.create(LightShadow.prototype), {
   constructor: SpotLightShadow,
   isSpotLightShadow: true,
   updateMatrices: function (light) {
@@ -22880,7 +22856,7 @@ function SpotLight(color, intensity, distance, angle, penumbra, decay) {
 
   this.shadow = new SpotLightShadow();
 }
-SpotLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+SpotLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: SpotLight,
   isSpotLight: true,
   copy: function (source) {
@@ -22927,7 +22903,7 @@ function PointLightShadow() {
   this._cubeDirections = [new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 0, 1), new Vector3(0, 0, -1), new Vector3(0, 1, 0), new Vector3(0, -1, 0)];
   this._cubeUps = [new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1), new Vector3(0, 0, -1)];
 }
-PointLightShadow.prototype = _extends__default['default'](Object.create(LightShadow.prototype), {
+PointLightShadow.prototype = _extends__default["default"](Object.create(LightShadow.prototype), {
   constructor: PointLightShadow,
   isPointLightShadow: true,
   updateMatrices: function (light, viewportIndex = 0) {
@@ -22968,7 +22944,7 @@ function PointLight(color, intensity, distance, decay) {
 
   this.shadow = new PointLightShadow();
 }
-PointLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+PointLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: PointLight,
   isPointLight: true,
   copy: function (source) {
@@ -22992,7 +22968,7 @@ function OrthographicCamera(left = -1, right = 1, top = 1, bottom = -1, near = 0
   this.far = far;
   this.updateProjectionMatrix();
 }
-OrthographicCamera.prototype = _extends__default['default'](Object.create(Camera.prototype), {
+OrthographicCamera.prototype = _extends__default["default"](Object.create(Camera.prototype), {
   constructor: OrthographicCamera,
   isOrthographicCamera: true,
   copy: function (source, recursive) {
@@ -23004,7 +22980,7 @@ OrthographicCamera.prototype = _extends__default['default'](Object.create(Camera
     this.near = source.near;
     this.far = source.far;
     this.zoom = source.zoom;
-    this.view = source.view === null ? null : _extends__default['default']({}, source.view);
+    this.view = source.view === null ? null : _extends__default["default"]({}, source.view);
     return this;
   },
   setViewOffset: function (fullWidth, fullHeight, x, y, width, height) {
@@ -23063,14 +23039,14 @@ OrthographicCamera.prototype = _extends__default['default'](Object.create(Camera
     data.object.bottom = this.bottom;
     data.object.near = this.near;
     data.object.far = this.far;
-    if (this.view !== null) data.object.view = _extends__default['default']({}, this.view);
+    if (this.view !== null) data.object.view = _extends__default["default"]({}, this.view);
     return data;
   }
 });
 function DirectionalLightShadow() {
   LightShadow.call(this, new OrthographicCamera(-5, 5, 5, -5, 0.5, 500));
 }
-DirectionalLightShadow.prototype = _extends__default['default'](Object.create(LightShadow.prototype), {
+DirectionalLightShadow.prototype = _extends__default["default"](Object.create(LightShadow.prototype), {
   constructor: DirectionalLightShadow,
   isDirectionalLightShadow: true,
   updateMatrices: function (light) {
@@ -23085,7 +23061,7 @@ function DirectionalLight(color, intensity) {
   this.target = new Object3D();
   this.shadow = new DirectionalLightShadow();
 }
-DirectionalLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+DirectionalLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: DirectionalLight,
   isDirectionalLight: true,
   copy: function (source) {
@@ -23099,7 +23075,7 @@ function AmbientLight(color, intensity) {
   Light.call(this, color, intensity);
   this.type = 'AmbientLight';
 }
-AmbientLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+AmbientLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: AmbientLight,
   isAmbientLight: true
 });
@@ -23109,7 +23085,7 @@ function RectAreaLight(color, intensity, width, height) {
   this.width = width !== undefined ? width : 10;
   this.height = height !== undefined ? height : 10;
 }
-RectAreaLight.prototype = _extends__default['default'](Object.create(Light.prototype), {
+RectAreaLight.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: RectAreaLight,
   isRectAreaLight: true,
   copy: function (source) {
@@ -23297,7 +23273,7 @@ function LightProbe(sh, intensity) {
   this.type = 'LightProbe';
   this.sh = sh !== undefined ? sh : new SphericalHarmonics3();
 }
-LightProbe.prototype = _extends__default['default'](Object.create(Light.prototype), {
+LightProbe.prototype = _extends__default["default"](Object.create(Light.prototype), {
   constructor: LightProbe,
   isLightProbe: true,
   copy: function (source) {
@@ -23320,7 +23296,7 @@ function MaterialLoader(manager) {
   Loader.call(this, manager);
   this.textures = {};
 }
-MaterialLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+MaterialLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: MaterialLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -23542,7 +23518,7 @@ function InstancedBufferGeometry() {
   this.type = 'InstancedBufferGeometry';
   this.instanceCount = Infinity;
 }
-InstancedBufferGeometry.prototype = _extends__default['default'](Object.create(BufferGeometry.prototype), {
+InstancedBufferGeometry.prototype = _extends__default["default"](Object.create(BufferGeometry.prototype), {
   constructor: InstancedBufferGeometry,
   isInstancedBufferGeometry: true,
   copy: function (source) {
@@ -23569,7 +23545,7 @@ function InstancedBufferAttribute(array, itemSize, normalized, meshPerAttribute)
   BufferAttribute.call(this, array, itemSize, normalized);
   this.meshPerAttribute = meshPerAttribute || 1;
 }
-InstancedBufferAttribute.prototype = _extends__default['default'](Object.create(BufferAttribute.prototype), {
+InstancedBufferAttribute.prototype = _extends__default["default"](Object.create(BufferAttribute.prototype), {
   constructor: InstancedBufferAttribute,
   isInstancedBufferAttribute: true,
   copy: function (source) {
@@ -23587,7 +23563,7 @@ InstancedBufferAttribute.prototype = _extends__default['default'](Object.create(
 function BufferGeometryLoader(manager) {
   Loader.call(this, manager);
 }
-BufferGeometryLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+BufferGeometryLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: BufferGeometryLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -23708,7 +23684,7 @@ function ImageBitmapLoader(manager) {
     premultiplyAlpha: 'none'
   };
 }
-ImageBitmapLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+ImageBitmapLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: ImageBitmapLoader,
   isImageBitmapLoader: true,
   setOptions: function setOptions(options) {
@@ -23753,7 +23729,7 @@ function ShapePath() {
   this.subPaths = [];
   this.currentPath = null;
 }
-_extends__default['default'](ShapePath.prototype, {
+_extends__default["default"](ShapePath.prototype, {
   moveTo: function (x, y) {
     this.currentPath = new Path();
     this.subPaths.push(this.currentPath);
@@ -23826,7 +23802,6 @@ _extends__default['default'](ShapePath.prototype, {
           // continue;
         }
       }
-
       return inside;
     }
     const isClockWise = ShapeUtils.isClockWise;
@@ -24030,7 +24005,7 @@ function createPath(char, scale, offsetX, offsetY, data) {
 function FontLoader(manager) {
   Loader.call(this, manager);
 }
-FontLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+FontLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: FontLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -24069,7 +24044,7 @@ const AudioContext = {
 function AudioLoader(manager) {
   Loader.call(this, manager);
 }
-AudioLoader.prototype = _extends__default['default'](Object.create(Loader.prototype), {
+AudioLoader.prototype = _extends__default["default"](Object.create(Loader.prototype), {
   constructor: AudioLoader,
   load: function (url, onLoad, onProgress, onError) {
     const scope = this;
@@ -24111,7 +24086,7 @@ function HemisphereLightProbe(skyColor, groundColor, intensity) {
   this.sh.coefficients[0].copy(sky).add(ground).multiplyScalar(c0);
   this.sh.coefficients[1].copy(sky).sub(ground).multiplyScalar(c1);
 }
-HemisphereLightProbe.prototype = _extends__default['default'](Object.create(LightProbe.prototype), {
+HemisphereLightProbe.prototype = _extends__default["default"](Object.create(LightProbe.prototype), {
   constructor: HemisphereLightProbe,
   isHemisphereLightProbe: true,
   copy: function (source) {
@@ -24135,7 +24110,7 @@ function AmbientLightProbe(color, intensity) {
   // without extra factor of PI in the shader, would be 2 / Math.sqrt( Math.PI );
   this.sh.coefficients[0].set(color1.r, color1.g, color1.b).multiplyScalar(2 * Math.sqrt(Math.PI));
 }
-AmbientLightProbe.prototype = _extends__default['default'](Object.create(LightProbe.prototype), {
+AmbientLightProbe.prototype = _extends__default["default"](Object.create(LightProbe.prototype), {
   constructor: AmbientLightProbe,
   isAmbientLightProbe: true,
   copy: function (source) {
@@ -24174,7 +24149,7 @@ function StereoCamera() {
     eyeSep: null
   };
 }
-_extends__default['default'](StereoCamera.prototype, {
+_extends__default["default"](StereoCamera.prototype, {
   update: function (camera) {
     const cache = this._cache;
     const needsUpdate = cache.focus !== camera.focus || cache.fov !== camera.fov || cache.aspect !== camera.aspect * this.aspect || cache.near !== camera.near || cache.far !== camera.far || cache.zoom !== camera.zoom || cache.eyeSep !== this.eyeSep;
@@ -24221,225 +24196,6 @@ _extends__default['default'](StereoCamera.prototype, {
     this.cameraR.matrixWorld.copy(camera.matrixWorld).multiply(_eyeRight);
   }
 });
-class Audio extends Object3D {
-  constructor(listener) {
-    super();
-    this.type = 'Audio';
-    this.listener = listener;
-    this.context = listener.context;
-    this.gain = this.context.createGain();
-    this.gain.connect(listener.getInput());
-    this.autoplay = false;
-    this.buffer = null;
-    this.detune = 0;
-    this.loop = false;
-    this.loopStart = 0;
-    this.loopEnd = 0;
-    this.offset = 0;
-    this.duration = undefined;
-    this.playbackRate = 1;
-    this.isPlaying = false;
-    this.hasPlaybackControl = true;
-    this.source = null;
-    this.sourceType = 'empty';
-    this._startedAt = 0;
-    this._progress = 0;
-    this._connected = false;
-    this.filters = [];
-  }
-  getOutput() {
-    return this.gain;
-  }
-  setNodeSource(audioNode) {
-    this.hasPlaybackControl = false;
-    this.sourceType = 'audioNode';
-    this.source = audioNode;
-    this.connect();
-    return this;
-  }
-  setMediaElementSource(mediaElement) {
-    this.hasPlaybackControl = false;
-    this.sourceType = 'mediaNode';
-    this.source = this.context.createMediaElementSource(mediaElement);
-    this.connect();
-    return this;
-  }
-  setMediaStreamSource(mediaStream) {
-    this.hasPlaybackControl = false;
-    this.sourceType = 'mediaStreamNode';
-    this.source = this.context.createMediaStreamSource(mediaStream);
-    this.connect();
-    return this;
-  }
-  setBuffer(audioBuffer) {
-    this.buffer = audioBuffer;
-    this.sourceType = 'buffer';
-    if (this.autoplay) this.play();
-    return this;
-  }
-  play(delay = 0) {
-    if (this.isPlaying === true) {
-      console.warn('THREE.Audio: Audio is already playing.');
-      return;
-    }
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return;
-    }
-    this._startedAt = this.context.currentTime + delay;
-    const source = this.context.createBufferSource();
-    source.buffer = this.buffer;
-    source.loop = this.loop;
-    source.loopStart = this.loopStart;
-    source.loopEnd = this.loopEnd;
-    source.onended = this.onEnded.bind(this);
-    source.start(this._startedAt, this._progress + this.offset, this.duration);
-    this.isPlaying = true;
-    this.source = source;
-    this.setDetune(this.detune);
-    this.setPlaybackRate(this.playbackRate);
-    return this.connect();
-  }
-  pause() {
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return;
-    }
-    if (this.isPlaying === true) {
-      // update current progress
-
-      this._progress += Math.max(this.context.currentTime - this._startedAt, 0) * this.playbackRate;
-      if (this.loop === true) {
-        // ensure _progress does not exceed duration with looped audios
-
-        this._progress = this._progress % (this.duration || this.buffer.duration);
-      }
-      this.source.stop();
-      this.source.onended = null;
-      this.isPlaying = false;
-    }
-    return this;
-  }
-  stop() {
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return;
-    }
-    this._progress = 0;
-    this.source.stop();
-    this.source.onended = null;
-    this.isPlaying = false;
-    return this;
-  }
-  connect() {
-    if (this.filters.length > 0) {
-      this.source.connect(this.filters[0]);
-      for (let i = 1, l = this.filters.length; i < l; i++) {
-        this.filters[i - 1].connect(this.filters[i]);
-      }
-      this.filters[this.filters.length - 1].connect(this.getOutput());
-    } else {
-      this.source.connect(this.getOutput());
-    }
-    this._connected = true;
-    return this;
-  }
-  disconnect() {
-    if (this.filters.length > 0) {
-      this.source.disconnect(this.filters[0]);
-      for (let i = 1, l = this.filters.length; i < l; i++) {
-        this.filters[i - 1].disconnect(this.filters[i]);
-      }
-      this.filters[this.filters.length - 1].disconnect(this.getOutput());
-    } else {
-      this.source.disconnect(this.getOutput());
-    }
-    this._connected = false;
-    return this;
-  }
-  getFilters() {
-    return this.filters;
-  }
-  setFilters(value) {
-    if (!value) value = [];
-    if (this._connected === true) {
-      this.disconnect();
-      this.filters = value.slice();
-      this.connect();
-    } else {
-      this.filters = value.slice();
-    }
-    return this;
-  }
-  setDetune(value) {
-    this.detune = value;
-    if (this.source.detune === undefined) return; // only set detune when available
-
-    if (this.isPlaying === true) {
-      this.source.detune.setTargetAtTime(this.detune, this.context.currentTime, 0.01);
-    }
-    return this;
-  }
-  getDetune() {
-    return this.detune;
-  }
-  getFilter() {
-    return this.getFilters()[0];
-  }
-  setFilter(filter) {
-    return this.setFilters(filter ? [filter] : []);
-  }
-  setPlaybackRate(value) {
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return;
-    }
-    this.playbackRate = value;
-    if (this.isPlaying === true) {
-      this.source.playbackRate.setTargetAtTime(this.playbackRate, this.context.currentTime, 0.01);
-    }
-    return this;
-  }
-  getPlaybackRate() {
-    return this.playbackRate;
-  }
-  onEnded() {
-    this.isPlaying = false;
-  }
-  getLoop() {
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return false;
-    }
-    return this.loop;
-  }
-  setLoop(value) {
-    if (this.hasPlaybackControl === false) {
-      console.warn('THREE.Audio: this Audio has no playback control.');
-      return;
-    }
-    this.loop = value;
-    if (this.isPlaying === true) {
-      this.source.loop = this.loop;
-    }
-    return this;
-  }
-  setLoopStart(value) {
-    this.loopStart = value;
-    return this;
-  }
-  setLoopEnd(value) {
-    this.loopEnd = value;
-    return this;
-  }
-  getVolume() {
-    return this.gain.gain.value;
-  }
-  setVolume(value) {
-    this.gain.gain.setTargetAtTime(value, this.context.currentTime, 0.01);
-    return this;
-  }
-}
 function PropertyMixer(binding, typeName, valueSize) {
   this.binding = binding;
   this.valueSize = valueSize;
@@ -24495,7 +24251,7 @@ function PropertyMixer(binding, typeName, valueSize) {
   this.useCount = 0;
   this.referenceCount = 0;
 }
-_extends__default['default'](PropertyMixer.prototype, {
+_extends__default["default"](PropertyMixer.prototype, {
   // accumulate data in the 'incoming' region into 'accu<i>'
   accumulate: function (accuIndex, weight) {
     // note: happily accumulating nothing when weight = 0, the caller knows
@@ -24675,7 +24431,7 @@ function Composite(targetGroup, path, optionalParsedPath) {
   this._targetGroup = targetGroup;
   this._bindings = targetGroup.subscribe_(path, parsedPath);
 }
-_extends__default['default'](Composite.prototype, {
+_extends__default["default"](Composite.prototype, {
   getValue: function (array, offset) {
     this.bind(); // bind all binding
 
@@ -24710,7 +24466,7 @@ function PropertyBinding(rootNode, path, parsedPath) {
   this.node = PropertyBinding.findNode(rootNode, this.parsedPath.nodeName) || rootNode;
   this.rootNode = rootNode;
 }
-_extends__default['default'](PropertyBinding, {
+_extends__default["default"](PropertyBinding, {
   Composite: Composite,
   create: function (root, path, parsedPath) {
     if (!(root && root.isAnimationObjectGroup)) {
@@ -24795,7 +24551,7 @@ _extends__default['default'](PropertyBinding, {
     return null;
   }
 });
-_extends__default['default'](PropertyBinding.prototype, {
+_extends__default["default"](PropertyBinding.prototype, {
   // prototype, continued
 
   // these are used to "bind" a nonexistent property
@@ -24888,7 +24644,6 @@ _extends__default['default'](PropertyBinding.prototype, {
     // the bound state. When the property is not found, the methods
     // become no-ops.
   },
-
   setValue: function getValue_unbound(sourceArray, offset) {
     this.bind();
     this.setValue(sourceArray, offset);
@@ -25042,7 +24797,7 @@ _extends__default['default'](PropertyBinding.prototype, {
 });
 
 // DECLARE ALIAS AFTER assign prototype
-_extends__default['default'](PropertyBinding.prototype, {
+_extends__default["default"](PropertyBinding.prototype, {
   // initial state of these methods that calls 'bind'
   _getValue_unbound: PropertyBinding.prototype.getValue,
   _setValue_unbound: PropertyBinding.prototype.setValue
@@ -25111,7 +24866,7 @@ function AnimationObjectGroup() {
     }
   };
 }
-_extends__default['default'](AnimationObjectGroup.prototype, {
+_extends__default["default"](AnimationObjectGroup.prototype, {
   isAnimationObjectGroup: true,
   add: function () {
     const objects = this._objects,
@@ -25766,7 +25521,7 @@ function AnimationMixer(root) {
   this.time = 0;
   this.timeScale = 1.0;
 }
-AnimationMixer.prototype = _extends__default['default'](Object.create(EventDispatcher.prototype), {
+AnimationMixer.prototype = _extends__default["default"](Object.create(EventDispatcher.prototype), {
   constructor: AnimationMixer,
   _bindAction: function (action, prototypeAction) {
     const root = action._localRoot || this._root,
@@ -26155,10 +25910,8 @@ AnimationMixer.prototype = _extends__default['default'](Object.create(EventDispa
     for (let i = 0; i < this._actions.length; i++) {
       this._actions[i].time = 0; // Zero out time attribute for all associated AnimationAction objects.
     }
-
     return this.update(timeInSeconds); // Update used to set exact time. Returns "this" AnimationMixer object.
   },
-
   // return this mixer's root target object
   getRoot: function () {
     return this._root;
@@ -26221,23 +25974,11 @@ AnimationMixer.prototype = _extends__default['default'](Object.create(EventDispa
     }
   }
 });
-class Uniform {
-  constructor(value) {
-    if (typeof value === 'string') {
-      console.warn('THREE.Uniform: Type parameter is no longer needed.');
-      value = arguments[1];
-    }
-    this.value = value;
-  }
-  clone() {
-    return new Uniform(this.value.clone === undefined ? this.value : this.value.clone());
-  }
-}
 function InstancedInterleavedBuffer(array, stride, meshPerAttribute) {
   InterleavedBuffer.call(this, array, stride);
   this.meshPerAttribute = meshPerAttribute || 1;
 }
-InstancedInterleavedBuffer.prototype = _extends__default['default'](Object.create(InterleavedBuffer.prototype), {
+InstancedInterleavedBuffer.prototype = _extends__default["default"](Object.create(InterleavedBuffer.prototype), {
   constructor: InstancedInterleavedBuffer,
   isInstancedInterleavedBuffer: true,
   copy: function (source) {
@@ -26270,7 +26011,7 @@ Object.defineProperty(GLBufferAttribute.prototype, 'needsUpdate', {
     if (value === true) this.version++;
   }
 });
-_extends__default['default'](GLBufferAttribute.prototype, {
+_extends__default["default"](GLBufferAttribute.prototype, {
   isGLBufferAttribute: true,
   setBuffer: function (buffer) {
     this.buffer = buffer;
@@ -26332,7 +26073,7 @@ function intersectObject(object, raycaster, intersects, recursive) {
     }
   }
 }
-_extends__default['default'](Raycaster.prototype, {
+_extends__default["default"](Raycaster.prototype, {
   set: function (origin, direction) {
     // direction is assumed to be normalized (for accurate distance calculations)
 
@@ -26565,6 +26306,109 @@ function ImmediateRenderObject(material) {
 ImmediateRenderObject.prototype = Object.create(Object3D.prototype);
 ImmediateRenderObject.prototype.constructor = ImmediateRenderObject;
 ImmediateRenderObject.prototype.isImmediateRenderObject = true;
+const _vector$a = /*@__PURE__*/new Vector3();
+const _boneMatrix = /*@__PURE__*/new Matrix4();
+const _matrixWorldInv = /*@__PURE__*/new Matrix4();
+class SkeletonHelper extends LineSegments {
+  constructor(object) {
+    const bones = getBoneList(object);
+    const geometry = new BufferGeometry();
+    const vertices = [];
+    const colors = [];
+    const color1 = new Color(0, 0, 1);
+    const color2 = new Color(0, 1, 0);
+    for (let i = 0; i < bones.length; i++) {
+      const bone = bones[i];
+      if (bone.parent && bone.parent.isBone) {
+        vertices.push(0, 0, 0);
+        vertices.push(0, 0, 0);
+        colors.push(color1.r, color1.g, color1.b);
+        colors.push(color2.r, color2.g, color2.b);
+      }
+    }
+    geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    const material = new LineBasicMaterial({
+      vertexColors: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      transparent: true
+    });
+    super(geometry, material);
+    this.type = 'SkeletonHelper';
+    this.isSkeletonHelper = true;
+    this.root = object;
+    this.bones = bones;
+    this.matrix = object.matrixWorld;
+    this.matrixAutoUpdate = false;
+  }
+  updateMatrixWorld(force) {
+    const bones = this.bones;
+    const geometry = this.geometry;
+    const position = geometry.getAttribute('position');
+    _matrixWorldInv.copy(this.root.matrixWorld).invert();
+    for (let i = 0, j = 0; i < bones.length; i++) {
+      const bone = bones[i];
+      if (bone.parent && bone.parent.isBone) {
+        _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.matrixWorld);
+        _vector$a.setFromMatrixPosition(_boneMatrix);
+        position.setXYZ(j, _vector$a.x, _vector$a.y, _vector$a.z);
+        _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.parent.matrixWorld);
+        _vector$a.setFromMatrixPosition(_boneMatrix);
+        position.setXYZ(j + 1, _vector$a.x, _vector$a.y, _vector$a.z);
+        j += 2;
+      }
+    }
+    geometry.getAttribute('position').needsUpdate = true;
+    super.updateMatrixWorld(force);
+  }
+}
+function getBoneList(object) {
+  const boneList = [];
+  if (object && object.isBone) {
+    boneList.push(object);
+  }
+  for (let i = 0; i < object.children.length; i++) {
+    boneList.push.apply(boneList, getBoneList(object.children[i]));
+  }
+  return boneList;
+}
+class GridHelper extends LineSegments {
+  constructor(size = 10, divisions = 10, color1 = 0x444444, color2 = 0x888888) {
+    color1 = new Color(color1);
+    color2 = new Color(color2);
+    const center = divisions / 2;
+    const step = size / divisions;
+    const halfSize = size / 2;
+    const vertices = [],
+      colors = [];
+    for (let i = 0, j = 0, k = -halfSize; i <= divisions; i++, k += step) {
+      vertices.push(-halfSize, 0, k, halfSize, 0, k);
+      vertices.push(k, 0, -halfSize, k, 0, halfSize);
+      const color = i === center ? color1 : color2;
+      color.toArray(colors, j);
+      j += 3;
+      color.toArray(colors, j);
+      j += 3;
+      color.toArray(colors, j);
+      j += 3;
+      color.toArray(colors, j);
+      j += 3;
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+    const material = new LineBasicMaterial({
+      vertexColors: true,
+      toneMapped: false
+    });
+    super(geometry, material);
+    this.type = 'GridHelper';
+  }
+}
+const _floatView = new Float32Array(1);
+new Int32Array(_floatView.buffer);
 const backgroundMaterial = new MeshBasicMaterial({
   side: BackSide,
   depthWrite: false,
@@ -26584,12 +26428,14 @@ Curve.create = function (construct, getPoint) {
 
 //
 
-_extends__default['default'](Path.prototype, {
+_extends__default["default"](Path.prototype, {
   fromPoints: function (points) {
     console.warn('THREE.Path: .fromPoints() has been renamed to .setFromPoints().');
     return this.setFromPoints(points);
   }
 });
+Object.create(CatmullRomCurve3.prototype);
+Object.create(CatmullRomCurve3.prototype);
 
 //
 
@@ -26599,7 +26445,7 @@ function Spline(points) {
   this.type = 'catmullrom';
 }
 Spline.prototype = Object.create(CatmullRomCurve3.prototype);
-_extends__default['default'](Spline.prototype, {
+_extends__default["default"](Spline.prototype, {
   initFromArray: function /* a */
   () {
     console.error('THREE.Spline: .initFromArray() has been removed.');
@@ -26613,10 +26459,16 @@ _extends__default['default'](Spline.prototype, {
     console.error('THREE.Spline: .reparametrizeByArcLength() has been removed.');
   }
 });
+GridHelper.prototype.setColors = function () {
+  console.error('THREE.GridHelper: setColors() has been deprecated, pass them in the constructor instead.');
+};
+SkeletonHelper.prototype.update = function () {
+  console.error('THREE.SkeletonHelper: update() no longer needs to be called.');
+};
 
 //
 
-_extends__default['default'](Loader.prototype, {
+_extends__default["default"](Loader.prototype, {
   extractUrlBase: function (url) {
     console.warn('THREE.Loader: .extractUrlBase() has been deprecated. Use THREE.LoaderUtils.extractUrlBase() instead.');
     return LoaderUtils.extractUrlBase(url);
@@ -26635,7 +26487,7 @@ Loader.Handlers = {
 
 //
 
-_extends__default['default'](Box2.prototype, {
+_extends__default["default"](Box2.prototype, {
   center: function (optionalTarget) {
     console.warn('THREE.Box2: .center() has been renamed to .getCenter().');
     return this.getCenter(optionalTarget);
@@ -26653,7 +26505,7 @@ _extends__default['default'](Box2.prototype, {
     return this.getSize(optionalTarget);
   }
 });
-_extends__default['default'](Box3.prototype, {
+_extends__default["default"](Box3.prototype, {
   center: function (optionalTarget) {
     console.warn('THREE.Box3: .center() has been renamed to .getCenter().');
     return this.getCenter(optionalTarget);
@@ -26675,7 +26527,7 @@ _extends__default['default'](Box3.prototype, {
     return this.getSize(optionalTarget);
   }
 });
-_extends__default['default'](Sphere.prototype, {
+_extends__default["default"](Sphere.prototype, {
   empty: function () {
     console.warn('THREE.Sphere: .empty() has been renamed to .isEmpty().');
     return this.isEmpty();
@@ -26685,7 +26537,7 @@ Frustum.prototype.setFromMatrix = function (m) {
   console.warn('THREE.Frustum: .setFromMatrix() has been renamed to .setFromProjectionMatrix().');
   return this.setFromProjectionMatrix(m);
 };
-_extends__default['default'](MathUtils, {
+_extends__default["default"](MathUtils, {
   random16: function () {
     console.warn('THREE.Math: .random16() has been deprecated. Use Math.random() instead.');
     return Math.random();
@@ -26699,7 +26551,7 @@ _extends__default['default'](MathUtils, {
     return MathUtils.ceilPowerOfTwo(value);
   }
 });
-_extends__default['default'](Matrix3.prototype, {
+_extends__default["default"](Matrix3.prototype, {
   flattenToArrayOffset: function (array, offset) {
     console.warn('THREE.Matrix3: .flattenToArrayOffset() has been deprecated. Use .toArray() instead.');
     return this.toArray(array, offset);
@@ -26725,7 +26577,7 @@ _extends__default['default'](Matrix3.prototype, {
     return this.copy(matrix).invert();
   }
 });
-_extends__default['default'](Matrix4.prototype, {
+_extends__default["default"](Matrix4.prototype, {
   extractPosition: function (m) {
     console.warn('THREE.Matrix4: .extractPosition() has been renamed to .copyPosition().');
     return this.copyPosition(m);
@@ -26801,7 +26653,7 @@ Plane.prototype.isIntersectionLine = function (line) {
   console.warn('THREE.Plane: .isIntersectionLine() has been renamed to .intersectsLine().');
   return this.intersectsLine(line);
 };
-_extends__default['default'](Quaternion.prototype, {
+_extends__default["default"](Quaternion.prototype, {
   multiplyVector3: function (vector) {
     console.warn('THREE.Quaternion: .multiplyVector3() has been removed. Use is now vector.applyQuaternion( quaternion ) instead.');
     return vector.applyQuaternion(this);
@@ -26811,7 +26663,7 @@ _extends__default['default'](Quaternion.prototype, {
     return this.invert();
   }
 });
-_extends__default['default'](Ray.prototype, {
+_extends__default["default"](Ray.prototype, {
   isIntersectionBox: function (box) {
     console.warn('THREE.Ray: .isIntersectionBox() has been renamed to .intersectsBox().');
     return this.intersectsBox(box);
@@ -26825,7 +26677,7 @@ _extends__default['default'](Ray.prototype, {
     return this.intersectsSphere(sphere);
   }
 });
-_extends__default['default'](Triangle.prototype, {
+_extends__default["default"](Triangle.prototype, {
   area: function () {
     console.warn('THREE.Triangle: .area() has been renamed to .getArea().');
     return this.getArea();
@@ -26847,7 +26699,7 @@ _extends__default['default'](Triangle.prototype, {
     return this.getPlane(target);
   }
 });
-_extends__default['default'](Triangle, {
+_extends__default["default"](Triangle, {
   barycoordFromPoint: function (point, a, b, c, target) {
     console.warn('THREE.Triangle: .barycoordFromPoint() has been renamed to .getBarycoord().');
     return Triangle.getBarycoord(point, a, b, c, target);
@@ -26857,7 +26709,7 @@ _extends__default['default'](Triangle, {
     return Triangle.getNormal(a, b, c, target);
   }
 });
-_extends__default['default'](Shape.prototype, {
+_extends__default["default"](Shape.prototype, {
   extractAllPoints: function (divisions) {
     console.warn('THREE.Shape: .extractAllPoints() has been removed. Use .extractPoints() instead.');
     return this.extractPoints(divisions);
@@ -26871,7 +26723,7 @@ _extends__default['default'](Shape.prototype, {
     return new ShapeGeometry(this, options);
   }
 });
-_extends__default['default'](Vector2.prototype, {
+_extends__default["default"](Vector2.prototype, {
   fromAttribute: function (attribute, index, offset) {
     console.warn('THREE.Vector2: .fromAttribute() has been renamed to .fromBufferAttribute().');
     return this.fromBufferAttribute(attribute, index, offset);
@@ -26885,7 +26737,7 @@ _extends__default['default'](Vector2.prototype, {
     return this.manhattanLength();
   }
 });
-_extends__default['default'](Vector3.prototype, {
+_extends__default["default"](Vector3.prototype, {
   setEulerFromRotationMatrix: function () {
     console.error('THREE.Vector3: .setEulerFromRotationMatrix() has been removed. Use Euler.setFromRotationMatrix() instead.');
   },
@@ -26921,7 +26773,7 @@ _extends__default['default'](Vector3.prototype, {
     return this.manhattanLength();
   }
 });
-_extends__default['default'](Vector4.prototype, {
+_extends__default["default"](Vector4.prototype, {
   fromAttribute: function (attribute, index, offset) {
     console.warn('THREE.Vector4: .fromAttribute() has been renamed to .fromBufferAttribute().');
     return this.fromBufferAttribute(attribute, index, offset);
@@ -26934,7 +26786,7 @@ _extends__default['default'](Vector4.prototype, {
 
 //
 
-_extends__default['default'](Object3D.prototype, {
+_extends__default["default"](Object3D.prototype, {
   getChildByName: function (name) {
     console.warn('THREE.Object3D: .getChildByName() has been renamed to .getObjectByName().');
     return this.getObjectByName(name);
@@ -26974,7 +26826,7 @@ Object.defineProperties(Object3D.prototype, {
     }
   }
 });
-_extends__default['default'](Mesh.prototype, {
+_extends__default["default"](Mesh.prototype, {
   setDrawMode: function () {
     console.error('THREE.Mesh: .setDrawMode() has been removed. The renderer now always assumes THREE.TrianglesDrawMode. Transform your geometry via BufferGeometryUtils.toTrianglesDrawMode() if necessary.');
   }
@@ -27129,7 +26981,7 @@ Object.defineProperties(BufferAttribute.prototype, {
     }
   }
 });
-_extends__default['default'](BufferAttribute.prototype, {
+_extends__default["default"](BufferAttribute.prototype, {
   setDynamic: function (value) {
     console.warn('THREE.BufferAttribute: .setDynamic() has been deprecated. Use .setUsage() instead.');
     this.setUsage(value === true ? DynamicDrawUsage : StaticDrawUsage);
@@ -27144,7 +26996,7 @@ _extends__default['default'](BufferAttribute.prototype, {
     console.error('THREE.BufferAttribute: .setArray has been removed. Use BufferGeometry .setAttribute to replace/resize attribute buffers');
   }
 });
-_extends__default['default'](BufferGeometry.prototype, {
+_extends__default["default"](BufferGeometry.prototype, {
   addIndex: function (index) {
     console.warn('THREE.BufferGeometry: .addIndex() has been renamed to .setIndex().');
     this.setIndex(index);
@@ -27235,7 +27087,7 @@ Object.defineProperties(InterleavedBuffer.prototype, {
     }
   }
 });
-_extends__default['default'](InterleavedBuffer.prototype, {
+_extends__default["default"](InterleavedBuffer.prototype, {
   setDynamic: function (value) {
     console.warn('THREE.InterleavedBuffer: .setDynamic() has been deprecated. Use .setUsage() instead.');
     this.setUsage(value === true ? DynamicDrawUsage : StaticDrawUsage);
@@ -27249,7 +27101,7 @@ _extends__default['default'](InterleavedBuffer.prototype, {
 
 //
 
-_extends__default['default'](ExtrudeGeometry.prototype, {
+_extends__default["default"](ExtrudeGeometry.prototype, {
   getArrays: function () {
     console.error('THREE.ExtrudeGeometry: .getArrays() has been removed.');
   },
@@ -27263,25 +27115,9 @@ _extends__default['default'](ExtrudeGeometry.prototype, {
 
 //
 
-_extends__default['default'](Scene.prototype, {
+_extends__default["default"](Scene.prototype, {
   dispose: function () {
     console.error('THREE.Scene: .dispose() has been removed.');
-  }
-});
-
-//
-
-Object.defineProperties(Uniform.prototype, {
-  dynamic: {
-    set: function () {
-      console.warn('THREE.Uniform: .dynamic has been removed. Use object.onBeforeRender() instead.');
-    }
-  },
-  onUpdate: {
-    value: function () {
-      console.warn('THREE.Uniform: .onUpdate() has been removed. Use object.onBeforeRender() instead.');
-      return this;
-    }
   }
 });
 
@@ -27368,7 +27204,7 @@ Object.defineProperties(ShaderMaterial.prototype, {
 
 //
 
-_extends__default['default'](WebGLRenderer.prototype, {
+_extends__default["default"](WebGLRenderer.prototype, {
   clearTarget: function (renderTarget, color, depth, stencil) {
     console.warn('THREE.WebGLRenderer: .clearTarget() has been deprecated. Use .setRenderTarget() and .clear() instead.');
     this.setRenderTarget(renderTarget);
@@ -27670,27 +27506,6 @@ Object.defineProperties(WebGLRenderTarget.prototype, {
 
 //
 
-Object.defineProperties(Audio.prototype, {
-  load: {
-    value: function (file) {
-      console.warn('THREE.Audio: .load has been deprecated. Use THREE.AudioLoader instead.');
-      const scope = this;
-      const audioLoader = new AudioLoader();
-      audioLoader.load(file, function (buffer) {
-        scope.setBuffer(buffer);
-      });
-      return this;
-    }
-  },
-  startTime: {
-    set: function () {
-      console.warn('THREE.Audio: .startTime is now .play( delay ).');
-    }
-  }
-});
-
-//
-
 CubeCamera.prototype.updateCubeMap = function (renderer, scene) {
   console.warn('THREE.CubeCamera: .updateCubeMap() is now .update().');
   return this.update(renderer, scene);
@@ -27731,7 +27546,6 @@ if (typeof __THREE_DEVTOOLS__ !== 'undefined') {
   }));
   /* eslint-enable no-undef */
 }
-
 if (typeof window !== 'undefined') {
   if (window.__THREE__) {
     console.warn('WARNING: Multiple instances of Three.js being imported.');
@@ -28916,7 +28730,6 @@ const DeviceOrientationControls = function (object) {
       quaternion.multiply(q0.setFromAxisAngle(zee, -orient)); // adjust for screen orientation
     };
   }();
-
   this.connect = function () {
     onScreenOrientationChangeEvent(); // run once on load
 
@@ -29118,7 +28931,7 @@ class OrbitOrientationControls {
 
 // check if the browser supports cors
 const corsSupport = function () {
-  const video = document__default['default'].createElement('video');
+  const video = document__default["default"].createElement('video');
   video.crossOrigin = 'anonymous';
   return video.hasAttribute('crossorigin');
 }();
@@ -29159,16 +28972,16 @@ const getInternalProjectionName = function (projection) {
  * 2. Only moving on/clicking the control bar or toggling play/pause should
  *    show the control bar. Moving around the scene in the canvas should not.
  */
-class CanvasPlayerControls extends videojs__default['default'].EventTarget {
+class CanvasPlayerControls extends videojs__default["default"].EventTarget {
   constructor(player, canvas, options) {
     super();
     this.player = player;
     this.canvas = canvas;
     this.options = options;
-    this.onMoveEnd = videojs__default['default'].bind(this, this.onMoveEnd);
-    this.onMoveStart = videojs__default['default'].bind(this, this.onMoveStart);
-    this.onMove = videojs__default['default'].bind(this, this.onMove);
-    this.onControlBarMove = videojs__default['default'].bind(this, this.onControlBarMove);
+    this.onMoveEnd = videojs__default["default"].bind(this, this.onMoveEnd);
+    this.onMoveStart = videojs__default["default"].bind(this, this.onMoveStart);
+    this.onMove = videojs__default["default"].bind(this, this.onMove);
+    this.onControlBarMove = videojs__default["default"].bind(this, this.onControlBarMove);
     this.player.controlBar.on(['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'], this.onControlBarMove);
 
     // we have to override these here because
@@ -29198,7 +29011,7 @@ class CanvasPlayerControls extends videojs__default['default'].EventTarget {
     // if the player does not have a controlbar or
     // the move was a mouse click but not left click do not
     // toggle play.
-    if (this.options.disableTogglePlay || !this.player.controls() || e.type === 'mousedown' && !videojs__default['default'].dom.isSingleLeftClick(e)) {
+    if (this.options.disableTogglePlay || !this.player.controls() || e.type === 'mousedown' && !videojs__default["default"].dom.isSingleLeftClick(e)) {
       this.shouldTogglePlay = false;
       return;
     }
@@ -29253,7 +29066,7 @@ class CanvasPlayerControls extends videojs__default['default'].EventTarget {
 /**
  * This class manages ambisonic decoding and binaural rendering via Omnitone library.
  */
-class OmnitoneController extends videojs__default['default'].EventTarget {
+class OmnitoneController extends videojs__default["default"].EventTarget {
   /**
    * Omnitone controller class.
    *
@@ -29265,10 +29078,10 @@ class OmnitoneController extends videojs__default['default'].EventTarget {
    */
   constructor(audioContext, omnitone, video, options) {
     super();
-    const settings = videojs__default['default'].mergeOptions({
+    const settings = videojs__default["default"].mergeOptions({
       // Safari uses the different AAC decoder than FFMPEG. The channel order is
       // The default 4ch AAC channel layout for FFMPEG AAC channel ordering.
-      channelMap: videojs__default['default'].browser.IS_SAFARI ? [2, 0, 1, 3] : [0, 1, 2, 3],
+      channelMap: videojs__default["default"].browser.IS_SAFARI ? [2, 0, 1, 3] : [0, 1, 2, 3],
       ambisonicOrder: 1
     }, options);
     this.videoElementSource = audioContext.createMediaElementSource(video);
@@ -29286,7 +29099,7 @@ class OmnitoneController extends videojs__default['default'].EventTarget {
         type: 'omnitone-ready'
       });
     }, error => {
-      videojs__default['default'].log.warn(`videojs-vr: Omnitone initializes failed with the following error: ${error})`);
+      videojs__default["default"].log.warn(`videojs-vr: Omnitone initializes failed with the following error: ${error})`);
     });
   }
 
@@ -29456,7 +29269,6 @@ class VRHUD {
     this.isInXRSession = true;
     // Don't auto-show HUD - user must squeeze grip or use hand gesture
   }
-
   onXRSessionEnd() {
     this.isInXRSession = false;
     this.hide();
@@ -31221,7 +31033,7 @@ class VRGallery {
   }
   loadThumbnailTexture(url, mesh) {
     var _this = this;
-    return _asyncToGenerator__default['default'](function* () {
+    return _asyncToGenerator__default["default"](function* () {
       // Check cache first
       if (_this.loadedTextures.has(url)) {
         mesh.material.map = _this.loadedTextures.get(url);
@@ -31312,7 +31124,6 @@ class VRGallery {
             repeatY = stereoScaleY * scale;
             offsetY = stereoOffsetY + (stereoScaleY - repeatY) / 2; // Center vertically
           }
-
           texture.repeat.set(repeatX, repeatY);
           texture.offset.set(offsetX, offsetY);
           texture.needsUpdate = true;
@@ -31817,28 +31628,28 @@ class VRGallery {
 
 /* global navigator */
 // Add Cardboard button
-const Button = videojs__default['default'].getComponent('Button');
+const Button = videojs__default["default"].getComponent('Button');
 class CardboardButton extends Button {
   constructor(player, options) {
     super(player, options);
-    this.handleVrDisplayActivate_ = videojs__default['default'].bind(this, this.handleVrDisplayActivate_);
-    this.handleVrDisplayDeactivate_ = videojs__default['default'].bind(this, this.handleVrDisplayDeactivate_);
-    this.handleVrDisplayPresentChange_ = videojs__default['default'].bind(this, this.handleVrDisplayPresentChange_);
-    this.handleOrientationChange_ = videojs__default['default'].bind(this, this.handleOrientationChange_);
-    window__default['default'].addEventListener('orientationchange', this.handleOrientationChange_);
-    window__default['default'].addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_);
-    window__default['default'].addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_);
+    this.handleVrDisplayActivate_ = videojs__default["default"].bind(this, this.handleVrDisplayActivate_);
+    this.handleVrDisplayDeactivate_ = videojs__default["default"].bind(this, this.handleVrDisplayDeactivate_);
+    this.handleVrDisplayPresentChange_ = videojs__default["default"].bind(this, this.handleVrDisplayPresentChange_);
+    this.handleOrientationChange_ = videojs__default["default"].bind(this, this.handleOrientationChange_);
+    window__default["default"].addEventListener('orientationchange', this.handleOrientationChange_);
+    window__default["default"].addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_);
+    window__default["default"].addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_);
 
     // vrdisplaypresentchange does not fire activate or deactivate
     // and happens when hitting the back button during cardboard mode
     // so we need to make sure we stay in the correct state by
     // listening to it and checking if we are presenting it or not
-    window__default['default'].addEventListener('vrdisplaypresentchange', this.handleVrDisplayPresentChange_);
+    window__default["default"].addEventListener('vrdisplaypresentchange', this.handleVrDisplayPresentChange_);
 
     // we cannot show the cardboard button in fullscreen on
     // android as it breaks the controls, and makes it impossible
     // to exit cardboard mode
-    if (videojs__default['default'].browser.IS_ANDROID) {
+    if (videojs__default["default"].browser.IS_ANDROID) {
       this.on(player, 'fullscreenchange', () => {
         if (player.isFullscreen()) {
           this.hide();
@@ -31860,18 +31671,18 @@ class CardboardButton extends Button {
     }
   }
   handleOrientationChange_() {
-    if (this.active_ && videojs__default['default'].browser.IS_IOS) {
+    if (this.active_ && videojs__default["default"].browser.IS_IOS) {
       this.changeSize_();
     }
   }
   changeSize_() {
-    this.player_.width(window__default['default'].innerWidth);
-    this.player_.height(window__default['default'].innerHeight);
-    window__default['default'].dispatchEvent(new window__default['default'].Event('resize'));
+    this.player_.width(window__default["default"].innerWidth);
+    this.player_.height(window__default["default"].innerHeight);
+    window__default["default"].dispatchEvent(new window__default["default"].Event('resize'));
   }
   handleVrDisplayActivate_() {
     // we mimic fullscreen on IOS
-    if (videojs__default['default'].browser.IS_IOS) {
+    if (videojs__default["default"].browser.IS_IOS) {
       this.oldWidth_ = this.player_.currentWidth();
       this.oldHeight_ = this.player_.currentHeight();
       this.player_.enterFullWindow();
@@ -31881,7 +31692,7 @@ class CardboardButton extends Button {
   }
   handleVrDisplayDeactivate_() {
     // un-mimic fullscreen on iOS
-    if (videojs__default['default'].browser.IS_IOS) {
+    if (videojs__default["default"].browser.IS_IOS) {
       if (this.oldWidth_) {
         this.player_.width(this.oldWidth_);
       }
@@ -31899,7 +31710,7 @@ class CardboardButton extends Button {
       // This starts playback mode when the cardboard button
       // is clicked on Android. We need to do this as the controls
       // disappear
-      if (!this.player_.hasStarted() && videojs__default['default'].browser.IS_ANDROID) {
+      if (!this.player_.hasStarted() && videojs__default["default"].browser.IS_ANDROID) {
         this.player_.play();
       }
 
@@ -31928,16 +31739,16 @@ class CardboardButton extends Button {
           session.addEventListener('end', () => {
             vr.xrSession_ = null;
             this.active_ = false;
-            window__default['default'].dispatchEvent(new window__default['default'].Event('vrdisplaydeactivate'));
+            window__default["default"].dispatchEvent(new window__default["default"].Event('vrdisplaydeactivate'));
           });
-          window__default['default'].dispatchEvent(new window__default['default'].Event('vrdisplayactivate'));
+          window__default["default"].dispatchEvent(new window__default["default"].Event('vrdisplayactivate'));
         }).catch(() => {
           // Fall back to legacy VR display activation
-          window__default['default'].dispatchEvent(new window__default['default'].Event('vrdisplayactivate'));
+          window__default["default"].dispatchEvent(new window__default["default"].Event('vrdisplayactivate'));
         });
       } else {
         // Legacy WebVR activation
-        window__default['default'].dispatchEvent(new window__default['default'].Event('vrdisplayactivate'));
+        window__default["default"].dispatchEvent(new window__default["default"].Event('vrdisplayactivate'));
       }
     } else {
       // Deactivate
@@ -31945,25 +31756,25 @@ class CardboardButton extends Button {
       if (vr && vr.xrSession_) {
         vr.xrSession_.end().catch(() => {});
       }
-      window__default['default'].dispatchEvent(new window__default['default'].Event('vrdisplaydeactivate'));
+      window__default["default"].dispatchEvent(new window__default["default"].Event('vrdisplaydeactivate'));
     }
   }
   dispose() {
     super.dispose();
-    window__default['default'].removeEventListener('vrdisplayactivate', this.handleVrDisplayActivate_);
-    window__default['default'].removeEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_);
-    window__default['default'].removeEventListener('vrdisplaypresentchange', this.handleVrDisplayPresentChange_);
+    window__default["default"].removeEventListener('vrdisplayactivate', this.handleVrDisplayActivate_);
+    window__default["default"].removeEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_);
+    window__default["default"].removeEventListener('vrdisplaypresentchange', this.handleVrDisplayPresentChange_);
   }
 }
-videojs__default['default'].registerComponent('CardboardButton', CardboardButton);
+videojs__default["default"].registerComponent('CardboardButton', CardboardButton);
 
-const BigPlayButton = videojs__default['default'].getComponent('BigPlayButton');
+const BigPlayButton = videojs__default["default"].getComponent('BigPlayButton');
 class BigVrPlayButton extends BigPlayButton {
   buildCSSClass() {
     return `vjs-big-vr-play-button ${super.buildCSSClass()}`;
   }
 }
-videojs__default['default'].registerComponent('BigVrPlayButton', BigVrPlayButton);
+videojs__default["default"].registerComponent('BigVrPlayButton', BigVrPlayButton);
 
 /* global navigator */
 
@@ -32010,18 +31821,18 @@ const errors = {
     message: "Your browser/device does not support HLS 360 video. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
   }
 };
-const Plugin = videojs__default['default'].getPlugin('plugin');
-const Component = videojs__default['default'].getComponent('Component');
+const Plugin = videojs__default["default"].getPlugin('plugin');
+const Component = videojs__default["default"].getComponent('Component');
 class VR extends Plugin {
   constructor(player, options) {
-    const settings = videojs__default['default'].mergeOptions(defaults, options);
+    const settings = videojs__default["default"].mergeOptions(defaults, options);
     super(player, settings);
     this.options_ = settings;
     this.player_ = player;
     this.bigPlayButtonIndex_ = player.children().indexOf(player.getChild('BigPlayButton')) || 0;
 
     // custom videojs-errors integration boolean
-    this.videojsErrorsSupport_ = !!videojs__default['default'].errors;
+    this.videojsErrorsSupport_ = !!videojs__default["default"].errors;
     if (this.videojsErrorsSupport_) {
       player.errors({
         errors
@@ -32030,7 +31841,7 @@ class VR extends Plugin {
 
     // IE 11 does not support enough webgl to be supported
     // older safari does not support cors, so it wont work
-    if (videojs__default['default'].browser.IE_VERSION || !corsSupport) {
+    if (videojs__default["default"].browser.IE_VERSION || !corsSupport) {
       // if a player triggers error before 'loadstart' is fired
       // video.js will reset the error overlay
       this.player_.on('loadstart', () => {
@@ -32041,15 +31852,15 @@ class VR extends Plugin {
       });
       return;
     }
-    this.polyfill_ = new WebVRPolyfill__default['default']({
+    this.polyfill_ = new WebVRPolyfill__default["default"]({
       // do not show rotate instructions
       ROTATE_INSTRUCTIONS_DISABLED: true
     });
-    this.polyfill_ = new WebVRPolyfill__default['default']();
-    this.handleVrDisplayActivate_ = videojs__default['default'].bind(this, this.handleVrDisplayActivate_);
-    this.handleVrDisplayDeactivate_ = videojs__default['default'].bind(this, this.handleVrDisplayDeactivate_);
-    this.handleResize_ = videojs__default['default'].bind(this, this.handleResize_);
-    this.animate_ = videojs__default['default'].bind(this, this.animate_);
+    this.polyfill_ = new WebVRPolyfill__default["default"]();
+    this.handleVrDisplayActivate_ = videojs__default["default"].bind(this, this.handleVrDisplayActivate_);
+    this.handleVrDisplayDeactivate_ = videojs__default["default"].bind(this, this.handleVrDisplayDeactivate_);
+    this.handleResize_ = videojs__default["default"].bind(this, this.handleResize_);
+    this.animate_ = videojs__default["default"].bind(this, this.animate_);
     this.setProjection(this.options_.projection);
 
     // any time the video element is recycled for ads
@@ -32128,7 +31939,6 @@ class VR extends Plugin {
           uvArray[i + 1] = uvArray[i + 1] * 0.5 + 0.5; // y coordinate
         }
       }
-
       uvAttribute.needsUpdate = true;
       const leftMaterial = new MeshBasicMaterial({
         map: this.videoTexture,
@@ -32160,7 +31970,6 @@ class VR extends Plugin {
           uvArray[i + 1] *= 0.5; // y coordinate
         }
       }
-
       uvAttribute.needsUpdate = true;
       const rightMaterial = new MeshBasicMaterial({
         map: this.videoTexture,
@@ -32237,7 +32046,6 @@ class VR extends Plugin {
       // phiStart
       Math.PI // phiLength
       );
-
       geometry.scale(-1, 1, 1);
       this.movieGeometry = geometry;
       this.movieMaterial = new MeshBasicMaterial({
@@ -32255,7 +32063,6 @@ class VR extends Plugin {
       // phiStart
       Math.PI // phiLength
       );
-
       leftGeometry.scale(-1, 1, 1);
 
       // Modify UVs for left eye (left half of video)
@@ -32264,7 +32071,6 @@ class VR extends Plugin {
       for (let i = 0; i < uvArray.length; i += 2) {
         uvArray[i] *= 0.5; // x coordinate
       }
-
       uvAttribute.needsUpdate = true;
       const leftMaterial = new MeshBasicMaterial({
         map: this.videoTexture
@@ -32278,7 +32084,6 @@ class VR extends Plugin {
       // phiStart
       Math.PI // phiLength
       );
-
       rightGeometry.scale(-1, 1, 1);
 
       // Modify UVs for right eye (right half of video)
@@ -32287,7 +32092,6 @@ class VR extends Plugin {
       for (let i = 0; i < uvArray.length; i += 2) {
         uvArray[i] = uvArray[i] * 0.5 + 0.5; // x coordinate
       }
-
       uvAttribute.needsUpdate = true;
       const rightMaterial = new MeshBasicMaterial({
         map: this.videoTexture
@@ -32480,7 +32284,6 @@ void main() {
         for (let i = 0; i < leftUvArray.length; i += 2) {
           leftUvArray[i] *= 0.5; // U: 0 to 0.5 (left half)
         }
-
         leftUvAttribute.needsUpdate = true;
         const leftMaterial = new MeshBasicMaterial({
           map: this.videoTexture,
@@ -32498,7 +32301,6 @@ void main() {
         for (let i = 0; i < rightUvArray.length; i += 2) {
           rightUvArray[i] = 0.5 + rightUvArray[i] * 0.5; // U: 0.5 to 1.0 (right half)
         }
-
         rightUvAttribute.needsUpdate = true;
         const rightMaterial = new MeshBasicMaterial({
           map: this.videoTexture,
@@ -32523,7 +32325,6 @@ void main() {
         for (let i = 0; i < uvArray.length; i += 2) {
           uvArray[i] *= 0.5; // Left half only
         }
-
         uvAttribute.needsUpdate = true;
         this.movieMaterial = new MeshBasicMaterial({
           map: this.videoTexture,
@@ -32552,7 +32353,7 @@ void main() {
     } else {
       // strip any html content from the error message
       // as it is not supported outside of videojs-errors
-      const div = document__default['default'].createElement('div');
+      const div = document__default["default"].createElement('div');
       div.innerHTML = errors[errorObj.code].message;
       const message = div.textContent || div.innerText || '';
       this.player_.error({
@@ -32566,7 +32367,7 @@ void main() {
       return;
     }
     msgs.forEach(msg => {
-      videojs__default['default'].log('VR: ', msg);
+      videojs__default["default"].log('VR: ', msg);
     });
   }
   handleVrDisplayActivate_() {
@@ -32576,7 +32377,7 @@ void main() {
     this.vrDisplay.requestPresent([{
       source: this.renderedCanvas
     }]).then(() => {
-      if (!this.vrDisplay.cardboardUI_ || !videojs__default['default'].browser.IS_IOS) {
+      if (!this.vrDisplay.cardboardUI_ || !videojs__default["default"].browser.IS_IOS) {
         return;
       }
 
@@ -32595,7 +32396,7 @@ void main() {
           return;
         }
         touches.forEach(t => {
-          const simulatedClick = new window__default['default'].MouseEvent('click', {
+          const simulatedClick = new window__default["default"].MouseEvent('click', {
             screenX: t.screenX,
             screenY: t.screenY,
             clientX: t.clientX,
@@ -32630,13 +32431,13 @@ void main() {
 
     // Use window.requestAnimationFrame directly to ensure the render loop
     // continues even when the video player is paused or in certain states
-    return window__default['default'].requestAnimationFrame(fn);
+    return window__default["default"].requestAnimationFrame(fn);
   }
   cancelAnimationFrame(id) {
     if (this.vrDisplay) {
       return this.vrDisplay.cancelAnimationFrame(id);
     }
-    return window__default['default'].cancelAnimationFrame(id);
+    return window__default["default"].cancelAnimationFrame(id);
   }
   togglePlay_() {
     if (this.player_.paused()) {
@@ -32686,9 +32487,9 @@ void main() {
     } else {
       this.effect.render(this.scene, this.camera);
     }
-    if (window__default['default'].navigator.getGamepads) {
+    if (window__default["default"].navigator.getGamepads) {
       // Grab all gamepads
-      const gamepads = window__default['default'].navigator.getGamepads();
+      const gamepads = window__default["default"].navigator.getGamepads();
       for (let i = 0; i < gamepads.length; ++i) {
         const gamepad = gamepads[i];
 
@@ -32731,7 +32532,7 @@ void main() {
   }
   setProjection(projection) {
     if (!getInternalProjectionName(projection)) {
-      videojs__default['default'].log.error('videojs-vr: please pass a valid projection ' + validProjections.join(', '));
+      videojs__default["default"].log.error('videojs-vr: please pass a valid projection ' + validProjections.join(', '));
       return;
     }
     this.currentProjection_ = projection;
@@ -32988,17 +32789,17 @@ void main() {
     this.player_.bigPlayButton = this.player_.getChild('BigVrPlayButton');
 
     // mobile devices, or cardboard forced to on
-    if (this.options_.forceCardboard || videojs__default['default'].browser.IS_ANDROID || videojs__default['default'].browser.IS_IOS) {
+    if (this.options_.forceCardboard || videojs__default["default"].browser.IS_ANDROID || videojs__default["default"].browser.IS_IOS) {
       this.addCardboardButton_();
     }
 
     // if ios remove full screen toggle
-    if (videojs__default['default'].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
+    if (videojs__default["default"].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
       this.player_.controlBar.fullscreenToggle.hide();
     }
     this.camera.position.set(0, 0, 0);
     this.renderer = new WebGLRenderer({
-      devicePixelRatio: window__default['default'].devicePixelRatio,
+      devicePixelRatio: window__default["default"].devicePixelRatio,
       alpha: false,
       clearColor: 0xffffff,
       antialias: true
@@ -33038,7 +32839,7 @@ void main() {
 
     // Check for WebXR support first (modern API), then fall back to legacy WebVR
     const hasWebXR = navigator.xr && navigator.xr.isSessionSupported;
-    const hasWebVR = window__default['default'].navigator.getVRDisplays;
+    const hasWebVR = window__default["default"].navigator.getVRDisplays;
     const initializeControls = () => {
       // Skip orbit controls for SBS_MONO - it's a flat plane view with fixed camera
       if (!this.controls3d && this.currentProjection_ !== 'SBS_MONO') {
@@ -33048,7 +32849,7 @@ void main() {
           canvas: this.renderedCanvas,
           // check if its a half sphere view projection
           halfView: this.currentProjection_.indexOf('180') === 0,
-          orientation: videojs__default['default'].browser.IS_IOS || videojs__default['default'].browser.IS_ANDROID || false
+          orientation: videojs__default["default"].browser.IS_IOS || videojs__default["default"].browser.IS_ANDROID || false
         };
         if (this.options_.motionControls === false) {
           options.orientation = false;
@@ -33103,7 +32904,7 @@ void main() {
       });
     } else if (hasWebVR) {
       this.log('Legacy WebVR is supported, getting vr displays');
-      window__default['default'].navigator.getVRDisplays().then(displays => {
+      window__default["default"].navigator.getVRDisplays().then(displays => {
         if (displays.length > 0) {
           this.log('Displays found', displays);
           this.vrDisplay = displays[0];
@@ -33122,7 +32923,7 @@ void main() {
         }
         initializeControls();
       });
-    } else if (window__default['default'].navigator.getVRDevices) {
+    } else if (window__default["default"].navigator.getVRDevices) {
       this.triggerError_({
         code: 'web-vr-out-of-date',
         dismiss: false
@@ -33143,10 +32944,10 @@ void main() {
       });
     }
     this.on(this.player_, 'fullscreenchange', this.handleResize_);
-    window__default['default'].addEventListener('vrdisplaypresentchange', this.handleResize_, true);
-    window__default['default'].addEventListener('resize', this.handleResize_, true);
-    window__default['default'].addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
-    window__default['default'].addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
+    window__default["default"].addEventListener('vrdisplaypresentchange', this.handleResize_, true);
+    window__default["default"].addEventListener('resize', this.handleResize_, true);
+    window__default["default"].addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
+    window__default["default"].addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
     this.initialized_ = true;
     this.trigger('initialized');
 
@@ -33200,10 +33001,10 @@ void main() {
       this.effect.dispose();
       this.effect = null;
     }
-    window__default['default'].removeEventListener('resize', this.handleResize_, true);
-    window__default['default'].removeEventListener('vrdisplaypresentchange', this.handleResize_, true);
-    window__default['default'].removeEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
-    window__default['default'].removeEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
+    window__default["default"].removeEventListener('resize', this.handleResize_, true);
+    window__default["default"].removeEventListener('vrdisplaypresentchange', this.handleResize_, true);
+    window__default["default"].removeEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
+    window__default["default"].removeEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
 
     // re-add the big play button to player
     if (!this.player_.getChild('BigPlayButton')) {
@@ -33219,7 +33020,7 @@ void main() {
     }
 
     // show the fullscreen again
-    if (videojs__default['default'].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
+    if (videojs__default["default"].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
       this.player_.controlBar.fullscreenToggle.show();
     }
 
@@ -33683,12 +33484,12 @@ void main() {
     this.reset();
   }
   polyfillVersion() {
-    return WebVRPolyfill__default['default'].version;
+    return WebVRPolyfill__default["default"].version;
   }
 }
 VR.prototype.setTimeout = Component.prototype.setTimeout;
 VR.prototype.clearTimeout = Component.prototype.clearTimeout;
 VR.VERSION = version;
-videojs__default['default'].registerPlugin('vr', VR);
+videojs__default["default"].registerPlugin('vr', VR);
 
 module.exports = VR;

@@ -3,7 +3,7 @@
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('video.js')) :
   typeof define === 'function' && define.amd ? define(['video.js'], factory) :
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.videojsVr = factory(global.videojs));
-}(this, (function (videojs) { 'use strict';
+})(this, (function (videojs) { 'use strict';
 
   function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -4974,50 +4974,40 @@
   WebVRPolyfill.VRFrameData = CardboardVRDisplay.VRFrameData;
   WebVRPolyfill.VRDisplay = CardboardVRDisplay.VRDisplay;
 
-  function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) {
+  function asyncGeneratorStep(n, t, e, r, o, a, c) {
     try {
-      var info = gen[key](arg);
-      var value = info.value;
-    } catch (error) {
-      reject(error);
-      return;
+      var i = n[a](c),
+        u = i.value;
+    } catch (n) {
+      return void e(n);
     }
-    if (info.done) {
-      resolve(value);
-    } else {
-      Promise.resolve(value).then(_next, _throw);
-    }
+    i.done ? t(u) : Promise.resolve(u).then(r, o);
   }
-  function _asyncToGenerator(fn) {
+  function _asyncToGenerator(n) {
     return function () {
-      var self = this,
-        args = arguments;
-      return new Promise(function (resolve, reject) {
-        var gen = fn.apply(self, args);
-        function _next(value) {
-          asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value);
+      var t = this,
+        e = arguments;
+      return new Promise(function (r, o) {
+        var a = n.apply(t, e);
+        function _next(n) {
+          asyncGeneratorStep(a, r, o, _next, _throw, "next", n);
         }
-        function _throw(err) {
-          asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err);
+        function _throw(n) {
+          asyncGeneratorStep(a, r, o, _next, _throw, "throw", n);
         }
-        _next(undefined);
+        _next(void 0);
       });
     };
   }
 
   function _extends() {
-    _extends = Object.assign ? Object.assign.bind() : function (target) {
-      for (var i = 1; i < arguments.length; i++) {
-        var source = arguments[i];
-        for (var key in source) {
-          if (Object.prototype.hasOwnProperty.call(source, key)) {
-            target[key] = source[key];
-          }
-        }
+    return _extends = Object.assign ? Object.assign.bind() : function (n) {
+      for (var e = 1; e < arguments.length; e++) {
+        var t = arguments[e];
+        for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]);
       }
-      return target;
-    };
-    return _extends.apply(this, arguments);
+      return n;
+    }, _extends.apply(null, arguments);
   }
 
   // threejs.org/license
@@ -6045,7 +6035,6 @@
         if (image.uuid === undefined) {
           image.uuid = MathUtils.generateUUID(); // UGH
         }
-
         if (!isRootObject && meta.images[image.uuid] === undefined) {
           let url;
           if (Array.isArray(image)) {
@@ -7773,7 +7762,6 @@
         console.error('THREE.Box3: .getBoundingSphere() target is now required');
         //target = new Sphere(); // removed to avoid cyclic dependency
       }
-
       this.getCenter(target.center);
       target.radius = this.getSize(_vector$1).length() * 0.5;
       return target;
@@ -12529,7 +12517,6 @@
         // note: the array variants v2v, v3v, v4v, m4v and tv are not supported so far
       }
     }
-
     if (Object.keys(this.defines).length > 0) data.defines = this.defines;
     data.vertexShader = this.vertexShader;
     data.fragmentShader = this.fragmentShader;
@@ -13816,7 +13803,6 @@
           value: 1
         } // temporary
       }]),
-
       vertexShader: ShaderChunk.meshphysical_vert,
       fragmentShader: ShaderChunk.meshphysical_frag
     },
@@ -15636,7 +15622,6 @@
 
     // this.path = activeInfo.name; // DEBUG
   }
-
   function PureArrayUniform(id, activeInfo, addr) {
     this.id = id;
     this.addr = addr;
@@ -15646,7 +15631,6 @@
 
     // this.path = activeInfo.name; // DEBUG
   }
-
   PureArrayUniform.prototype.updateCache = function (data) {
     const cache = this.cache;
     if (data instanceof Float32Array && cache.length !== data.length) {
@@ -16633,7 +16617,6 @@
 
           // TODO (abelnation): set RectAreaLight shadow uniforms
         }
-
         lights[light.id] = uniforms;
         return uniforms;
       }
@@ -17369,7 +17352,6 @@
         }
       };
     }
-
     function DepthBuffer() {
       let locked = false;
       let currentDepthMask = null;
@@ -19320,7 +19302,6 @@
         material.uniformsNeedUpdate = false; // #15581
       }
     }
-
     function refreshUniformsCommon(uniforms, material) {
       uniforms.opacity.value = material.opacity;
       if (material.color) {
@@ -19860,7 +19841,7 @@
       state = new WebGLState(_gl, extensions, capabilities);
       state.scissor(_currentScissor.copy(_scissor).multiplyScalar(_pixelRatio).floor());
       state.viewport(_currentViewport.copy(_viewport).multiplyScalar(_pixelRatio).floor());
-      info = new WebGLInfo(_gl);
+      info = new WebGLInfo();
       properties = new WebGLProperties();
       textures = new WebGLTextures(_gl, extensions, state, properties, capabilities, utils, info);
       cubemaps = new WebGLCubeMaps(_this);
@@ -20057,7 +20038,7 @@
       console.log('THREE.WebGLRenderer: Context Lost.');
       _isContextLost = true;
     }
-    function onContextRestore( /* event */
+    function onContextRestore(/* event */
     ) {
       console.log('THREE.WebGLRenderer: Context Restored.');
       _isContextLost = false;
@@ -20549,7 +20530,6 @@
         uniforms.pointShadowMatrix.value = lights.state.pointShadowMatrix;
         // TODO (abelnation): add area lights shadow info to uniforms
       }
-
       const progUniforms = materialProperties.program.getUniforms();
       const uniformsList = WebGLUniforms.seqWithValue(progUniforms.seq, uniforms);
       materialProperties.uniformsList = uniformsList;
@@ -20894,7 +20874,6 @@
       })); // eslint-disable-line no-undef
     }
   }
-
   function WebGL1Renderer(parameters) {
     WebGLRenderer.call(this, parameters);
   }
@@ -20921,7 +20900,6 @@
         })); // eslint-disable-line no-undef
       }
     }
-
     copy(source, recursive) {
       super.copy(source, recursive);
       if (source.background !== null) this.background = source.background.clone();
@@ -21464,7 +21442,6 @@
         } else {
           vector.set(1, 0, 0, 0); // do something reasonable
         }
-
         skinWeight.setXYZW(i, vector.x, vector.y, vector.z, vector.w);
       }
     },
@@ -22105,7 +22082,7 @@
     isVideoTexture: true,
     update: function () {
       const video = this.image;
-      const hasVideoFrameCallback = ('requestVideoFrameCallback' in video);
+      const hasVideoFrameCallback = 'requestVideoFrameCallback' in video;
       if (hasVideoFrameCallback === false && video.readyState >= video.HAVE_CURRENT_DATA) {
         this.needsUpdate = true;
       }
@@ -24747,10 +24724,8 @@
       if (typeof type.BYTES_PER_ELEMENT === 'number') {
         return new type(array); // create typed array
       }
-
       return Array.prototype.slice.call(array); // create Array
     },
-
     isTypedArray: function (object) {
       return ArrayBuffer.isView(object) && !(object instanceof DataView);
     },
@@ -24796,7 +24771,6 @@
             times.push(key.time);
             values.push.apply(values, value); // push all elements
           }
-
           key = jsonKeys[i++];
         } while (key !== undefined);
       } else if (value.toArray !== undefined) {
@@ -25114,7 +25088,6 @@
       throw new Error('call to abstract method');
       // implementations shall return this.resultBuffer
     },
-
     intervalChanged_: function /* i1, t0, t1 */
     () {
 
@@ -25344,7 +25317,6 @@
             throw new Error(message); // fatal, in this case
           }
         }
-
         console.warn('THREE.KeyframeTrack:', message);
         return this;
       }
@@ -25663,7 +25635,6 @@
 
     // DefaultInterpolation is inherited
   });
-
   function AnimationClip(name, duration = -1, tracks, blendMode = NormalAnimationBlendMode) {
     this.name = name;
     this.tracks = tracks;
@@ -26474,7 +26445,6 @@
           texture.mipmaps = texData.mipmaps;
           texture.minFilter = LinearMipmapLinearFilter; // presumably...
         }
-
         if (texData.mipmapCount === 1) {
           texture.minFilter = LinearFilter;
         }
@@ -26605,7 +26575,6 @@
       this.cacheArcLengths = cache;
       return cache; // { sums: cache, sum: sum }; Sum is in the last element.
     },
-
     updateArcLengths: function () {
       this.needsUpdate = true;
       this.getLengths();
@@ -26644,7 +26613,6 @@
           // DONE
         }
       }
-
       i = high;
       if (arcLengths[i] === targetArcLength) {
         return i / (il - 1);
@@ -27433,7 +27401,6 @@
     this.curves = [];
     this.autoClose = false; // Automatically closes the path
   }
-
   CurvePath.prototype = _extends(Object.create(Curve.prototype), {
     constructor: CurvePath,
     add: function (curve) {
@@ -27477,7 +27444,6 @@
 
       // loop where sum != 0, sum > d , sum+1 <d
     },
-
     // We cannot use the default THREE.Curve getPoint() with getLength() because in
     // THREE.Curve, getLength() depends on getPoint() but in THREE.CurvePath
     // getPoint() depends on getLength
@@ -28827,7 +28793,6 @@
             // continue;
           }
         }
-
         return inside;
       }
       const isClockWise = ShapeUtils.isClockWise;
@@ -29222,225 +29187,6 @@
       this.cameraR.matrixWorld.copy(camera.matrixWorld).multiply(_eyeRight);
     }
   });
-  class Audio extends Object3D {
-    constructor(listener) {
-      super();
-      this.type = 'Audio';
-      this.listener = listener;
-      this.context = listener.context;
-      this.gain = this.context.createGain();
-      this.gain.connect(listener.getInput());
-      this.autoplay = false;
-      this.buffer = null;
-      this.detune = 0;
-      this.loop = false;
-      this.loopStart = 0;
-      this.loopEnd = 0;
-      this.offset = 0;
-      this.duration = undefined;
-      this.playbackRate = 1;
-      this.isPlaying = false;
-      this.hasPlaybackControl = true;
-      this.source = null;
-      this.sourceType = 'empty';
-      this._startedAt = 0;
-      this._progress = 0;
-      this._connected = false;
-      this.filters = [];
-    }
-    getOutput() {
-      return this.gain;
-    }
-    setNodeSource(audioNode) {
-      this.hasPlaybackControl = false;
-      this.sourceType = 'audioNode';
-      this.source = audioNode;
-      this.connect();
-      return this;
-    }
-    setMediaElementSource(mediaElement) {
-      this.hasPlaybackControl = false;
-      this.sourceType = 'mediaNode';
-      this.source = this.context.createMediaElementSource(mediaElement);
-      this.connect();
-      return this;
-    }
-    setMediaStreamSource(mediaStream) {
-      this.hasPlaybackControl = false;
-      this.sourceType = 'mediaStreamNode';
-      this.source = this.context.createMediaStreamSource(mediaStream);
-      this.connect();
-      return this;
-    }
-    setBuffer(audioBuffer) {
-      this.buffer = audioBuffer;
-      this.sourceType = 'buffer';
-      if (this.autoplay) this.play();
-      return this;
-    }
-    play(delay = 0) {
-      if (this.isPlaying === true) {
-        console.warn('THREE.Audio: Audio is already playing.');
-        return;
-      }
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return;
-      }
-      this._startedAt = this.context.currentTime + delay;
-      const source = this.context.createBufferSource();
-      source.buffer = this.buffer;
-      source.loop = this.loop;
-      source.loopStart = this.loopStart;
-      source.loopEnd = this.loopEnd;
-      source.onended = this.onEnded.bind(this);
-      source.start(this._startedAt, this._progress + this.offset, this.duration);
-      this.isPlaying = true;
-      this.source = source;
-      this.setDetune(this.detune);
-      this.setPlaybackRate(this.playbackRate);
-      return this.connect();
-    }
-    pause() {
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return;
-      }
-      if (this.isPlaying === true) {
-        // update current progress
-
-        this._progress += Math.max(this.context.currentTime - this._startedAt, 0) * this.playbackRate;
-        if (this.loop === true) {
-          // ensure _progress does not exceed duration with looped audios
-
-          this._progress = this._progress % (this.duration || this.buffer.duration);
-        }
-        this.source.stop();
-        this.source.onended = null;
-        this.isPlaying = false;
-      }
-      return this;
-    }
-    stop() {
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return;
-      }
-      this._progress = 0;
-      this.source.stop();
-      this.source.onended = null;
-      this.isPlaying = false;
-      return this;
-    }
-    connect() {
-      if (this.filters.length > 0) {
-        this.source.connect(this.filters[0]);
-        for (let i = 1, l = this.filters.length; i < l; i++) {
-          this.filters[i - 1].connect(this.filters[i]);
-        }
-        this.filters[this.filters.length - 1].connect(this.getOutput());
-      } else {
-        this.source.connect(this.getOutput());
-      }
-      this._connected = true;
-      return this;
-    }
-    disconnect() {
-      if (this.filters.length > 0) {
-        this.source.disconnect(this.filters[0]);
-        for (let i = 1, l = this.filters.length; i < l; i++) {
-          this.filters[i - 1].disconnect(this.filters[i]);
-        }
-        this.filters[this.filters.length - 1].disconnect(this.getOutput());
-      } else {
-        this.source.disconnect(this.getOutput());
-      }
-      this._connected = false;
-      return this;
-    }
-    getFilters() {
-      return this.filters;
-    }
-    setFilters(value) {
-      if (!value) value = [];
-      if (this._connected === true) {
-        this.disconnect();
-        this.filters = value.slice();
-        this.connect();
-      } else {
-        this.filters = value.slice();
-      }
-      return this;
-    }
-    setDetune(value) {
-      this.detune = value;
-      if (this.source.detune === undefined) return; // only set detune when available
-
-      if (this.isPlaying === true) {
-        this.source.detune.setTargetAtTime(this.detune, this.context.currentTime, 0.01);
-      }
-      return this;
-    }
-    getDetune() {
-      return this.detune;
-    }
-    getFilter() {
-      return this.getFilters()[0];
-    }
-    setFilter(filter) {
-      return this.setFilters(filter ? [filter] : []);
-    }
-    setPlaybackRate(value) {
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return;
-      }
-      this.playbackRate = value;
-      if (this.isPlaying === true) {
-        this.source.playbackRate.setTargetAtTime(this.playbackRate, this.context.currentTime, 0.01);
-      }
-      return this;
-    }
-    getPlaybackRate() {
-      return this.playbackRate;
-    }
-    onEnded() {
-      this.isPlaying = false;
-    }
-    getLoop() {
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return false;
-      }
-      return this.loop;
-    }
-    setLoop(value) {
-      if (this.hasPlaybackControl === false) {
-        console.warn('THREE.Audio: this Audio has no playback control.');
-        return;
-      }
-      this.loop = value;
-      if (this.isPlaying === true) {
-        this.source.loop = this.loop;
-      }
-      return this;
-    }
-    setLoopStart(value) {
-      this.loopStart = value;
-      return this;
-    }
-    setLoopEnd(value) {
-      this.loopEnd = value;
-      return this;
-    }
-    getVolume() {
-      return this.gain.gain.value;
-    }
-    setVolume(value) {
-      this.gain.gain.setTargetAtTime(value, this.context.currentTime, 0.01);
-      return this;
-    }
-  }
   function PropertyMixer(binding, typeName, valueSize) {
     this.binding = binding;
     this.valueSize = valueSize;
@@ -29889,7 +29635,6 @@
       // the bound state. When the property is not found, the methods
       // become no-ops.
     },
-
     setValue: function getValue_unbound(sourceArray, offset) {
       this.bind();
       this.setValue(sourceArray, offset);
@@ -31156,10 +30901,8 @@
       for (let i = 0; i < this._actions.length; i++) {
         this._actions[i].time = 0; // Zero out time attribute for all associated AnimationAction objects.
       }
-
       return this.update(timeInSeconds); // Update used to set exact time. Returns "this" AnimationMixer object.
     },
-
     // return this mixer's root target object
     getRoot: function () {
       return this._root;
@@ -31222,18 +30965,6 @@
       }
     }
   });
-  class Uniform {
-    constructor(value) {
-      if (typeof value === 'string') {
-        console.warn('THREE.Uniform: Type parameter is no longer needed.');
-        value = arguments[1];
-      }
-      this.value = value;
-    }
-    clone() {
-      return new Uniform(this.value.clone === undefined ? this.value : this.value.clone());
-    }
-  }
   function InstancedInterleavedBuffer(array, stride, meshPerAttribute) {
     InterleavedBuffer.call(this, array, stride);
     this.meshPerAttribute = meshPerAttribute || 1;
@@ -31566,6 +31297,109 @@
   ImmediateRenderObject.prototype = Object.create(Object3D.prototype);
   ImmediateRenderObject.prototype.constructor = ImmediateRenderObject;
   ImmediateRenderObject.prototype.isImmediateRenderObject = true;
+  const _vector$a = /*@__PURE__*/new Vector3();
+  const _boneMatrix = /*@__PURE__*/new Matrix4();
+  const _matrixWorldInv = /*@__PURE__*/new Matrix4();
+  class SkeletonHelper extends LineSegments {
+    constructor(object) {
+      const bones = getBoneList(object);
+      const geometry = new BufferGeometry();
+      const vertices = [];
+      const colors = [];
+      const color1 = new Color(0, 0, 1);
+      const color2 = new Color(0, 1, 0);
+      for (let i = 0; i < bones.length; i++) {
+        const bone = bones[i];
+        if (bone.parent && bone.parent.isBone) {
+          vertices.push(0, 0, 0);
+          vertices.push(0, 0, 0);
+          colors.push(color1.r, color1.g, color1.b);
+          colors.push(color2.r, color2.g, color2.b);
+        }
+      }
+      geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      const material = new LineBasicMaterial({
+        vertexColors: true,
+        depthTest: false,
+        depthWrite: false,
+        toneMapped: false,
+        transparent: true
+      });
+      super(geometry, material);
+      this.type = 'SkeletonHelper';
+      this.isSkeletonHelper = true;
+      this.root = object;
+      this.bones = bones;
+      this.matrix = object.matrixWorld;
+      this.matrixAutoUpdate = false;
+    }
+    updateMatrixWorld(force) {
+      const bones = this.bones;
+      const geometry = this.geometry;
+      const position = geometry.getAttribute('position');
+      _matrixWorldInv.copy(this.root.matrixWorld).invert();
+      for (let i = 0, j = 0; i < bones.length; i++) {
+        const bone = bones[i];
+        if (bone.parent && bone.parent.isBone) {
+          _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.matrixWorld);
+          _vector$a.setFromMatrixPosition(_boneMatrix);
+          position.setXYZ(j, _vector$a.x, _vector$a.y, _vector$a.z);
+          _boneMatrix.multiplyMatrices(_matrixWorldInv, bone.parent.matrixWorld);
+          _vector$a.setFromMatrixPosition(_boneMatrix);
+          position.setXYZ(j + 1, _vector$a.x, _vector$a.y, _vector$a.z);
+          j += 2;
+        }
+      }
+      geometry.getAttribute('position').needsUpdate = true;
+      super.updateMatrixWorld(force);
+    }
+  }
+  function getBoneList(object) {
+    const boneList = [];
+    if (object && object.isBone) {
+      boneList.push(object);
+    }
+    for (let i = 0; i < object.children.length; i++) {
+      boneList.push.apply(boneList, getBoneList(object.children[i]));
+    }
+    return boneList;
+  }
+  class GridHelper extends LineSegments {
+    constructor(size = 10, divisions = 10, color1 = 0x444444, color2 = 0x888888) {
+      color1 = new Color(color1);
+      color2 = new Color(color2);
+      const center = divisions / 2;
+      const step = size / divisions;
+      const halfSize = size / 2;
+      const vertices = [],
+        colors = [];
+      for (let i = 0, j = 0, k = -halfSize; i <= divisions; i++, k += step) {
+        vertices.push(-halfSize, 0, k, halfSize, 0, k);
+        vertices.push(k, 0, -halfSize, k, 0, halfSize);
+        const color = i === center ? color1 : color2;
+        color.toArray(colors, j);
+        j += 3;
+        color.toArray(colors, j);
+        j += 3;
+        color.toArray(colors, j);
+        j += 3;
+        color.toArray(colors, j);
+        j += 3;
+      }
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+      const material = new LineBasicMaterial({
+        vertexColors: true,
+        toneMapped: false
+      });
+      super(geometry, material);
+      this.type = 'GridHelper';
+    }
+  }
+  const _floatView = new Float32Array(1);
+  new Int32Array(_floatView.buffer);
   const backgroundMaterial = new MeshBasicMaterial({
     side: BackSide,
     depthWrite: false,
@@ -31591,6 +31425,8 @@
       return this.setFromPoints(points);
     }
   });
+  Object.create(CatmullRomCurve3.prototype);
+  Object.create(CatmullRomCurve3.prototype);
 
   //
 
@@ -31614,6 +31450,12 @@
       console.error('THREE.Spline: .reparametrizeByArcLength() has been removed.');
     }
   });
+  GridHelper.prototype.setColors = function () {
+    console.error('THREE.GridHelper: setColors() has been deprecated, pass them in the constructor instead.');
+  };
+  SkeletonHelper.prototype.update = function () {
+    console.error('THREE.SkeletonHelper: update() no longer needs to be called.');
+  };
 
   //
 
@@ -32272,22 +32114,6 @@
 
   //
 
-  Object.defineProperties(Uniform.prototype, {
-    dynamic: {
-      set: function () {
-        console.warn('THREE.Uniform: .dynamic has been removed. Use object.onBeforeRender() instead.');
-      }
-    },
-    onUpdate: {
-      value: function () {
-        console.warn('THREE.Uniform: .onUpdate() has been removed. Use object.onBeforeRender() instead.');
-        return this;
-      }
-    }
-  });
-
-  //
-
   Object.defineProperties(Material.prototype, {
     wrapAround: {
       get: function () {
@@ -32671,27 +32497,6 @@
 
   //
 
-  Object.defineProperties(Audio.prototype, {
-    load: {
-      value: function (file) {
-        console.warn('THREE.Audio: .load has been deprecated. Use THREE.AudioLoader instead.');
-        const scope = this;
-        const audioLoader = new AudioLoader();
-        audioLoader.load(file, function (buffer) {
-          scope.setBuffer(buffer);
-        });
-        return this;
-      }
-    },
-    startTime: {
-      set: function () {
-        console.warn('THREE.Audio: .startTime is now .play( delay ).');
-      }
-    }
-  });
-
-  //
-
   CubeCamera.prototype.updateCubeMap = function (renderer, scene) {
     console.warn('THREE.CubeCamera: .updateCubeMap() is now .update().');
     return this.update(renderer, scene);
@@ -32732,7 +32537,6 @@
     }));
     /* eslint-enable no-undef */
   }
-
   if (typeof window !== 'undefined') {
     if (window.__THREE__) {
       console.warn('WARNING: Multiple instances of Three.js being imported.');
@@ -33917,7 +33721,6 @@
         quaternion.multiply(q0.setFromAxisAngle(zee, -orient)); // adjust for screen orientation
       };
     }();
-
     this.connect = function () {
       onScreenOrientationChangeEvent(); // run once on load
 
@@ -34160,16 +33963,16 @@
    * 2. Only moving on/clicking the control bar or toggling play/pause should
    *    show the control bar. Moving around the scene in the canvas should not.
    */
-  class CanvasPlayerControls extends videojs__default['default'].EventTarget {
+  class CanvasPlayerControls extends videojs__default["default"].EventTarget {
     constructor(player, canvas, options) {
       super();
       this.player = player;
       this.canvas = canvas;
       this.options = options;
-      this.onMoveEnd = videojs__default['default'].bind(this, this.onMoveEnd);
-      this.onMoveStart = videojs__default['default'].bind(this, this.onMoveStart);
-      this.onMove = videojs__default['default'].bind(this, this.onMove);
-      this.onControlBarMove = videojs__default['default'].bind(this, this.onControlBarMove);
+      this.onMoveEnd = videojs__default["default"].bind(this, this.onMoveEnd);
+      this.onMoveStart = videojs__default["default"].bind(this, this.onMoveStart);
+      this.onMove = videojs__default["default"].bind(this, this.onMove);
+      this.onControlBarMove = videojs__default["default"].bind(this, this.onControlBarMove);
       this.player.controlBar.on(['mousedown', 'mousemove', 'mouseup', 'touchstart', 'touchmove', 'touchend'], this.onControlBarMove);
 
       // we have to override these here because
@@ -34199,7 +34002,7 @@
       // if the player does not have a controlbar or
       // the move was a mouse click but not left click do not
       // toggle play.
-      if (this.options.disableTogglePlay || !this.player.controls() || e.type === 'mousedown' && !videojs__default['default'].dom.isSingleLeftClick(e)) {
+      if (this.options.disableTogglePlay || !this.player.controls() || e.type === 'mousedown' && !videojs__default["default"].dom.isSingleLeftClick(e)) {
         this.shouldTogglePlay = false;
         return;
       }
@@ -34254,7 +34057,7 @@
   /**
    * This class manages ambisonic decoding and binaural rendering via Omnitone library.
    */
-  class OmnitoneController extends videojs__default['default'].EventTarget {
+  class OmnitoneController extends videojs__default["default"].EventTarget {
     /**
      * Omnitone controller class.
      *
@@ -34266,10 +34069,10 @@
      */
     constructor(audioContext, omnitone, video, options) {
       super();
-      const settings = videojs__default['default'].mergeOptions({
+      const settings = videojs__default["default"].mergeOptions({
         // Safari uses the different AAC decoder than FFMPEG. The channel order is
         // The default 4ch AAC channel layout for FFMPEG AAC channel ordering.
-        channelMap: videojs__default['default'].browser.IS_SAFARI ? [2, 0, 1, 3] : [0, 1, 2, 3],
+        channelMap: videojs__default["default"].browser.IS_SAFARI ? [2, 0, 1, 3] : [0, 1, 2, 3],
         ambisonicOrder: 1
       }, options);
       this.videoElementSource = audioContext.createMediaElementSource(video);
@@ -34287,7 +34090,7 @@
           type: 'omnitone-ready'
         });
       }, error => {
-        videojs__default['default'].log.warn(`videojs-vr: Omnitone initializes failed with the following error: ${error})`);
+        videojs__default["default"].log.warn(`videojs-vr: Omnitone initializes failed with the following error: ${error})`);
       });
     }
 
@@ -34457,7 +34260,6 @@
       this.isInXRSession = true;
       // Don't auto-show HUD - user must squeeze grip or use hand gesture
     }
-
     onXRSessionEnd() {
       this.isInXRSession = false;
       this.hide();
@@ -36313,7 +36115,6 @@
               repeatY = stereoScaleY * scale;
               offsetY = stereoOffsetY + (stereoScaleY - repeatY) / 2; // Center vertically
             }
-
             texture.repeat.set(repeatX, repeatY);
             texture.offset.set(offsetX, offsetY);
             texture.needsUpdate = true;
@@ -36818,14 +36619,14 @@
 
   /* global navigator */
   // Add Cardboard button
-  const Button = videojs__default['default'].getComponent('Button');
+  const Button = videojs__default["default"].getComponent('Button');
   class CardboardButton extends Button {
     constructor(player, options) {
       super(player, options);
-      this.handleVrDisplayActivate_ = videojs__default['default'].bind(this, this.handleVrDisplayActivate_);
-      this.handleVrDisplayDeactivate_ = videojs__default['default'].bind(this, this.handleVrDisplayDeactivate_);
-      this.handleVrDisplayPresentChange_ = videojs__default['default'].bind(this, this.handleVrDisplayPresentChange_);
-      this.handleOrientationChange_ = videojs__default['default'].bind(this, this.handleOrientationChange_);
+      this.handleVrDisplayActivate_ = videojs__default["default"].bind(this, this.handleVrDisplayActivate_);
+      this.handleVrDisplayDeactivate_ = videojs__default["default"].bind(this, this.handleVrDisplayDeactivate_);
+      this.handleVrDisplayPresentChange_ = videojs__default["default"].bind(this, this.handleVrDisplayPresentChange_);
+      this.handleOrientationChange_ = videojs__default["default"].bind(this, this.handleOrientationChange_);
       window.addEventListener('orientationchange', this.handleOrientationChange_);
       window.addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_);
       window.addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_);
@@ -36839,7 +36640,7 @@
       // we cannot show the cardboard button in fullscreen on
       // android as it breaks the controls, and makes it impossible
       // to exit cardboard mode
-      if (videojs__default['default'].browser.IS_ANDROID) {
+      if (videojs__default["default"].browser.IS_ANDROID) {
         this.on(player, 'fullscreenchange', () => {
           if (player.isFullscreen()) {
             this.hide();
@@ -36861,7 +36662,7 @@
       }
     }
     handleOrientationChange_() {
-      if (this.active_ && videojs__default['default'].browser.IS_IOS) {
+      if (this.active_ && videojs__default["default"].browser.IS_IOS) {
         this.changeSize_();
       }
     }
@@ -36872,7 +36673,7 @@
     }
     handleVrDisplayActivate_() {
       // we mimic fullscreen on IOS
-      if (videojs__default['default'].browser.IS_IOS) {
+      if (videojs__default["default"].browser.IS_IOS) {
         this.oldWidth_ = this.player_.currentWidth();
         this.oldHeight_ = this.player_.currentHeight();
         this.player_.enterFullWindow();
@@ -36882,7 +36683,7 @@
     }
     handleVrDisplayDeactivate_() {
       // un-mimic fullscreen on iOS
-      if (videojs__default['default'].browser.IS_IOS) {
+      if (videojs__default["default"].browser.IS_IOS) {
         if (this.oldWidth_) {
           this.player_.width(this.oldWidth_);
         }
@@ -36900,7 +36701,7 @@
         // This starts playback mode when the cardboard button
         // is clicked on Android. We need to do this as the controls
         // disappear
-        if (!this.player_.hasStarted() && videojs__default['default'].browser.IS_ANDROID) {
+        if (!this.player_.hasStarted() && videojs__default["default"].browser.IS_ANDROID) {
           this.player_.play();
         }
 
@@ -36956,15 +36757,15 @@
       window.removeEventListener('vrdisplaypresentchange', this.handleVrDisplayPresentChange_);
     }
   }
-  videojs__default['default'].registerComponent('CardboardButton', CardboardButton);
+  videojs__default["default"].registerComponent('CardboardButton', CardboardButton);
 
-  const BigPlayButton = videojs__default['default'].getComponent('BigPlayButton');
+  const BigPlayButton = videojs__default["default"].getComponent('BigPlayButton');
   class BigVrPlayButton extends BigPlayButton {
     buildCSSClass() {
       return `vjs-big-vr-play-button ${super.buildCSSClass()}`;
     }
   }
-  videojs__default['default'].registerComponent('BigVrPlayButton', BigVrPlayButton);
+  videojs__default["default"].registerComponent('BigVrPlayButton', BigVrPlayButton);
 
   /* global navigator */
 
@@ -37011,18 +36812,18 @@
       message: "Your browser/device does not support HLS 360 video. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
     }
   };
-  const Plugin = videojs__default['default'].getPlugin('plugin');
-  const Component = videojs__default['default'].getComponent('Component');
+  const Plugin = videojs__default["default"].getPlugin('plugin');
+  const Component = videojs__default["default"].getComponent('Component');
   class VR extends Plugin {
     constructor(player, options) {
-      const settings = videojs__default['default'].mergeOptions(defaults, options);
+      const settings = videojs__default["default"].mergeOptions(defaults, options);
       super(player, settings);
       this.options_ = settings;
       this.player_ = player;
       this.bigPlayButtonIndex_ = player.children().indexOf(player.getChild('BigPlayButton')) || 0;
 
       // custom videojs-errors integration boolean
-      this.videojsErrorsSupport_ = !!videojs__default['default'].errors;
+      this.videojsErrorsSupport_ = !!videojs__default["default"].errors;
       if (this.videojsErrorsSupport_) {
         player.errors({
           errors
@@ -37031,7 +36832,7 @@
 
       // IE 11 does not support enough webgl to be supported
       // older safari does not support cors, so it wont work
-      if (videojs__default['default'].browser.IE_VERSION || !corsSupport) {
+      if (videojs__default["default"].browser.IE_VERSION || !corsSupport) {
         // if a player triggers error before 'loadstart' is fired
         // video.js will reset the error overlay
         this.player_.on('loadstart', () => {
@@ -37047,10 +36848,10 @@
         ROTATE_INSTRUCTIONS_DISABLED: true
       });
       this.polyfill_ = new WebVRPolyfill();
-      this.handleVrDisplayActivate_ = videojs__default['default'].bind(this, this.handleVrDisplayActivate_);
-      this.handleVrDisplayDeactivate_ = videojs__default['default'].bind(this, this.handleVrDisplayDeactivate_);
-      this.handleResize_ = videojs__default['default'].bind(this, this.handleResize_);
-      this.animate_ = videojs__default['default'].bind(this, this.animate_);
+      this.handleVrDisplayActivate_ = videojs__default["default"].bind(this, this.handleVrDisplayActivate_);
+      this.handleVrDisplayDeactivate_ = videojs__default["default"].bind(this, this.handleVrDisplayDeactivate_);
+      this.handleResize_ = videojs__default["default"].bind(this, this.handleResize_);
+      this.animate_ = videojs__default["default"].bind(this, this.animate_);
       this.setProjection(this.options_.projection);
 
       // any time the video element is recycled for ads
@@ -37129,7 +36930,6 @@
             uvArray[i + 1] = uvArray[i + 1] * 0.5 + 0.5; // y coordinate
           }
         }
-
         uvAttribute.needsUpdate = true;
         const leftMaterial = new MeshBasicMaterial({
           map: this.videoTexture,
@@ -37161,7 +36961,6 @@
             uvArray[i + 1] *= 0.5; // y coordinate
           }
         }
-
         uvAttribute.needsUpdate = true;
         const rightMaterial = new MeshBasicMaterial({
           map: this.videoTexture,
@@ -37238,7 +37037,6 @@
         // phiStart
         Math.PI // phiLength
         );
-
         geometry.scale(-1, 1, 1);
         this.movieGeometry = geometry;
         this.movieMaterial = new MeshBasicMaterial({
@@ -37256,7 +37054,6 @@
         // phiStart
         Math.PI // phiLength
         );
-
         leftGeometry.scale(-1, 1, 1);
 
         // Modify UVs for left eye (left half of video)
@@ -37265,7 +37062,6 @@
         for (let i = 0; i < uvArray.length; i += 2) {
           uvArray[i] *= 0.5; // x coordinate
         }
-
         uvAttribute.needsUpdate = true;
         const leftMaterial = new MeshBasicMaterial({
           map: this.videoTexture
@@ -37279,7 +37075,6 @@
         // phiStart
         Math.PI // phiLength
         );
-
         rightGeometry.scale(-1, 1, 1);
 
         // Modify UVs for right eye (right half of video)
@@ -37288,7 +37083,6 @@
         for (let i = 0; i < uvArray.length; i += 2) {
           uvArray[i] = uvArray[i] * 0.5 + 0.5; // x coordinate
         }
-
         uvAttribute.needsUpdate = true;
         const rightMaterial = new MeshBasicMaterial({
           map: this.videoTexture
@@ -37481,7 +37275,6 @@ void main() {
           for (let i = 0; i < leftUvArray.length; i += 2) {
             leftUvArray[i] *= 0.5; // U: 0 to 0.5 (left half)
           }
-
           leftUvAttribute.needsUpdate = true;
           const leftMaterial = new MeshBasicMaterial({
             map: this.videoTexture,
@@ -37499,7 +37292,6 @@ void main() {
           for (let i = 0; i < rightUvArray.length; i += 2) {
             rightUvArray[i] = 0.5 + rightUvArray[i] * 0.5; // U: 0.5 to 1.0 (right half)
           }
-
           rightUvAttribute.needsUpdate = true;
           const rightMaterial = new MeshBasicMaterial({
             map: this.videoTexture,
@@ -37524,7 +37316,6 @@ void main() {
           for (let i = 0; i < uvArray.length; i += 2) {
             uvArray[i] *= 0.5; // Left half only
           }
-
           uvAttribute.needsUpdate = true;
           this.movieMaterial = new MeshBasicMaterial({
             map: this.videoTexture,
@@ -37567,7 +37358,7 @@ void main() {
         return;
       }
       msgs.forEach(msg => {
-        videojs__default['default'].log('VR: ', msg);
+        videojs__default["default"].log('VR: ', msg);
       });
     }
     handleVrDisplayActivate_() {
@@ -37577,7 +37368,7 @@ void main() {
       this.vrDisplay.requestPresent([{
         source: this.renderedCanvas
       }]).then(() => {
-        if (!this.vrDisplay.cardboardUI_ || !videojs__default['default'].browser.IS_IOS) {
+        if (!this.vrDisplay.cardboardUI_ || !videojs__default["default"].browser.IS_IOS) {
           return;
         }
 
@@ -37732,7 +37523,7 @@ void main() {
     }
     setProjection(projection) {
       if (!getInternalProjectionName(projection)) {
-        videojs__default['default'].log.error('videojs-vr: please pass a valid projection ' + validProjections.join(', '));
+        videojs__default["default"].log.error('videojs-vr: please pass a valid projection ' + validProjections.join(', '));
         return;
       }
       this.currentProjection_ = projection;
@@ -37989,12 +37780,12 @@ void main() {
       this.player_.bigPlayButton = this.player_.getChild('BigVrPlayButton');
 
       // mobile devices, or cardboard forced to on
-      if (this.options_.forceCardboard || videojs__default['default'].browser.IS_ANDROID || videojs__default['default'].browser.IS_IOS) {
+      if (this.options_.forceCardboard || videojs__default["default"].browser.IS_ANDROID || videojs__default["default"].browser.IS_IOS) {
         this.addCardboardButton_();
       }
 
       // if ios remove full screen toggle
-      if (videojs__default['default'].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
+      if (videojs__default["default"].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
         this.player_.controlBar.fullscreenToggle.hide();
       }
       this.camera.position.set(0, 0, 0);
@@ -38049,7 +37840,7 @@ void main() {
             canvas: this.renderedCanvas,
             // check if its a half sphere view projection
             halfView: this.currentProjection_.indexOf('180') === 0,
-            orientation: videojs__default['default'].browser.IS_IOS || videojs__default['default'].browser.IS_ANDROID || false
+            orientation: videojs__default["default"].browser.IS_IOS || videojs__default["default"].browser.IS_ANDROID || false
           };
           if (this.options_.motionControls === false) {
             options.orientation = false;
@@ -38220,7 +38011,7 @@ void main() {
       }
 
       // show the fullscreen again
-      if (videojs__default['default'].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
+      if (videojs__default["default"].browser.IS_IOS && this.player_.controlBar && this.player_.controlBar.fullscreenToggle) {
         this.player_.controlBar.fullscreenToggle.show();
       }
 
@@ -38690,8 +38481,8 @@ void main() {
   VR.prototype.setTimeout = Component.prototype.setTimeout;
   VR.prototype.clearTimeout = Component.prototype.clearTimeout;
   VR.VERSION = version$1;
-  videojs__default['default'].registerPlugin('vr', VR);
+  videojs__default["default"].registerPlugin('vr', VR);
 
   return VR;
 
-})));
+}));
