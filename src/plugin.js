@@ -156,7 +156,7 @@ class VR extends Plugin {
       }
       return this.changeProjection_('NONE');
     } else if (projection === '360') {
-      this.movieGeometry = new THREE.SphereBufferGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
+      this.movieGeometry = new THREE.SphereGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       this.movieScreen = new THREE.Mesh(this.movieGeometry, this.movieMaterial);
@@ -166,8 +166,8 @@ class VR extends Plugin {
       this.movieScreen.quaternion.setFromAxisAngle({x: 0, y: 1, z: 0}, -Math.PI / 2);
       this.scene.add(this.movieScreen);
     } else if (projection === '360_LR' || projection === '360_TB') {
-      // Left eye view - use SphereBufferGeometry and modify UVs directly
-      const leftGeometry = new THREE.SphereBufferGeometry(
+      // Left eye view - use SphereGeometry and modify UVs directly
+      const leftGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
@@ -196,8 +196,8 @@ class VR extends Plugin {
       this.movieScreenLeft.layers.set(1);
       this.scene.add(this.movieScreenLeft);
 
-      // Right eye view - use SphereBufferGeometry and modify UVs directly
-      const rightGeometry = new THREE.SphereBufferGeometry(
+      // Right eye view - use SphereGeometry and modify UVs directly
+      const rightGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail
@@ -231,8 +231,8 @@ class VR extends Plugin {
       this.movieGeometry = leftGeometry;
       this.movieMaterial = leftMaterial;
     } else if (projection === '360_CUBE') {
-      // Use BoxBufferGeometry instead of deprecated BoxGeometry
-      this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
+      // Use BoxGeometry instead of deprecated BoxGeometry
+      this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
       this.movieMaterial = new THREE.MeshBasicMaterial({ map: this.videoTexture, side: THREE.BackSide });
 
       // Define UV coordinates for each face
@@ -243,16 +243,16 @@ class VR extends Plugin {
       const front = [new THREE.Vector2(0.333, 0), new THREE.Vector2(0.666, 0), new THREE.Vector2(0.666, 0.5), new THREE.Vector2(0.333, 0.5)];
       const back = [new THREE.Vector2(0.666, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 0.5), new THREE.Vector2(0.666, 0.5)];
 
-      // BoxBufferGeometry has 24 vertices (4 per face, 6 faces)
+      // BoxGeometry has 24 vertices (4 per face, 6 faces)
       // UV attribute has 48 values (2 per vertex)
-      // Face order in BoxBufferGeometry: +X, -X, +Y, -Y, +Z, -Z (right, left, top, bottom, front, back)
+      // Face order in BoxGeometry: +X, -X, +Y, -Y, +Z, -Z (right, left, top, bottom, front, back)
       const uvAttribute = this.movieGeometry.getAttribute('uv');
       const uvArray = uvAttribute.array;
 
       // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
       const setFaceUVs = (faceIndex, corners) => {
         const baseIdx = faceIndex * 8;
-        // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+        // Vertex order for each face in BoxGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
 
         uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
         uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
@@ -277,7 +277,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '180_MONO') {
       // 180 MONO: Single mesh showing full video, visible to both eyes
-      const geometry = new THREE.SphereBufferGeometry(
+      const geometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -299,7 +299,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreen);
     } else if (projection === '180' || projection === '180_LR') {
       // 180 Stereo: Left eye view
-      const leftGeometry = new THREE.SphereBufferGeometry(
+      const leftGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -327,7 +327,7 @@ class VR extends Plugin {
       this.scene.add(this.movieScreenLeft);
 
       // Right eye view
-      const rightGeometry = new THREE.SphereBufferGeometry(
+      const rightGeometry = new THREE.SphereGeometry(
         256,
         this.options_.sphereDetail,
         this.options_.sphereDetail,
@@ -363,8 +363,8 @@ class VR extends Plugin {
         // we truncate the 2-pixel-wide strips on all discontinuous edges,
         const contCorrect = 2;
 
-        // Use BoxBufferGeometry instead of deprecated BoxGeometry
-        this.movieGeometry = new THREE.BoxBufferGeometry(256, 256, 256);
+        // Use BoxGeometry instead of deprecated BoxGeometry
+        this.movieGeometry = new THREE.BoxGeometry(256, 256, 256);
         this.movieMaterial = new THREE.ShaderMaterial({
           side: THREE.BackSide,
           uniforms: {
@@ -445,7 +445,7 @@ void main() {
         // Helper to set UVs for a face (4 vertices, 8 UV values starting at faceIndex*8)
         const setFaceUVs = (faceIndex, corners) => {
           const baseIdx = faceIndex * 8;
-          // Vertex order for each face in BoxBufferGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
+          // Vertex order for each face in BoxGeometry: 0,1,2,3 -> corners[3],corners[2],corners[0],corners[1]
 
           uvArray[baseIdx] = corners[3].x; uvArray[baseIdx + 1] = corners[3].y;
           uvArray[baseIdx + 2] = corners[2].x; uvArray[baseIdx + 3] = corners[2].y;
@@ -537,7 +537,7 @@ void main() {
       if (isInWebXR) {
         // WebXR mode: Create two separate meshes for left and right eyes
         // Left eye mesh (layer 1) - shows left half of video
-        const leftGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const leftGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
         const leftUvAttribute = leftGeometry.getAttribute('uv');
         const leftUvArray = leftUvAttribute.array;
 
@@ -557,7 +557,7 @@ void main() {
         this.scene.add(this.movieScreenLeft);
 
         // Right eye mesh (layer 2) - shows right half of video
-        const rightGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        const rightGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
         const rightUvAttribute = rightGeometry.getAttribute('uv');
         const rightUvArray = rightUvAttribute.array;
 
@@ -582,7 +582,7 @@ void main() {
         this.movieMaterial = leftMaterial;
       } else {
         // Browser mode: Show left half only (mono)
-        this.movieGeometry = new THREE.PlaneBufferGeometry(planeWidth, planeHeight);
+        this.movieGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
 
         // Map UVs to left half of video only (U: 0 to 0.5)
         const uvAttribute = this.movieGeometry.getAttribute('uv');
@@ -871,7 +871,7 @@ void main() {
         this.videoTexture.generateMipmaps = false;
         this.videoTexture.minFilter = THREE.LinearFilter;
         this.videoTexture.magFilter = THREE.LinearFilter;
-        this.videoTexture.format = THREE.RGBFormat;
+        this.videoTexture.format = THREE.RGBAFormat;
       }
 
       // Rebuild the mesh with new projection
@@ -992,7 +992,7 @@ void main() {
       this.videoTexture.generateMipmaps = false;
       this.videoTexture.minFilter = THREE.LinearFilter;
       this.videoTexture.magFilter = THREE.LinearFilter;
-      this.videoTexture.format = THREE.RGBFormat;
+      this.videoTexture.format = THREE.RGBAFormat;
 
       // Update ALL materials in the scene using video texture (both eyes in stereo modes)
       // This ensures both left and right eye meshes get the new texture
@@ -1047,7 +1047,7 @@ void main() {
     this.videoTexture.generateMipmaps = false;
     this.videoTexture.minFilter = THREE.LinearFilter;
     this.videoTexture.magFilter = THREE.LinearFilter;
-    this.videoTexture.format = THREE.RGBFormat;
+    this.videoTexture.format = THREE.RGBAFormat;
 
     // Handle poster image - show poster until video starts playing
     this.posterTexture = null;
