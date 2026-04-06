@@ -1435,12 +1435,12 @@ void main() {
         this.trigger('vr-previous');
       },
       onGallery: () => {
-        console.log('[VR Plugin] onGallery called, vrGallery:', !!this.vrGallery);
+        this.log('onGallery called, vrGallery:', !!this.vrGallery);
         if (this.vrGallery) {
           this.vrGallery.toggle();
-          console.log('[VR Plugin] Gallery toggled, now visible:', this.vrGallery.isVisible);
+          this.log('Gallery toggled, now visible:', this.vrGallery.isVisible);
         } else {
-          console.warn('[VR Plugin] vrGallery not available');
+          this.log('vrGallery not available');
         }
         if (this.options_.onGallery) {
           this.options_.onGallery();
@@ -1454,7 +1454,7 @@ void main() {
         this.trigger('vr-exit');
       },
       onProjectionChange: (projection) => {
-        console.log('[VR Plugin] Projection change requested:', projection);
+        this.log('Projection change requested:', projection);
         this.setProjection(projection);
         if (this.options_.onProjectionChange) {
           this.options_.onProjectionChange(projection);
@@ -1467,7 +1467,7 @@ void main() {
       } : null,
       onForceMonoToggle: (enabled) => {
         // Handle force mono toggle - uses left eye for both eyes
-        console.log('[VR Plugin] Force Mono toggle:', enabled);
+        this.log('Force Mono toggle:', enabled);
         this.forceMonoEnabled = enabled;
 
         // Always apply the projection immediately, checking for meshes
@@ -1475,21 +1475,21 @@ void main() {
         const rightMesh = this.movieScreenRight;
 
         if (leftMesh && rightMesh) {
-          console.log('[VR Plugin] Found SBS meshes, applying layers');
+          this.log('Found SBS meshes, applying layers');
           if (enabled) {
             // Mono: show left eye to both eyes
             leftMesh.layers.set(1);
             leftMesh.layers.enable(2);
             // Hide right mesh from both eyes
             rightMesh.layers.disableAll();
-            console.log('[VR Plugin] Mono ON: left mesh on layers 1+2, right mesh hidden');
+            this.log('Mono ON: left mesh on layers 1+2, right mesh hidden');
           } else {
             // Stereo: restore separate eyes - use disableAll first for clean state
             leftMesh.layers.disableAll();
             leftMesh.layers.enable(1);
             rightMesh.layers.disableAll();
             rightMesh.layers.enable(2);
-            console.log('[VR Plugin] Mono OFF: left on layer 1 only, right on layer 2 only');
+            this.log('Mono OFF: left on layer 1 only, right on layer 2 only');
           }
           if (leftMesh.material) {
             leftMesh.material.needsUpdate = true;
@@ -1499,16 +1499,16 @@ void main() {
           }
         } else if (this.movieScreen) {
           // Non-SBS content - ensure visible to both eyes
-          console.log('[VR Plugin] Using single movieScreen');
+          this.log('Using single movieScreen');
           this.movieScreen.layers.enableAll();
           if (this.movieScreen.material) {
             this.movieScreen.material.needsUpdate = true;
           }
         } else {
-          console.warn('[VR Plugin] No video meshes found for mono toggle');
+          this.log('No video meshes found for mono toggle');
           // Try to rebuild projection if meshes are missing
           if (this.currentProjection_ === 'SBS_MONO' && this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
-            console.log('[VR Plugin] Rebuilding SBS_MONO to create stereo meshes');
+            this.log('Rebuilding SBS_MONO to create stereo meshes');
             this.setProjection('SBS_MONO');
           }
         }
@@ -1516,7 +1516,7 @@ void main() {
         // ALWAYS refresh VR HUD and Gallery layers to prevent double vision
         if (this.vrHUD && this.vrHUD.refreshLayers) {
           this.vrHUD.refreshLayers();
-          console.log('[VR Plugin] VR HUD layers refreshed');
+          this.log('VR HUD layers refreshed');
         }
         if (this.vrGallery && this.vrGallery.refreshLayers) {
           this.vrGallery.refreshLayers();
@@ -1628,7 +1628,7 @@ void main() {
     const getSrcFunc = this.options_.getSrc || null;
 
     if (getSrcFunc) {
-      console.log('[VR Plugin] VR Gallery initialized with getSrc function');
+      this.log('VR Gallery initialized with getSrc function');
     }
 
     this.vrGallery = new VRGallery({
@@ -1637,7 +1637,7 @@ void main() {
       renderer: this.renderer,
       getSrc: getSrcFunc,
       onMediaSelect: (item, index) => {
-        console.log('[VR Gallery] Media selected:', item, index);
+        this.log('Media selected:', item, index);
         if (this.options_.onMediaSelect) {
           this.options_.onMediaSelect(item, index);
         }

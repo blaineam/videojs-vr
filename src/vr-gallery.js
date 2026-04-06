@@ -1024,10 +1024,6 @@ class VRGallery {
       this.loadThumbnailTexture(item.url, item.mesh);
       loadedCount++;
     }
-
-    if (loadedCount > 0) {
-      console.log(`[VR Gallery] Loading ${loadedCount} visible thumbnails (${currentlyLoading} in progress, ${visibleToLoad.length - loadedCount} queued)`);
-    }
   }
 
   hide() {
