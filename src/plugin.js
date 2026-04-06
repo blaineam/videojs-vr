@@ -49,17 +49,17 @@ const errors = {
   'web-vr-out-of-date': {
     headline: '360 is out of date',
     type: '360_OUT_OF_DATE',
-    message: "Your browser supports 360 but not the latest version. See <a href='http://webvr.info'>http://webvr.info</a> for more info."
+    message: "Your browser supports 360 but not the latest version. See <a href='https://webvr.info'>https://webvr.info</a> for more info."
   },
   'web-vr-not-supported': {
     headline: '360 not supported on this device',
     type: '360_NOT_SUPPORTED',
-    message: "Your browser does not support 360. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
+    message: "Your browser does not support 360. See <a href='https://webvr.info'>https://webvr.info</a> for assistance."
   },
   'web-vr-hls-cors-not-supported': {
     headline: '360 HLS video not supported on this device',
     type: '360_NOT_SUPPORTED',
-    message: "Your browser/device does not support HLS 360 video. See <a href='http://webvr.info'>http://webvr.info</a> for assistance."
+    message: "Your browser/device does not support HLS 360 video. See <a href='https://webvr.info'>https://webvr.info</a> for assistance."
   }
 };
 
@@ -627,11 +627,9 @@ void main() {
     } else {
       // strip any html content from the error message
       // as it is not supported outside of videojs-errors
-      const div = document.createElement('div');
-
-      div.innerHTML = errors[errorObj.code].message;
-
-      const message = div.textContent || div.innerText || '';
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(errors[errorObj.code].message, 'text/html');
+      const message = doc.body.textContent || '';
 
       this.player_.error({
         code: errorObj.code,
