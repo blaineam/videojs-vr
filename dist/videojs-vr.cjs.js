@@ -43609,6 +43609,9 @@ void main() {
    * @param {Array} items - Array of media items with thumbnail, title, url, etc.
    */
   setGalleryItems(items) {
+    if (!Array.isArray(items)) {
+      return;
+    }
     if (this.vrGallery) {
       this.vrGallery.setMediaItems(items);
     }
@@ -43620,6 +43623,9 @@ void main() {
    * @param {Object|THREE.Euler} offset - Orientation offset {x, y, z} or Euler
    */
   setOrientationOffset(offset) {
+    if (!offset || typeof offset !== 'object') {
+      return;
+    }
     if (this.controls3d && this.controls3d.setOrientationOffset) {
       this.controls3d.setOrientationOffset(offset);
     }
