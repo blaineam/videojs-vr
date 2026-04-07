@@ -43189,20 +43189,10 @@ void main() {
     if (!document.getElementById('vjs-vr-fake-fs-style')) {
       const style = document.createElement('style');
       style.id = 'vjs-vr-fake-fs-style';
-      style.textContent = '.vjs-vr-fake-fullscreen {' + '  position: fixed !important;' + '  top: 0 !important;' + '  left: 0 !important;' + '  width: 100vw !important;' + '  height: 100vh !important;' + '  z-index: 99999 !important;' + '  background: #000 !important;' + '}';
+      style.textContent = '.vjs-vr-fake-fullscreen {' + '  position: fixed !important;' + '  top: 0 !important;' + '  left: 0 !important;' + '  width: 100vw !important;' + '  height: 100vh !important;' + '  z-index: 2147483647 !important;' + '  background: #000 !important;' + '  user-select: none !important;' + '  -webkit-user-select: none !important;' + '}' + '.vjs-vr-fake-fullscreen .vjs-control-bar {' + '  display: flex !important;' + '  opacity: 1 !important;' + '  z-index: 2147483647 !important;' + '}';
       document.head.appendChild(style);
     }
     this.fakeFullscreen_ = false;
-
-    // Block fullscreenchange events from reaching Fancybox while VR is active.
-    // Capturing listener fires before jQuery's bubbling handlers.
-    this.fsBlocker_ = e => {
-      if (this.fakeFullscreen_ !== undefined) {
-        e.stopImmediatePropagation();
-      }
-    };
-    document.addEventListener('fullscreenchange', this.fsBlocker_, true);
-    document.addEventListener('webkitfullscreenchange', this.fsBlocker_, true);
 
     // Keep references to the original methods so we can restore on dispose
     this.origRequestFullscreen_ = this.player_.requestFullscreen;
@@ -43215,19 +43205,14 @@ void main() {
       }
       self.fakeFullscreen_ = true;
       playerEl.classList.add('vjs-vr-fake-fullscreen');
-      // Hide Fancybox UI elements
-      if (fancyboxContainer) {
-        fancyboxContainer.style.setProperty('z-index', '1', 'important');
-      }
-      // Request native fullscreen on document element to get true fullscreen
-      // (hides browser chrome). This won't trigger Fancybox because the
-      // fullscreen target is documentElement, not a Fancybox-managed element.
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(function () {});
-      }
+      // Prevent scrolling on the body while in fake fullscreen
+      document.body.style.overflow = 'hidden';
       self.player_.isFullscreen(true);
       self.player_.addClass('vjs-fullscreen');
-      self.handleResize_();
+      // Resize after a frame so the DOM updates are applied
+      requestAnimationFrame(function () {
+        self.handleResize_();
+      });
     };
     this.player_.exitFullscreen = function () {
       if (!self.fakeFullscreen_) {
@@ -43235,15 +43220,12 @@ void main() {
       }
       self.fakeFullscreen_ = false;
       playerEl.classList.remove('vjs-vr-fake-fullscreen');
-      if (fancyboxContainer) {
-        fancyboxContainer.style.removeProperty('z-index');
-      }
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(function () {});
-      }
+      document.body.style.overflow = '';
       self.player_.isFullscreen(false);
       self.player_.removeClass('vjs-fullscreen');
-      self.handleResize_();
+      requestAnimationFrame(function () {
+        self.handleResize_();
+      });
     };
 
     // ESC key support
@@ -43269,11 +43251,6 @@ void main() {
     }
     if (this.origIsFullscreen_) {
       this.origIsFullscreen_ = null;
-    }
-    if (this.fsBlocker_) {
-      document.removeEventListener('fullscreenchange', this.fsBlocker_, true);
-      document.removeEventListener('webkitfullscreenchange', this.fsBlocker_, true);
-      this.fsBlocker_ = null;
     }
     if (this.fakeFullscreenEscHandler_) {
       document.removeEventListener('keydown', this.fakeFullscreenEscHandler_);
