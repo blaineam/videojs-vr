@@ -505,34 +505,12 @@ void main() {
       // In browser: Left half only (mono)
       const distance = 3;
 
-      // Get the content aspect ratio: for SBS, each eye sees half the width.
-      const video = this.getVideoEl_();
-      const contentWidth = (video.videoWidth || 1920) / 2;
-      const contentHeight = video.videoHeight || 1080;
-      const contentAspect = contentWidth / contentHeight;
-
-      // Size the plane using the content aspect ratio, then adjust the
-      // camera FOV so the plane fills the view edge-to-edge with no
-      // black borders. This is "aspect-fill" — the plane always covers
-      // the full viewport.
-      const playerAspect = this.camera.aspect;
-      let planeWidth, planeHeight;
-
-      if (contentAspect > playerAspect) {
-        // Content is wider — match height, width extends beyond view.
-        planeHeight = 2;
-        planeWidth = planeHeight * contentAspect;
-      } else {
-        // Content is taller — match width, height extends beyond view.
-        planeWidth = 2 * playerAspect;
-        planeHeight = planeWidth / contentAspect;
-      }
-
-      // Set camera FOV to exactly frame the plane height at this distance.
-      const halfHeight = planeHeight / 2;
-      const newFov = 2 * Math.atan(halfHeight / distance) * (180 / Math.PI);
-      this.camera.fov = newFov;
-      this.camera.updateProjectionMatrix();
+      // Make the plane fill the camera frustum exactly — no black borders.
+      // Use the camera's current FOV and aspect to compute plane dimensions
+      // at the given distance, then set the plane to those exact dimensions.
+      const fov = this.camera.fov * Math.PI / 180;
+      const planeHeight = 2 * distance * Math.tan(fov / 2);
+      const planeWidth = planeHeight * this.camera.aspect;
 
       // Check if we're in WebXR mode
       const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
