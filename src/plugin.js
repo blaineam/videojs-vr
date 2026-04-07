@@ -505,15 +505,31 @@ void main() {
       // In browser: Left half only (mono)
       const distance = 3;
 
-      // Calculate viewport dimensions at distance — fill the entire
-      // camera frustum so the video stretches to the player dimensions.
-      // The UV mapping handles showing only the left/right halves.
+      // Get the content aspect ratio: for SBS, each eye sees half the width.
+      const video = this.getVideoEl_();
+      const contentWidth = (video.videoWidth || 1920) / 2;
+      const contentHeight = video.videoHeight || 1080;
+      const contentAspect = contentWidth / contentHeight;
+
+      // Calculate viewport dimensions at the camera's distance.
       const fov = this.camera.fov * Math.PI / 180;
       const viewportHeight = 2 * distance * Math.tan(fov / 2);
       const viewportWidth = viewportHeight * this.camera.aspect;
 
-      const planeWidth = viewportWidth;
-      const planeHeight = viewportHeight;
+      // Aspect-fit: scale the content to fill as much of the viewport as
+      // possible while maintaining the half-width aspect ratio.
+      let planeWidth, planeHeight;
+      const viewportAspect = viewportWidth / viewportHeight;
+
+      if (contentAspect > viewportAspect) {
+        // Content is wider than viewport — fit to width.
+        planeWidth = viewportWidth;
+        planeHeight = viewportWidth / contentAspect;
+      } else {
+        // Content is taller than viewport — fit to height.
+        planeHeight = viewportHeight;
+        planeWidth = viewportHeight * contentAspect;
+      }
 
       // Check if we're in WebXR mode
       const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
