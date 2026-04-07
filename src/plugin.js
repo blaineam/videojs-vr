@@ -519,7 +519,9 @@ void main() {
       const frustumHeight = 2 * distance * Math.tan(fov / 2);
       const frustumWidth = frustumHeight * playerAspect;
 
-      let planeWidth, planeHeight;
+      let planeWidth;
+      let planeHeight;
+
       if (contentAspect > playerAspect) {
         // Content wider than player — match width, height follows content ratio.
         planeWidth = frustumWidth;
