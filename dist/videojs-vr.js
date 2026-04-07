@@ -47715,14 +47715,27 @@ void main() {
       const height = this.player_.currentHeight();
       this.effect.setSize(width, height, false);
       this.camera.aspect = width / height;
-      this.camera.updateProjectionMatrix();
 
-      // SBS_MONO plane geometry is sized to fill the camera frustum.
-      // When the player resizes (or enters fullscreen), rebuild the geometry
-      // so it fills the new viewport instead of staying at the old size.
+      // For SBS_MONO, update the camera FOV to match the new aspect ratio
+      // so the plane fills the view. Do NOT call changeProjection_ here —
+      // that rebuilds the DOM which exits native fullscreen.
       if (this.currentProjection_ === 'SBS_MONO' || this.currentProjection_ === 'SBS') {
-        this.changeProjection_(this.currentProjection_);
+        const video = this.getVideoEl_();
+        const contentAspect = (video.videoWidth || 3840) / 2 / (video.videoHeight || 1920);
+        const playerAspect = width / height;
+        const distance = 3;
+        const planeHeight = 2;
+        const planeWidth = planeHeight * contentAspect;
+        let vertFovDeg;
+        if (contentAspect > playerAspect) {
+          vertFovDeg = 2 * Math.atan(planeHeight / 2 / distance) * (180 / Math.PI);
+        } else {
+          const horzFovRad = 2 * Math.atan(planeWidth / 2 / distance);
+          vertFovDeg = 2 * Math.atan(Math.tan(horzFovRad / 2) / playerAspect) * (180 / Math.PI);
+        }
+        this.camera.fov = vertFovDeg;
       }
+      this.camera.updateProjectionMatrix();
     }
     setProjection(projection) {
       if (!getInternalProjectionName(projection)) {
