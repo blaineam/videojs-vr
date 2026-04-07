@@ -511,25 +511,28 @@ void main() {
       const contentHeight = video.videoHeight || 1080;
       const contentAspect = contentWidth / contentHeight;
 
-      // Calculate viewport dimensions at the camera's distance.
-      const fov = this.camera.fov * Math.PI / 180;
-      const viewportHeight = 2 * distance * Math.tan(fov / 2);
-      const viewportWidth = viewportHeight * this.camera.aspect;
-
-      // Aspect-fit: scale the content to fill as much of the viewport as
-      // possible while maintaining the half-width aspect ratio.
+      // Size the plane using the content aspect ratio, then adjust the
+      // camera FOV so the plane fills the view edge-to-edge with no
+      // black borders. This is "aspect-fill" — the plane always covers
+      // the full viewport.
+      const playerAspect = this.camera.aspect;
       let planeWidth, planeHeight;
-      const viewportAspect = viewportWidth / viewportHeight;
 
-      if (contentAspect > viewportAspect) {
-        // Content is wider than viewport — fit to width.
-        planeWidth = viewportWidth;
-        planeHeight = viewportWidth / contentAspect;
+      if (contentAspect > playerAspect) {
+        // Content is wider — match height, width extends beyond view.
+        planeHeight = 2;
+        planeWidth = planeHeight * contentAspect;
       } else {
-        // Content is taller than viewport — fit to height.
-        planeHeight = viewportHeight;
-        planeWidth = viewportHeight * contentAspect;
+        // Content is taller — match width, height extends beyond view.
+        planeWidth = 2 * playerAspect;
+        planeHeight = planeWidth / contentAspect;
       }
+
+      // Set camera FOV to exactly frame the plane height at this distance.
+      const halfHeight = planeHeight / 2;
+      const newFov = 2 * Math.atan(halfHeight / distance) * (180 / Math.PI);
+      this.camera.fov = newFov;
+      this.camera.updateProjectionMatrix();
 
       // Check if we're in WebXR mode
       const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
