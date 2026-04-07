@@ -42720,6 +42720,23 @@ void main() {
     if (this.renderer && this.renderer.xr && this.renderer.xr.isPresenting) {
       return;
     }
+
+    // Delay resize during fullscreen transitions. Browsers (especially
+    // Safari) exit fullscreen if the fullscreened element's DOM is
+    // modified during the transition. Defer to next animation frame.
+    if (this.resizeTimer_) {
+      cancelAnimationFrame(this.resizeTimer_);
+    }
+    const self = this;
+    this.resizeTimer_ = requestAnimationFrame(() => {
+      self.resizeTimer_ = null;
+      self.doResize_();
+    });
+  }
+  doResize_() {
+    if (!this.initialized_ || !this.player_ || !this.player_.el()) {
+      return;
+    }
     const width = this.player_.currentWidth();
     const height = this.player_.currentHeight();
     this.effect.setSize(width, height, false);
