@@ -43185,14 +43185,20 @@ void main() {
     }
     this.log('Fancybox detected – using CSS fake-fullscreen');
 
-    // Inject the CSS rule once
-    if (!document.getElementById('vjs-vr-fake-fs-style')) {
-      const style = document.createElement('style');
-      style.id = 'vjs-vr-fake-fs-style';
-      style.textContent = '.vjs-vr-fake-fullscreen {' + '  position: fixed !important;' + '  top: 0 !important;' + '  left: 0 !important;' + '  width: 100vw !important;' + '  height: 100vh !important;' + '  z-index: 2147483647 !important;' + '  background: #000 !important;' + '  user-select: none !important;' + '  -webkit-user-select: none !important;' + '}' + '.vjs-vr-fake-fullscreen .vjs-control-bar {' + '  display: flex !important;' + '  opacity: 1 !important;' + '  z-index: 2147483647 !important;' + '}';
-      document.head.appendChild(style);
-    }
-    this.fakeFullscreen_ = false;
+    // Block ALL fullscreenchange events from reaching Fancybox's jQuery
+    // handlers. Use capturing phase + stopImmediatePropagation so no other
+    // listener on document sees the event.
+    this.vrFsActive_ = false;
+    const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+    this.fsBlocker_ = e => {
+      if (this.vrFsActive_) {
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+      }
+    };
+    fsEvents.forEach(evt => {
+      document.addEventListener(evt, this.fsBlocker_, true);
+    });
 
     // Keep references to the original methods so we can restore on dispose
     this.origRequestFullscreen_ = this.player_.requestFullscreen;
@@ -43200,32 +43206,19 @@ void main() {
     this.origIsFullscreen_ = this.player_.isFullscreen;
     const self = this;
     this.player_.requestFullscreen = function () {
-      if (self.fakeFullscreen_) {
-        return;
-      }
-      self.fakeFullscreen_ = true;
-      playerEl.classList.add('vjs-vr-fake-fullscreen');
-      // Prevent scrolling on the body while in fake fullscreen
-      document.body.style.overflow = 'hidden';
-      self.player_.isFullscreen(true);
-      self.player_.addClass('vjs-fullscreen');
-      // Resize after a frame so the DOM updates are applied
-      requestAnimationFrame(function () {
-        self.handleResize_();
-      });
+      self.vrFsActive_ = true;
+      const el = playerEl;
+      const p = el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : el.mozRequestFullScreen ? el.mozRequestFullScreen() : Promise.resolve();
+      return p;
     };
     this.player_.exitFullscreen = function () {
-      if (!self.fakeFullscreen_) {
-        return;
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else if (document.webkitFullscreenElement) {
+        document.webkitExitFullscreen();
       }
-      self.fakeFullscreen_ = false;
-      playerEl.classList.remove('vjs-vr-fake-fullscreen');
-      document.body.style.overflow = '';
-      self.player_.isFullscreen(false);
-      self.player_.removeClass('vjs-fullscreen');
-      requestAnimationFrame(function () {
-        self.handleResize_();
-      });
+      self.vrFsActive_ = false;
+      return self.player_;
     };
 
     // ESC key support
@@ -43256,10 +43249,14 @@ void main() {
       document.removeEventListener('keydown', this.fakeFullscreenEscHandler_);
       this.fakeFullscreenEscHandler_ = null;
     }
-    if (this.player_ && this.player_.el()) {
-      this.player_.el().classList.remove('vjs-vr-fake-fullscreen');
+    if (this.fsBlocker_) {
+      const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+      fsEvents.forEach(evt => {
+        document.removeEventListener(evt, this.fsBlocker_, true);
+      });
+      this.fsBlocker_ = null;
     }
-    this.fakeFullscreen_ = false;
+    this.vrFsActive_ = false;
   }
   getVideoEl_() {
     return this.player_.el().getElementsByTagName('video')[0];
