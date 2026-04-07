@@ -505,12 +505,45 @@ void main() {
       // In browser: Left half only (mono)
       const distance = 3;
 
-      // Make the plane fill the camera frustum exactly — no black borders.
-      // Use the camera's current FOV and aspect to compute plane dimensions
-      // at the given distance, then set the plane to those exact dimensions.
-      const fov = this.camera.fov * Math.PI / 180;
-      const planeHeight = 2 * distance * Math.tan(fov / 2);
-      const planeWidth = planeHeight * this.camera.aspect;
+      // Content aspect ratio: for SBS, each eye sees half the video width.
+      const video = this.getVideoEl_();
+      const halfWidth = (video.videoWidth || 3840) / 2;
+      const fullHeight = video.videoHeight || 1920;
+      const contentAspect = halfWidth / fullHeight;
+      const playerAspect = this.camera.aspect;
+
+      // Size the plane to preserve the content's aspect ratio, then
+      // fit it inside the camera frustum (aspect-fit to player bounds).
+      // Camera FOV is then adjusted so the plane fills the view exactly.
+      const fov = 75 * Math.PI / 180; // base FOV
+      const frustumHeight = 2 * distance * Math.tan(fov / 2);
+      const frustumWidth = frustumHeight * playerAspect;
+
+      let planeWidth, planeHeight;
+      if (contentAspect > playerAspect) {
+        // Content wider than player — match width, height follows content ratio.
+        planeWidth = frustumWidth;
+        planeHeight = frustumWidth / contentAspect;
+      } else {
+        // Content taller/equal — match height, width follows content ratio.
+        planeHeight = frustumHeight;
+        planeWidth = frustumHeight * contentAspect;
+      }
+
+      // Set camera FOV so the plane fills the view edge-to-edge.
+      // Use the larger dimension to determine FOV.
+      const vertFov = 2 * Math.atan((planeHeight / 2) / distance) * (180 / Math.PI);
+      const horzFovNeeded = 2 * Math.atan((planeWidth / 2) / distance) * (180 / Math.PI);
+      const horzFovFromVert = 2 * Math.atan(Math.tan(vertFov * Math.PI / 360) * playerAspect) * (180 / Math.PI);
+
+      if (horzFovFromVert < horzFovNeeded) {
+        // Width is the limiting factor — adjust FOV to match width.
+        this.camera.fov = 2 * Math.atan(Math.tan(horzFovNeeded * Math.PI / 360) / playerAspect) * (180 / Math.PI);
+      } else {
+        // Height is the limiting factor.
+        this.camera.fov = vertFov;
+      }
+      this.camera.updateProjectionMatrix();
 
       // Check if we're in WebXR mode
       const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
