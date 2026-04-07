@@ -1377,6 +1377,12 @@ void main() {
       if (this.vrFsActive_) {
         e.stopImmediatePropagation();
         e.stopPropagation();
+        // Detect native fullscreen exit (ESC key) and sync video.js state
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          this.vrFsActive_ = false;
+          this.player_.isFullscreen(false);
+          this.player_.removeClass('vjs-fullscreen');
+        }
       }
     };
     fsEvents.forEach(evt => {
@@ -1393,12 +1399,20 @@ void main() {
     this.player_.requestFullscreen = function() {
       self.vrFsActive_ = true;
       const el = playerEl;
-      const p = el.requestFullscreen ? el.requestFullscreen() :
-        el.webkitRequestFullscreen ? el.webkitRequestFullscreen() :
-          el.mozRequestFullScreen ? el.mozRequestFullScreen() :
-            Promise.resolve();
 
-      return p;
+      // Use the native API directly on the element
+      if (el.requestFullscreen) {
+        el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      }
+
+      // Manually set video.js fullscreen state since we're blocking
+      // the fullscreenchange event from reaching video.js
+      self.player_.isFullscreen(true);
+      self.player_.addClass('vjs-fullscreen');
+
+      return Promise.resolve();
     };
 
     this.player_.exitFullscreen = function() {
@@ -1407,6 +1421,9 @@ void main() {
       } else if (document.webkitFullscreenElement) {
         document.webkitExitFullscreen();
       }
+
+      self.player_.isFullscreen(false);
+      self.player_.removeClass('vjs-fullscreen');
       self.vrFsActive_ = false;
       return self.player_;
     };
