@@ -505,30 +505,15 @@ void main() {
       // In browser: Left half only (mono)
       const distance = 3;
 
-      // Get video dimensions - half width for SBS
-      const video = this.getVideoEl_();
-      const videoWidth = video.videoWidth / 2; // Half width
-      const videoHeight = video.videoHeight;
-      const videoAspect = videoWidth / videoHeight;
-
-      // Calculate viewport dimensions at distance
+      // Calculate viewport dimensions at distance — fill the entire
+      // camera frustum so the video stretches to the player dimensions.
+      // The UV mapping handles showing only the left/right halves.
       const fov = this.camera.fov * Math.PI / 180;
       const viewportHeight = 2 * distance * Math.tan(fov / 2);
       const viewportWidth = viewportHeight * this.camera.aspect;
-      const viewportAspect = viewportWidth / viewportHeight;
 
-      // Aspect fit: scale to fit inside viewport while maintaining aspect ratio
-      let planeWidth; let planeHeight;
-
-      if (videoAspect > viewportAspect) {
-        // Video is wider - fit to width
-        planeWidth = viewportWidth;
-        planeHeight = viewportWidth / videoAspect;
-      } else {
-        // Video is taller - fit to height
-        planeHeight = viewportHeight;
-        planeWidth = viewportHeight * videoAspect;
-      }
+      const planeWidth = viewportWidth;
+      const planeHeight = viewportHeight;
 
       // Check if we're in WebXR mode
       const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
@@ -823,6 +808,13 @@ void main() {
     this.effect.setSize(width, height, false);
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+
+    // SBS_MONO plane geometry is sized to fill the camera frustum.
+    // When the player resizes (or enters fullscreen), rebuild the geometry
+    // so it fills the new viewport instead of staying at the old size.
+    if (this.currentProjection_ === 'SBS_MONO' || this.currentProjection_ === 'SBS') {
+      this.changeProjection_(this.currentProjection_);
+    }
   }
 
   setProjection(projection) {
