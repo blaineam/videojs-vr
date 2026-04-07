@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.1.2 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.1.3 @license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('video.js')) :
   typeof define === 'function' && define.amd ? define(['video.js'], factory) :
@@ -9,7 +9,7 @@
 
   var videojs__default = /*#__PURE__*/_interopDefaultLegacy(videojs);
 
-  var version$1 = "3.1.2";
+  var version$1 = "3.1.3";
 
   /*
    * Copyright 2015 Google Inc. All Rights Reserved.
@@ -47429,30 +47429,38 @@ void main() {
         // In browser: Left half only (mono)
         const distance = 3;
 
-        // Get video dimensions - half width for SBS
+        // Content aspect ratio: for SBS, each eye sees half the video width.
         const video = this.getVideoEl_();
-        const videoWidth = video.videoWidth / 2; // Half width
-        const videoHeight = video.videoHeight;
-        const videoAspect = videoWidth / videoHeight;
+        const halfWidth = (video.videoWidth || 3840) / 2;
+        const fullHeight = video.videoHeight || 1920;
+        const contentAspect = halfWidth / fullHeight;
 
-        // Calculate viewport dimensions at distance
-        const fov = this.camera.fov * Math.PI / 180;
-        const viewportHeight = 2 * distance * Math.tan(fov / 2);
-        const viewportWidth = viewportHeight * this.camera.aspect;
-        const viewportAspect = viewportWidth / viewportHeight;
+        // camera.aspect MUST equal playerWidth/playerHeight (set in handleResize_).
+        const playerAspect = this.camera.aspect;
 
-        // Aspect fit: scale to fit inside viewport while maintaining aspect ratio
-        let planeWidth;
-        let planeHeight;
-        if (videoAspect > viewportAspect) {
-          // Video is wider - fit to width
-          planeWidth = viewportWidth;
-          planeHeight = viewportWidth / videoAspect;
+        // Choose plane dimensions with the content aspect ratio.
+        // Use an arbitrary reference height; only the ratio matters for FOV calc.
+        const planeHeight = 2;
+        const planeWidth = planeHeight * contentAspect;
+
+        // Aspect-fit: make the plane touch the edges in at least one dimension.
+        // Horizontal FOV = vertical FOV * playerAspect (via perspective projection).
+        // If content is wider than the player viewport, we match width (horizontal
+        // edges touch), then derive vertical FOV from that. Otherwise we match
+        // height (vertical edges touch) and use vertical FOV directly.
+        let vertFovDeg;
+        if (contentAspect > playerAspect) {
+          // Content is wider than player — match width.
+          // horzFov (rad) such that plane width fills horizontal view:
+          const horzFovRad = 2 * Math.atan(planeWidth / 2 / distance);
+          // Derive vertical FOV from horizontal FOV and player aspect:
+          vertFovDeg = 2 * Math.atan(Math.tan(horzFovRad / 2) / playerAspect) * (180 / Math.PI);
         } else {
-          // Video is taller - fit to height
-          planeHeight = viewportHeight;
-          planeWidth = viewportHeight * videoAspect;
+          // Content is taller/equal — match height.
+          vertFovDeg = 2 * Math.atan(planeHeight / 2 / distance) * (180 / Math.PI);
         }
+        this.camera.fov = vertFovDeg;
+        this.camera.updateProjectionMatrix();
 
         // Check if we're in WebXR mode
         const isInWebXR = this.renderer && this.renderer.xr && this.renderer.xr.isPresenting;
@@ -47710,6 +47718,13 @@ void main() {
       this.effect.setSize(width, height, false);
       this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
+
+      // SBS_MONO plane geometry is sized to fill the camera frustum.
+      // When the player resizes (or enters fullscreen), rebuild the geometry
+      // so it fills the new viewport instead of staying at the old size.
+      if (this.currentProjection_ === 'SBS_MONO' || this.currentProjection_ === 'SBS') {
+        this.changeProjection_(this.currentProjection_);
+      }
     }
     setProjection(projection) {
       if (!getInternalProjectionName(projection)) {
@@ -48129,6 +48144,13 @@ void main() {
       window.addEventListener('resize', this.handleResize_, true);
       window.addEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
       window.addEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
+
+      // --- Fancybox-aware CSS fullscreen ---
+      // When the player is inside a Fancybox lightbox, the native Fullscreen API
+      // conflicts with Fancybox's own fullscreenchange handler, causing fullscreen
+      // to immediately exit.  Work around this by using CSS-based "fake fullscreen"
+      // (position:fixed, z-index:99999, 100vw x 100vh) instead of the real API.
+      this.setupFancyboxFullscreen_();
       this.initialized_ = true;
       this.trigger('initialized');
 
@@ -48142,6 +48164,99 @@ void main() {
       if (!this.player_.controlBar.getChild('CardboardButton')) {
         this.player_.controlBar.addChild('CardboardButton', {});
       }
+    }
+
+    /**
+     * When the player lives inside a Fancybox (v3) lightbox, override
+     * the player's fullscreen behaviour to use CSS-based fake-fullscreen
+     * instead of the native Fullscreen API.  This avoids the conflict where
+     * Fancybox's global fullscreenchange handler calls update() and
+     * immediately exits fullscreen.
+     *
+     * The approach: intercept the player's requestFullscreen / exitFullscreen
+     * so they toggle a CSS class that makes the player element fill the
+     * viewport with position:fixed + z-index:99999.
+     */
+    setupFancyboxFullscreen_() {
+      // Detect Fancybox container
+      const playerEl = this.player_.el();
+      if (!playerEl) {
+        return;
+      }
+      const fancyboxContainer = playerEl.closest('.fancybox-container') || playerEl.closest('.fancybox-content');
+      if (!fancyboxContainer) {
+        return; // not inside Fancybox – use default fullscreen
+      }
+      this.log('Fancybox detected – using CSS fake-fullscreen');
+
+      // Inject the CSS rule once
+      if (!document.getElementById('vjs-vr-fake-fs-style')) {
+        const style = document.createElement('style');
+        style.id = 'vjs-vr-fake-fs-style';
+        style.textContent = '.vjs-vr-fake-fullscreen {' + '  position: fixed !important;' + '  top: 0 !important;' + '  left: 0 !important;' + '  width: 100vw !important;' + '  height: 100vh !important;' + '  z-index: 99999 !important;' + '  background: #000 !important;' + '}';
+        document.head.appendChild(style);
+      }
+      this.fakeFullscreen_ = false;
+
+      // Keep references to the original methods so we can restore on dispose
+      this.origRequestFullscreen_ = this.player_.requestFullscreen;
+      this.origExitFullscreen_ = this.player_.exitFullscreen;
+      this.origIsFullscreen_ = this.player_.isFullscreen;
+      const self = this;
+      this.player_.requestFullscreen = function () {
+        if (self.fakeFullscreen_) {
+          return;
+        }
+        self.fakeFullscreen_ = true;
+        playerEl.classList.add('vjs-vr-fake-fullscreen');
+        // Tell video.js it is fullscreen so the toggle icon updates
+        self.player_.isFullscreen(true);
+        self.player_.addClass('vjs-fullscreen');
+        self.player_.trigger('fullscreenchange');
+      };
+      this.player_.exitFullscreen = function () {
+        if (!self.fakeFullscreen_) {
+          return;
+        }
+        self.fakeFullscreen_ = false;
+        playerEl.classList.remove('vjs-vr-fake-fullscreen');
+        self.player_.isFullscreen(false);
+        self.player_.removeClass('vjs-fullscreen');
+        self.player_.trigger('fullscreenchange');
+      };
+
+      // ESC key support
+      this.fakeFullscreenEscHandler_ = e => {
+        if (e.key === 'Escape' && this.fakeFullscreen_) {
+          this.player_.exitFullscreen();
+        }
+      };
+      document.addEventListener('keydown', this.fakeFullscreenEscHandler_);
+    }
+
+    /**
+     * Restore original fullscreen methods and clean up.
+     */
+    teardownFancyboxFullscreen_() {
+      if (this.origRequestFullscreen_) {
+        this.player_.requestFullscreen = this.origRequestFullscreen_;
+        this.origRequestFullscreen_ = null;
+      }
+      if (this.origExitFullscreen_) {
+        this.player_.exitFullscreen = this.origExitFullscreen_;
+        this.origExitFullscreen_ = null;
+      }
+      if (this.origIsFullscreen_) {
+        this.origIsFullscreen_ = null;
+      }
+      if (this.fakeFullscreenEscHandler_) {
+        document.removeEventListener('keydown', this.fakeFullscreenEscHandler_);
+        this.fakeFullscreenEscHandler_ = null;
+      }
+      if (this.player_ && this.player_.el()) {
+        this.player_.el().classList.remove('vjs-vr-fake-fullscreen');
+      }
+      this.fakeFullscreen_ = false;
     }
     getVideoEl_() {
       return this.player_.el().getElementsByTagName('video')[0];
@@ -48186,6 +48301,9 @@ void main() {
       window.removeEventListener('vrdisplaypresentchange', this.handleResize_, true);
       window.removeEventListener('vrdisplayactivate', this.handleVrDisplayActivate_, true);
       window.removeEventListener('vrdisplaydeactivate', this.handleVrDisplayDeactivate_, true);
+
+      // Restore original fullscreen methods if we overrode them for Fancybox
+      this.teardownFancyboxFullscreen_();
 
       // re-add the big play button to player
       if (!this.player_.getChild('BigPlayButton')) {

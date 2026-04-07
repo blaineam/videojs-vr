@@ -82,12 +82,12 @@
     "videojs-standard": "^9.0.0"
   },
   "overrides": {
-    "braces": "^3.0.3",
-    "micromatch": "^4.0.8",
+    "braces": ">=3.0.3",
     "serialize-javascript": ">=6.0.2",
-    "underscore": "^1.13.7",
-    "tmp": "^0.2.3",
-    "trim-newlines": "^4.0.0"
+    "underscore": ">=1.13.8",
+    "trim-newlines": ">=4.0.0",
+    "tmp": ">=0.2.4",
+    "micromatch": ">=4.0.8"
   },
   "lint-staged": {
     "*.js": "vjsstandard --fix",
@@ -97,13 +97,5 @@
     "hooks": {
       "pre-commit": "lint-staged"
     }
-  },
-  "overrides": {
-    "braces": ">=3.0.3",
-    "serialize-javascript": ">=6.0.2",
-    "underscore": ">=1.13.8",
-    "trim-newlines": ">=4.0.0",
-    "tmp": ">=0.2.4",
-    "micromatch": ">=4.0.8"
   }
 }
