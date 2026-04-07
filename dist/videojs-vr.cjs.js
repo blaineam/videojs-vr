@@ -42452,21 +42452,19 @@ void main() {
       const planeHeight = 2;
       const planeWidth = planeHeight * contentAspect;
 
-      // Aspect-fit: make the plane touch the edges in at least one dimension.
-      // Horizontal FOV = vertical FOV * playerAspect (via perspective projection).
-      // If content is wider than the player viewport, we match width (horizontal
-      // edges touch), then derive vertical FOV from that. Otherwise we match
-      // height (vertical edges touch) and use vertical FOV directly.
+      // Aspect-FILL: make the plane cover the entire view with no black
+      // borders. Content extends beyond the view in one dimension (cropped).
+      // If content is wider than player: match height → content overflows
+      //   horizontally (but UV only shows left half so overflow is invisible).
+      // If content is taller: match width → content overflows vertically.
       let vertFovDeg;
       if (contentAspect > playerAspect) {
-        // Content is wider than player — match width.
-        // horzFov (rad) such that plane width fills horizontal view:
-        const horzFovRad = 2 * Math.atan(planeWidth / 2 / distance);
-        // Derive vertical FOV from horizontal FOV and player aspect:
-        vertFovDeg = 2 * Math.atan(Math.tan(horzFovRad / 2) / playerAspect) * (180 / Math.PI);
-      } else {
-        // Content is taller/equal — match height.
+        // Content wider — match height so no vertical bars.
         vertFovDeg = 2 * Math.atan(planeHeight / 2 / distance) * (180 / Math.PI);
+      } else {
+        // Content taller — match width so no horizontal bars.
+        const horzFovRad = 2 * Math.atan(planeWidth / 2 / distance);
+        vertFovDeg = 2 * Math.atan(Math.tan(horzFovRad / 2) / playerAspect) * (180 / Math.PI);
       }
       this.camera.fov = vertFovDeg;
       this.camera.updateProjectionMatrix();
@@ -43207,6 +43205,16 @@ void main() {
     }
     this.fakeFullscreen_ = false;
 
+    // Block fullscreenchange events from reaching Fancybox while VR is active.
+    // Capturing listener fires before jQuery's bubbling handlers.
+    this.fsBlocker_ = e => {
+      if (this.fakeFullscreen_ !== undefined) {
+        e.stopImmediatePropagation();
+      }
+    };
+    document.addEventListener('fullscreenchange', this.fsBlocker_, true);
+    document.addEventListener('webkitfullscreenchange', this.fsBlocker_, true);
+
     // Keep references to the original methods so we can restore on dispose
     this.origRequestFullscreen_ = this.player_.requestFullscreen;
     this.origExitFullscreen_ = this.player_.exitFullscreen;
@@ -43218,10 +43226,19 @@ void main() {
       }
       self.fakeFullscreen_ = true;
       playerEl.classList.add('vjs-vr-fake-fullscreen');
-      // Tell video.js it is fullscreen so the toggle icon updates
+      // Hide Fancybox UI elements
+      if (fancyboxContainer) {
+        fancyboxContainer.style.setProperty('z-index', '1', 'important');
+      }
+      // Request native fullscreen on document element to get true fullscreen
+      // (hides browser chrome). This won't trigger Fancybox because the
+      // fullscreen target is documentElement, not a Fancybox-managed element.
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(function () {});
+      }
       self.player_.isFullscreen(true);
       self.player_.addClass('vjs-fullscreen');
-      self.player_.trigger('fullscreenchange');
+      self.handleResize_();
     };
     this.player_.exitFullscreen = function () {
       if (!self.fakeFullscreen_) {
@@ -43229,9 +43246,15 @@ void main() {
       }
       self.fakeFullscreen_ = false;
       playerEl.classList.remove('vjs-vr-fake-fullscreen');
+      if (fancyboxContainer) {
+        fancyboxContainer.style.removeProperty('z-index');
+      }
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(function () {});
+      }
       self.player_.isFullscreen(false);
       self.player_.removeClass('vjs-fullscreen');
-      self.player_.trigger('fullscreenchange');
+      self.handleResize_();
     };
 
     // ESC key support
@@ -43257,6 +43280,11 @@ void main() {
     }
     if (this.origIsFullscreen_) {
       this.origIsFullscreen_ = null;
+    }
+    if (this.fsBlocker_) {
+      document.removeEventListener('fullscreenchange', this.fsBlocker_, true);
+      document.removeEventListener('webkitfullscreenchange', this.fsBlocker_, true);
+      this.fsBlocker_ = null;
     }
     if (this.fakeFullscreenEscHandler_) {
       document.removeEventListener('keydown', this.fakeFullscreenEscHandler_);
