@@ -1,4 +1,4 @@
-/* global navigator, DOMParser */
+/* global navigator, DOMParser, document, requestAnimationFrame, cancelAnimationFrame */
 /* eslint-disable no-inline-comments, no-console */
 import {version as VERSION} from '../package.json';
 import window from 'global/window';
@@ -532,6 +532,7 @@ void main() {
       } else {
         // Content taller — match width so no horizontal bars.
         const horzFovRad = 2 * Math.atan((planeWidth / 2) / distance);
+
         vertFovDeg = 2 * Math.atan(Math.tan(horzFovRad / 2) / playerAspect) * (180 / Math.PI);
       }
 
