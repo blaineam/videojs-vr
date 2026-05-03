@@ -15,7 +15,7 @@ npm install @blaineam/videojs-vr
 ## Features
 
 - **Full WebXR Support**: Modern WebXR API support for immersive VR experiences on Quest, Vive, and other headsets
-- **Multiple Projections**: Support for 360, 180, side-by-side (SBS), and equi-angular cubemap (EAC) video formats
+- **Multiple Projections**: Support for 360, 180, side-by-side (SBS), equi-angular cubemap (EAC), and equidistant fisheye (180°/200°/220°/360° with mono and LR stereo variants)
 - **Glassmorphic VR UI**: Beautiful frosted-glass design with translucent panels and subtle gradients for an immersive, non-intrusive interface
 - **VR HUD Controls**: In-VR user interface with scrub bar, play/pause, and navigation controls
 - **VR Gallery Panel**: Browse and select media while in VR mode with scrollable thumbnails and pill-shaped duration badges
@@ -109,6 +109,23 @@ Side-by-side video contains separate left and right eye views packed into a sing
 |------------|-------------|
 | `'EAC'` | YouTube's equi-angular cubemap format |
 | `'EAC_LR'` | EAC with left/right eye side-by-side |
+
+### Fisheye Projections (since 3.2.0)
+
+Fisheye sources are circular images shot through a wide-angle lens. The plugin reprojects the disc onto a sphere with a custom shader, so the camera can look around naturally inside the captured field of view. Fragments outside the disc are discarded so the letterbox stays clean.
+
+| Projection | Description |
+|------------|-------------|
+| `'FISHEYE_180'` | Single 180° fisheye disc, mono |
+| `'FISHEYE_200'` | Single 200° fisheye disc, mono (covers MKX200-style lenses) |
+| `'FISHEYE_220'` | Single 220° fisheye disc, mono (VRCA220, etc.) |
+| `'FISHEYE_360'` | Dual fisheye 360° — front hemisphere on the left half of the texture, back hemisphere on the right half (Ricoh Theta-style raw) |
+| `'FISHEYE_180_LR'` | 180° fisheye with left/right eye side-by-side (each half is a full disc per eye) |
+| `'FISHEYE_200_LR'` | 200° fisheye, LR stereo |
+| `'FISHEYE_220_LR'` | 220° fisheye, LR stereo |
+| `'FISHEYE_360_LR'` | Stereoscopic dual fisheye 360° |
+
+LR variants render the left eye on Three.js layers `0` and `1` and the right eye on layer `2` only. WebXR routes per-eye rendering through layers 1 and 2 for true stereo, while non-XR (flat browser) viewers see just the left eye instead of a black scene.
 
 ## WebXR VR Mode
 
