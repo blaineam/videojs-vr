@@ -664,7 +664,7 @@ void main() {
             // 360 dual fisheye: front hemisphere → left disc (cx = .25),
             // back hemisphere → right disc (cx = .75).
             // Each disc covers a full 180° hemisphere.
-            float halfH = ${"3.14159265358979"} * 0.5;
+            float halfH = 3.14159265358979 * 0.5;
             if (-d.z >= 0.0) {
               float theta = acos(-d.z);
               float r = clamp(theta / halfH, 0.0, 1.0);
@@ -673,7 +673,7 @@ void main() {
             } else {
               float theta = acos(d.z);
               // Flip phi so the back hemisphere wraps the right way around.
-              float backPhi = ${"3.14159265358979"} - phi;
+              float backPhi = 3.14159265358979 - phi;
               float r = clamp(theta / halfH, 0.0, 1.0);
               uv = vec2(0.75 + 0.25 * r * cos(backPhi),
                         0.5  + 0.5  * r * sin(backPhi));

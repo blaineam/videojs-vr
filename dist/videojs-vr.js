@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.1.4 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.2.0 @license MIT */
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('video.js')) :
   typeof define === 'function' && define.amd ? define(['video.js'], factory) :
@@ -9,7 +9,7 @@
 
   var videojs__default = /*#__PURE__*/_interopDefaultLegacy(videojs);
 
-  var version$1 = "3.1.4";
+  var version$1 = "3.2.0";
 
   /*
    * Copyright 2015 Google Inc. All Rights Reserved.
@@ -47575,7 +47575,7 @@ void main() {
             // 360 dual fisheye: front hemisphere → left disc (cx = .25),
             // back hemisphere → right disc (cx = .75).
             // Each disc covers a full 180° hemisphere.
-            float halfH = ${"3.14159265358979"} * 0.5;
+            float halfH = 3.14159265358979 * 0.5;
             if (-d.z >= 0.0) {
               float theta = acos(-d.z);
               float r = clamp(theta / halfH, 0.0, 1.0);
@@ -47584,7 +47584,7 @@ void main() {
             } else {
               float theta = acos(d.z);
               // Flip phi so the back hemisphere wraps the right way around.
-              float backPhi = ${"3.14159265358979"} - phi;
+              float backPhi = 3.14159265358979 - phi;
               float r = clamp(theta / halfH, 0.0, 1.0);
               uv = vec2(0.75 + 0.25 * r * cos(backPhi),
                         0.5  + 0.5  * r * sin(backPhi));
