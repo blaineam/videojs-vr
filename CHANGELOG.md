@@ -1,3 +1,10 @@
+<a name="3.2.0"></a>
+# [3.2.0](https://github.com/blaineam/videojs-vr/compare/v3.1.4...v3.2.0) (2026-05-03)
+
+### Features
+
+* **fisheye:** add equidistant fisheye projections for `FISHEYE_180`, `FISHEYE_200`, `FISHEYE_220` and `FISHEYE_360` (with `_LR` stereo variants for each). The shader-based material handles per-fragment fisheye unwrap, with `discard` outside the disc and a dual-hemisphere mode for `FISHEYE_360` (front-half / back-half on the texture). LR variants render the left eye on layer 0+1 (visible in flat 2D viewers) and the right eye on layer 2 only (WebXR right-eye routing).
+
 <a name="2.0.0"></a>
 # [2.0.0](https://github.com/videojs/videojs-vr/compare/v1.10.1...v2.0.0) (2023-02-15)
 

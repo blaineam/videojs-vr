@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.1.3 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.1.4 @license MIT */
 'use strict';
 
 var window$1 = require('global/window');
@@ -17,7 +17,7 @@ var _asyncToGenerator__default = /*#__PURE__*/_interopDefaultLegacy(_asyncToGene
 var _extends__default = /*#__PURE__*/_interopDefaultLegacy(_extends);
 var document__default = /*#__PURE__*/_interopDefaultLegacy(document$1);
 
-var version = "3.1.3";
+var version = "3.1.4";
 
 /**
  * @license
@@ -39132,7 +39132,12 @@ const corsSupport = function () {
   video.crossOrigin = 'anonymous';
   return video.hasAttribute('crossorigin');
 }();
-const validProjections = ['360', '360_LR', '360_TB', '360_CUBE', 'EAC', 'EAC_LR', 'NONE', 'AUTO', 'Sphere', 'Cube', 'equirectangular', '180', '180_LR', '180_MONO', 'SBS_MONO', 'SBS', 'SBS_LR', 'SBS_LRF'];
+const validProjections = ['360', '360_LR', '360_TB', '360_CUBE', 'EAC', 'EAC_LR', 'NONE', 'AUTO', 'Sphere', 'Cube', 'equirectangular', '180', '180_LR', '180_MONO', 'SBS_MONO', 'SBS', 'SBS_LR', 'SBS_LRF',
+// Equidistant fisheye projections (single circular image per eye).
+// _LR variants split the source horizontally into left/right halves.
+// FISHEYE_360 is the special dual-hemisphere case (Ricoh Theta etc.):
+// front hemisphere on the left half, back hemisphere on the right.
+'FISHEYE_180', 'FISHEYE_180_LR', 'FISHEYE_200', 'FISHEYE_200_LR', 'FISHEYE_220', 'FISHEYE_220_LR', 'FISHEYE_360', 'FISHEYE_360_LR'];
 const getInternalProjectionName = function (projection) {
   if (!projection) {
     return;
@@ -41966,7 +41971,7 @@ class BigVrPlayButton extends BigPlayButton {
 }
 videojs__default["default"].registerComponent('BigVrPlayButton', BigVrPlayButton);
 
-/* global navigator, DOMParser */
+/* global navigator, DOMParser, document, requestAnimationFrame, cancelAnimationFrame */
 
 // Default options for the plugin.
 const defaults = {
@@ -42538,6 +42543,139 @@ void main() {
       this.camera.rotation.set(0, 0, 0);
       this.camera.lookAt(0, 0, -distance);
       this.sbsMonoActive_ = true;
+    } else if (/^FISHEYE_(180|200|220|360)(_LR)?$/.test(projection)) {
+      // Equidistant fisheye projection. The camera sits at the sphere's
+      // origin; the fragment shader converts each fragment's view-direction
+      // into fisheye polar coordinates and samples the texture from a
+      // circular disc instead of an equirectangular grid. FISHEYE_360 is
+      // the dual-hemisphere case (Ricoh Theta and friends): front
+      // hemisphere on the left half of the texture, back on the right.
+      const m = projection.match(/^FISHEYE_(180|200|220|360)(_LR)?$/);
+      const fovDeg = parseInt(m[1], 10);
+      const isLR = !!m[2];
+      const isDualHemisphere = fovDeg === 360;
+      const fovRad = fovDeg * Math.PI / 180;
+      const fisheyeVertexShader = `
+        varying vec3 vDir;
+        void main() {
+          // Sphere is centered at origin; vertex 'position' IS the
+          // direction from origin. Pass it through to the fragment.
+          vDir = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`;
+      const fisheyeFragmentShader = `
+        precision highp float;
+        uniform sampler2D tex;
+        uniform float halfFov;        // half FOV in radians (e.g. PI for 180)
+        uniform vec2 uvScale;         // 1.0 for mono, 0.5 on the split axis for LR
+        uniform vec2 uvOffset;        // 0.0 for left/mono, 0.5 for right eye
+        uniform int isDualHemisphere; // 1 for FISHEYE_360 (front+back discs)
+        varying vec3 vDir;
+
+        void main() {
+          vec3 d = normalize(vDir);
+          // We rotate the sphere so the fisheye optical axis points at -Z,
+          // matching the camera's default look direction. The vertex shader
+          // already gave us the per-fragment direction in object space.
+          float phi = atan(d.y, d.x);
+
+          vec2 uv;
+          if (isDualHemisphere == 1) {
+            // 360 dual fisheye: front hemisphere → left disc (cx = .25),
+            // back hemisphere → right disc (cx = .75).
+            // Each disc covers a full 180° hemisphere.
+            float halfH = ${"3.14159265358979"} * 0.5;
+            if (-d.z >= 0.0) {
+              float theta = acos(-d.z);
+              float r = clamp(theta / halfH, 0.0, 1.0);
+              uv = vec2(0.25 + 0.25 * r * cos(phi),
+                        0.5  + 0.5  * r * sin(phi));
+            } else {
+              float theta = acos(d.z);
+              // Flip phi so the back hemisphere wraps the right way around.
+              float backPhi = ${"3.14159265358979"} - phi;
+              float r = clamp(theta / halfH, 0.0, 1.0);
+              uv = vec2(0.75 + 0.25 * r * cos(backPhi),
+                        0.5  + 0.5  * r * sin(backPhi));
+            }
+          } else {
+            float theta = acos(-d.z);
+            // Drop fragments outside the fisheye disc — they're black in
+            // the source. discard keeps the canvas alpha clean for the
+            // letterbox area beyond the lens.
+            if (theta > halfFov) {
+              discard;
+            }
+            float r = theta / halfFov;
+            uv = vec2(0.5 + 0.5 * r * cos(phi),
+                      0.5 + 0.5 * r * sin(phi));
+          }
+
+          // LR / per-eye crop. uvScale.x is 0.5 for split-horizontal
+          // sources, uvOffset.x picks left (0) vs right (0.5).
+          uv = uv * uvScale + uvOffset;
+          gl_FragColor = texture2D(tex, uv);
+        }`;
+      const makeFisheyeMaterial = eye => new ShaderMaterial({
+        side: BackSide,
+        uniforms: {
+          tex: {
+            value: this.videoTexture
+          },
+          halfFov: {
+            value: fovRad * 0.5
+          },
+          uvScale: {
+            value: new Vector2(isLR ? 0.5 : 1.0, 1.0)
+          },
+          uvOffset: {
+            value: new Vector2(isLR && eye === 'right' ? 0.5 : 0.0, 0.0)
+          },
+          isDualHemisphere: {
+            value: isDualHemisphere ? 1 : 0
+          }
+        },
+        vertexShader: fisheyeVertexShader,
+        fragmentShader: fisheyeFragmentShader
+      });
+      const buildSphere = () => new SphereGeometry(256, this.options_.sphereDetail, this.options_.sphereDetail);
+      if (isLR) {
+        // Per-eye meshes. The default camera renders layer 0; WebXR
+        // routes left-eye rendering through layer 1 and right-eye
+        // through layer 2. We add the LEFT mesh to BOTH 0 and 1 so
+        // a non-XR (flat browser) viewer sees the left eye rather
+        // than a black scene; the right mesh stays on layer 2 only
+        // so it never shows up twice in 2D mode.
+        const leftGeometry = buildSphere();
+        const leftMaterial = makeFisheyeMaterial('left');
+        this.movieScreenLeft = new Mesh(leftGeometry, leftMaterial);
+        this.movieScreenLeft.scale.x = -1;
+        this.movieScreenLeft.layers.enable(0);
+        this.movieScreenLeft.layers.enable(1);
+        this.scene.add(this.movieScreenLeft);
+        const rightGeometry = buildSphere();
+        const rightMaterial = makeFisheyeMaterial('right');
+        this.movieScreenRight = new Mesh(rightGeometry, rightMaterial);
+        this.movieScreenRight.scale.x = -1;
+        this.movieScreenRight.layers.set(2);
+        this.scene.add(this.movieScreenRight);
+        this.movieScreen = this.movieScreenLeft;
+        this.movieGeometry = leftGeometry;
+        this.movieMaterial = leftMaterial;
+      } else {
+        this.movieGeometry = buildSphere();
+        this.movieMaterial = makeFisheyeMaterial('left');
+        this.movieScreen = new Mesh(this.movieGeometry, this.movieMaterial);
+        this.movieScreen.position.set(position.x, position.y, position.z);
+        // Match the equirectangular sphere's mirror so the fragment
+        // direction math points the way we expect from inside.
+        this.movieScreen.scale.x = -1;
+        // Show on every layer so non-XR + both XR eyes pick it up.
+        this.movieScreen.layers.enable(0);
+        this.movieScreen.layers.enable(1);
+        this.movieScreen.layers.enable(2);
+        this.scene.add(this.movieScreen);
+      }
     }
     this.currentProjection_ = projection;
   }

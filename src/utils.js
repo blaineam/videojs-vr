@@ -45,7 +45,19 @@ export const validProjections = [
   'SBS_MONO',
   'SBS',
   'SBS_LR',
-  'SBS_LRF'
+  'SBS_LRF',
+  // Equidistant fisheye projections (single circular image per eye).
+  // _LR variants split the source horizontally into left/right halves.
+  // FISHEYE_360 is the special dual-hemisphere case (Ricoh Theta etc.):
+  // front hemisphere on the left half, back hemisphere on the right.
+  'FISHEYE_180',
+  'FISHEYE_180_LR',
+  'FISHEYE_200',
+  'FISHEYE_200_LR',
+  'FISHEYE_220',
+  'FISHEYE_220_LR',
+  'FISHEYE_360',
+  'FISHEYE_360_LR'
 ];
 
 export const getInternalProjectionName = function(projection) {
