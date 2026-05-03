@@ -1,3 +1,10 @@
+<a name="3.3.0"></a>
+# [3.3.0](https://github.com/blaineam/videojs-vr/compare/v3.2.0...v3.3.0) (2026-05-03)
+
+### Features
+
+* **vr-hud:** add the eight new fisheye projection modes to the in-VR projection picker, and make the picker scrollable. The menu is now fixed-height regardless of how many modes are registered — the visible window slides through the list with the new ▲ / ▼ buttons added to the top and bottom of the panel. Empty slots on the last page are non-interactive instead of clearing the projection.
+
 <a name="3.2.0"></a>
 # [3.2.0](https://github.com/blaineam/videojs-vr/compare/v3.1.4...v3.2.0) (2026-05-03)
 

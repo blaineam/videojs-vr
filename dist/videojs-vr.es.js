@@ -39374,9 +39374,38 @@ class VRHUD {
     }, {
       id: 'SBS_MONO',
       label: 'Side by Side'
+    }, {
+      id: 'FISHEYE_180',
+      label: 'Fisheye 180°'
+    }, {
+      id: 'FISHEYE_180_LR',
+      label: 'Fisheye 180° LR'
+    }, {
+      id: 'FISHEYE_200',
+      label: 'Fisheye 200°'
+    }, {
+      id: 'FISHEYE_200_LR',
+      label: 'Fisheye 200° LR'
+    }, {
+      id: 'FISHEYE_220',
+      label: 'Fisheye 220°'
+    }, {
+      id: 'FISHEYE_220_LR',
+      label: 'Fisheye 220° LR'
+    }, {
+      id: 'FISHEYE_360',
+      label: 'Fisheye 360°'
+    }, {
+      id: 'FISHEYE_360_LR',
+      label: 'Fisheye 360° LR'
     }];
     this.currentProjection = '180';
     this.projectionMenuVisible = false;
+    // Scrollable menu: keep the panel a fixed height regardless of how
+    // many projection modes exist. Visible window slides through the
+    // list with the up/down arrows added below the entries.
+    this.projectionMenuItemsPerPage = 8;
+    this.projectionMenuScrollOffset = 0;
 
     // HUD configuration (can be overridden by options)
     // Reduced distance from 4 to 1.5 to minimize stereo parallax and double vision
@@ -39758,16 +39787,21 @@ class VRHUD {
     this.projectionMenu.name = 'projection-menu';
     this.projectionMenu.visible = false;
 
-    // Menu background - dark semi-transparent (no blue tint)
+    // Fixed-height menu regardless of how many projections are registered.
+    // We allocate `itemsPerPage` slot meshes and slide a window of items
+    // through them via up/down arrows + the scroll offset.
+    const itemsPerPage = this.projectionMenuItemsPerPage;
+    const rowSpacing = 0.08;
+    // Extra rows worth of vertical space for the up/down arrow buttons.
+    const arrowRow = 0.07;
     const menuWidth = 0.5;
-    const menuHeight = this.projectionModes.length * 0.08 + 0.15;
+    const menuHeight = itemsPerPage * rowSpacing + arrowRow * 2 + 0.05;
     const cornerRadius = 0.04;
     const menuShape = this.createRoundedRectShape(menuWidth, menuHeight, cornerRadius);
     const menuGeometry = new ShapeGeometry(menuShape);
     menuGeometry.translate(-menuWidth / 2, -menuHeight / 2, 0);
     const menuMaterial = new MeshBasicMaterial({
       color: 0x1a1a1a,
-      // Neutral dark gray
       opacity: 0.9,
       transparent: true,
       side: DoubleSide
@@ -39789,13 +39823,12 @@ class VRHUD {
     border.position.z = -0.001;
     this.projectionMenu.add(border);
 
-    // Create projection option buttons
+    // Slot meshes: stable count, dynamic content updated by refresh.
     this.projectionOptionButtons = [];
-    const startY = menuHeight / 2 - 0.12;
-    this.projectionModes.forEach((mode, index) => {
-      const btnY = startY - index * 0.08;
-
-      // Button background with rounded corners for liquid glass style
+    this.projectionOptionLabels = [];
+    const itemsTopY = menuHeight / 2 - arrowRow - 0.02;
+    for (let i = 0; i < itemsPerPage; i++) {
+      const slotY = itemsTopY - i * rowSpacing;
       const btnWidth = menuWidth - 0.06;
       const btnHeight = 0.065;
       const btnShape = this.createRoundedRectShape(btnWidth, btnHeight, 0.015);
@@ -39807,29 +39840,18 @@ class VRHUD {
         transparent: true
       });
       const btnMesh = new Mesh(btnGeometry, btnMaterial);
-      btnMesh.position.set(0, btnY, 0.002);
+      btnMesh.position.set(0, slotY, 0.002);
       btnMesh.userData.interactive = true;
       btnMesh.userData.type = 'projection-option';
-      btnMesh.userData.projectionId = mode.id;
+      btnMesh.userData.slotIndex = i;
+      btnMesh.userData.projectionId = '';
       btnMesh.userData.baseColor = 0x1a1a3a;
-      btnMesh.userData.hoverColor = 0x004466; // Darker cyan - keeps white text readable
+      btnMesh.userData.hoverColor = 0x004466;
       this.projectionMenu.add(btnMesh);
       this.interactiveElements.push(btnMesh);
-      this.projectionOptionButtons.push({
-        mesh: btnMesh,
-        id: mode.id
-      });
-
-      // Button label
       const labelCanvas = document.createElement('canvas');
       labelCanvas.width = 256;
       labelCanvas.height = 32;
-      const labelCtx = labelCanvas.getContext('2d');
-      labelCtx.fillStyle = '#ffffff';
-      labelCtx.font = 'bold 22px Arial';
-      labelCtx.textAlign = 'center';
-      labelCtx.textBaseline = 'middle';
-      labelCtx.fillText(mode.label, 128, 16);
       const labelTexture = new CanvasTexture(labelCanvas);
       const labelMaterial = new MeshBasicMaterial({
         map: labelTexture,
@@ -39837,13 +39859,126 @@ class VRHUD {
       });
       const labelGeometry = new PlaneGeometry(0.35, 0.04);
       const labelMesh = new Mesh(labelGeometry, labelMaterial);
-      labelMesh.position.set(0, btnY, 0.003);
+      labelMesh.position.set(0, slotY, 0.003);
       this.projectionMenu.add(labelMesh);
+      this.projectionOptionButtons.push({
+        mesh: btnMesh,
+        slotIndex: i
+      });
+      this.projectionOptionLabels.push({
+        canvas: labelCanvas,
+        ctx: labelCanvas.getContext('2d'),
+        texture: labelTexture,
+        mesh: labelMesh
+      });
+    }
+
+    // Up arrow (top of menu) and down arrow (bottom).
+    const arrowGeometry = new PlaneGeometry(0.18, 0.05);
+    const arrowMakeLabel = glyph => {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 48;
+      const cx = c.getContext('2d');
+      cx.fillStyle = '#ffffff';
+      cx.font = 'bold 36px Arial';
+      cx.textAlign = 'center';
+      cx.textBaseline = 'middle';
+      cx.fillText(glyph, 64, 24);
+      return new CanvasTexture(c);
+    };
+    const arrowBtnMaterial = () => new MeshBasicMaterial({
+      color: 0x222244,
+      opacity: 0.9,
+      transparent: true
     });
+    const upY = menuHeight / 2 - arrowRow / 2 - 0.01;
+    const downY = -menuHeight / 2 + arrowRow / 2 + 0.01;
+    const upMesh = new Mesh(arrowGeometry, arrowBtnMaterial());
+    upMesh.position.set(0, upY, 0.002);
+    upMesh.userData.interactive = true;
+    upMesh.userData.type = 'projection-scroll';
+    upMesh.userData.scrollDir = -1;
+    upMesh.userData.baseColor = 0x222244;
+    upMesh.userData.hoverColor = 0x004466;
+    this.projectionMenu.add(upMesh);
+    this.interactiveElements.push(upMesh);
+    const upLabel = new Mesh(new PlaneGeometry(0.18, 0.05), new MeshBasicMaterial({
+      map: arrowMakeLabel('▲'),
+      transparent: true
+    }));
+    upLabel.position.set(0, upY, 0.003);
+    this.projectionMenu.add(upLabel);
+    const downMesh = new Mesh(arrowGeometry, arrowBtnMaterial());
+    downMesh.position.set(0, downY, 0.002);
+    downMesh.userData.interactive = true;
+    downMesh.userData.type = 'projection-scroll';
+    downMesh.userData.scrollDir = 1;
+    downMesh.userData.baseColor = 0x222244;
+    downMesh.userData.hoverColor = 0x004466;
+    this.projectionMenu.add(downMesh);
+    this.interactiveElements.push(downMesh);
+    const downLabel = new Mesh(new PlaneGeometry(0.18, 0.05), new MeshBasicMaterial({
+      map: arrowMakeLabel('▼'),
+      transparent: true
+    }));
+    downLabel.position.set(0, downY, 0.003);
+    this.projectionMenu.add(downLabel);
+    this.projectionScrollUp = upMesh;
+    this.projectionScrollDown = downMesh;
+    this.refreshProjectionMenu();
 
     // Position menu above the projection button - raised higher to avoid clipping
     this.projectionMenu.position.set(0.8, 0.55, 0.02);
     this.controlPanel.add(this.projectionMenu);
+  }
+  refreshProjectionMenu() {
+    if (!this.projectionOptionButtons || !this.projectionOptionLabels) {
+      return;
+    }
+    const itemsPerPage = this.projectionMenuItemsPerPage;
+    const total = this.projectionModes.length;
+    const maxOffset = Math.max(0, total - itemsPerPage);
+    if (this.projectionMenuScrollOffset > maxOffset) {
+      this.projectionMenuScrollOffset = maxOffset;
+    }
+    if (this.projectionMenuScrollOffset < 0) {
+      this.projectionMenuScrollOffset = 0;
+    }
+    for (let slot = 0; slot < itemsPerPage; slot++) {
+      const idx = this.projectionMenuScrollOffset + slot;
+      const btn = this.projectionOptionButtons[slot];
+      const lbl = this.projectionOptionLabels[slot];
+      if (idx < total) {
+        const mode = this.projectionModes[idx];
+        btn.mesh.visible = true;
+        btn.mesh.userData.projectionId = mode.id;
+        lbl.mesh.visible = true;
+        lbl.ctx.clearRect(0, 0, lbl.canvas.width, lbl.canvas.height);
+        lbl.ctx.fillStyle = '#ffffff';
+        lbl.ctx.font = 'bold 22px Arial';
+        lbl.ctx.textAlign = 'center';
+        lbl.ctx.textBaseline = 'middle';
+        lbl.ctx.fillText(mode.label, 128, 16);
+        lbl.texture.needsUpdate = true;
+      } else {
+        btn.mesh.visible = false;
+        btn.mesh.userData.projectionId = '';
+        lbl.mesh.visible = false;
+      }
+    }
+    if (this.projectionScrollUp) {
+      this.projectionScrollUp.material.opacity = this.projectionMenuScrollOffset === 0 ? 0.3 : 0.9;
+    }
+    if (this.projectionScrollDown) {
+      this.projectionScrollDown.material.opacity = this.projectionMenuScrollOffset >= maxOffset ? 0.3 : 0.9;
+    }
+  }
+  scrollProjectionMenu(direction) {
+    const itemsPerPage = this.projectionMenuItemsPerPage;
+    const maxOffset = Math.max(0, this.projectionModes.length - itemsPerPage);
+    this.projectionMenuScrollOffset = Math.min(maxOffset, Math.max(0, this.projectionMenuScrollOffset + direction));
+    this.refreshProjectionMenu();
   }
   toggleProjectionMenu() {
     this.projectionMenuVisible = !this.projectionMenuVisible;
@@ -40190,11 +40325,21 @@ class VRHUD {
         this.toggleProjectionMenu();
         break;
       case 'projection-option':
-        // Select a projection from the menu
-        const selectedProjection = object.userData.projectionId;
-        this.setProjection(selectedProjection);
-        this.onProjectionChange(selectedProjection);
-        this.hideProjectionMenu();
+        {
+          // Select a projection from the menu. Empty projectionId means an
+          // unfilled scroll slot (last page with fewer than itemsPerPage
+          // items) — ignore the click instead of clearing the projection.
+          const selectedProjection = object.userData.projectionId;
+          if (!selectedProjection) {
+            break;
+          }
+          this.setProjection(selectedProjection);
+          this.onProjectionChange(selectedProjection);
+          this.hideProjectionMenu();
+          break;
+        }
+      case 'projection-scroll':
+        this.scrollProjectionMenu(object.userData.scrollDir || 0);
         break;
       case 'favorite':
         if (this.onFavorite) {
@@ -40326,7 +40471,7 @@ class VRHUD {
 
       // DON'T highlight projection menu items via gaze - only controllers should do that
       // This prevents head movement from changing highlights
-      if (obj.userData.type === 'projection-option') {
+      if (obj.userData.type === 'projection-option' || obj.userData.type === 'projection-scroll') {
         // Just update cursor position, no highlight
         this.cursorHover.material.opacity = 0.3;
         this.cursorDot.material.color.setHex(0x00ffff);
