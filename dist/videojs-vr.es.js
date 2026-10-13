@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.3.0 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.4.0 @license MIT */
 import window$1 from 'global/window';
 import WebVRPolyfill from 'webvr-polyfill/src/webvr-polyfill';
 import videojs from 'video.js';
@@ -6,7 +6,7 @@ import _asyncToGenerator from '@babel/runtime/helpers/asyncToGenerator';
 import _extends from '@babel/runtime/helpers/extends';
 import document$1 from 'global/document';
 
-var version = "3.3.0";
+var version = "3.4.0";
 
 /**
  * @license

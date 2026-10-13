@@ -1,3 +1,19 @@
+<a name="3.4.0"></a>
+# [3.4.0](https://github.com/blaineam/videojs-vr/compare/v3.3.0...v3.4.0) (2026-10-13)
+
+### Features
+
+* **vr-hud:** WebXR hand-tracking controls. A smoothed pointer beam and cursor, pinch to press (with target magnetism for small buttons), pinch empty air to show/hide the HUD, and pinch + drag to seek. Thumb + middle finger: tap to play/pause, hold + swipe left/right to seek and up/down to scroll the gallery. Hold both palms together (or clap) to lock/unlock all controls. A `?` button toggles an on-screen gesture cheat-sheet. Options: `handGestures` (default `true`), `hudNearDistance`, `onLockChange` (also fires `vr-controls-lock`).
+* **vr-hud:** the HUD is drawn about 1m away (`hudNearDistance`, scaled to keep its size) and anchored just below eye level, so it no longer fights stereoscopic depth in 3D video.
+
+### Bug Fixes
+
+* **camera:** near plane was 1m, which WebXR applied to the session and used to clip anything within a metre of the viewer. It is now 5cm.
+* **fisheye:** the `_LR` left-eye mesh was on layer 0, which both eyes render in WebXR, ghosting the left image into the right eye.
+* **force-mono:** the hidden right-eye mesh was set to layer 0 (rendered by both eyes) instead of being cleared, ghosting mono mode.
+* **vr-hud:** releasing one controller no longer cancels a drag on the other; hidden HUD buttons no longer swallow hand pinches.
+* **vr-gallery:** drags no longer select the thumbnail they started on.
+
 <a name="3.3.0"></a>
 # [3.3.0](https://github.com/blaineam/videojs-vr/compare/v3.2.0...v3.3.0) (2026-05-03)
 

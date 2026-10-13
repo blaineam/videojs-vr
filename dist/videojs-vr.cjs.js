@@ -1,4 +1,4 @@
-/*! @name @blaineam/videojs-vr @version 3.3.0 @license MIT */
+/*! @name @blaineam/videojs-vr @version 3.4.0 @license MIT */
 'use strict';
 
 var window$1 = require('global/window');
@@ -17,7 +17,7 @@ var _asyncToGenerator__default = /*#__PURE__*/_interopDefaultLegacy(_asyncToGene
 var _extends__default = /*#__PURE__*/_interopDefaultLegacy(_extends);
 var document__default = /*#__PURE__*/_interopDefaultLegacy(document$1);
 
-var version = "3.3.0";
+var version = "3.4.0";
 
 /**
  * @license
