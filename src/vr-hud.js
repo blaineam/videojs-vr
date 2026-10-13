@@ -7,6 +7,22 @@ import * as THREE from 'three';
  * Provides scrub bar, navigation, and orientation controls
  * Only visible when in WebXR/HMD mode
  */
+const HAND_CHAINS = [
+  ['wrist', 'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip'],
+  ['wrist', 'index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip'],
+  ['wrist', 'middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip'],
+  ['wrist', 'ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip'],
+  ['wrist', 'pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip']
+];
+const HAND_JOINTS = Array.from(new Set([].concat(...HAND_CHAINS)));
+const HAND_BONES = [];
+
+HAND_CHAINS.forEach((chain) => {
+  for (let i = 0; i < chain.length - 1; i++) {
+    HAND_BONES.push([chain[i], chain[i + 1]]);
+  }
+});
+
 class VRHUD {
   constructor(options) {
     this.player = options.player;
@@ -23,6 +39,7 @@ class VRHUD {
     this.onProjectionChange = options.onProjectionChange || (() => {});
     this.onFavorite = options.onFavorite || null; // Optional favorite callback
     this.onForceMonoToggle = options.onForceMonoToggle || null; // Callback for force mono toggle
+    this.onLockChange = options.onLockChange || null; // Callback when controls are locked/unlocked (clap)
 
     // Force mono state (persists for VR session duration)
     this.forceMonoEnabled = false;
@@ -63,6 +80,16 @@ class VRHUD {
     this.hudScale = options.hudScale !== undefined ? options.hudScale : 0.015;
     this.autoHideDelay = options.autoHideDelay !== undefined ? options.autoHideDelay : 10000;
 
+    // Stereo comfort: draw the HUD much closer than the video content (scaled
+    // down so it keeps the same angular size). When the HUD sits farther away
+    // than objects in a 3D video, the eyes get contradictory depth cues (the
+    // HUD overdraws things that are stereoscopically in front of it) and it
+    // looks doubled whenever you're focused on the video.
+    const near = options.hudNearDistance !== undefined ? options.hudNearDistance : 1.0;
+
+    this.effectiveHudDistance = near > 0 ? near : this.hudDistance;
+    this.hudAnchorY = 1.2; // Updated to head height each time the HUD is shown
+
     // Interaction state
     this.isVisible = false; // Start hidden, only show in WebXR
     this.isInXRSession = false;
@@ -93,12 +120,14 @@ class VRHUD {
     this.hudGroup = new THREE.Group();
     this.hudGroup.name = 'vr-hud';
     this.hudGroup.visible = false; // Start hidden
+    this.hudGroup.scale.setScalar(this.effectiveHudDistance / this.hudDistance);
 
     this.createCursor();
     this.createControlPanel();
     this.createScrubBar();
     this.createNavigationButtons();
     this.createProjectionMenu();
+    this.createHandHint();
 
     this.scene.add(this.hudGroup);
 
@@ -122,6 +151,8 @@ class VRHUD {
     this.onXRSessionStart = this.onXRSessionStart.bind(this);
     this.onXRSessionEnd = this.onXRSessionEnd.bind(this);
 
+    this.initHandState(options);
+
     // Setup interaction listeners
     this.setupInteraction();
 
@@ -139,11 +170,17 @@ class VRHUD {
 
   onXRSessionStart() {
     this.isInXRSession = true;
-    // Don't auto-show HUD - user must squeeze grip or use hand gesture
+    this.handModeAnnounced = false;
+    // Controllers: HUD stays hidden until the user squeezes the grip.
+    // Hands: HUD is shown once when hands are first detected (see update()),
+    // then toggled by tapping/pinching the air.
   }
 
   onXRSessionEnd() {
     this.isInXRSession = false;
+    this.controlsLocked = false;
+    this.gestureDrag = null;
+    this.handAnnouncePending = false;
     this.hide();
   }
 
@@ -763,6 +800,916 @@ class VRHUD {
     return this.isFavorited || false;
   }
 
+  // ---------------------------------------------------------------------
+  // Hand tracking support
+  //
+  // Hands arrive as WebXR input sources with `.hand` set. The Quest browser
+  // gives them a target ray and fires select* events on index-finger pinch, so
+  // the controller code paths keep working. On top of that this adds:
+  //   - rendered hands (joint spheres) plus a pinch-aware cursor at the hit point
+  //   - a smoothed pointer ray (pinch causes jitter)
+  //   - tap the air = show/hide controls, pinch+drag the air left/right = seek
+  //   - thumb + middle finger pinch = play/pause (A-button replacement)
+  //   - clap = lock / unlock all controls (pocket-proof while hands are idle)
+  // ---------------------------------------------------------------------
+  initHandState(options) {
+    this.handGesturesEnabled = options.handGestures !== false;
+    this.showHandModels = options.showHandModels === true; // off by default: the beam is enough
+    this.helpVisible = false;
+    this.controlsLocked = false;
+    this.inputSources = [null, null];
+    this.hands = [null, null];
+    this.handCursors = [null, null];
+    this.pinching = [false, false];
+    this.handRays = [0, 1].map(() => ({
+      init: false,
+      origin: new THREE.Vector3(),
+      quat: new THREE.Quaternion()
+    }));
+    this.gestureDrag = null;
+    this.handModeAnnounced = false;
+    this.handAnnouncePending = false;
+    this.midPinch = [0, 1].map(() => ({
+      down: false,
+      since: 0,
+      moved: false,
+      axis: null,
+      start: new THREE.Vector3(),
+      right: new THREE.Vector3(1, 0, 0),
+      startTime: 0,
+      startedAt: 0,
+      lastSeek: 0,
+      lastScrollY: 0
+    }));
+    this.clapState = { armed: true, since: 0, lastD: 1, lastSeen: 0 };
+    this.selectStartDirs = [new THREE.Vector3(), new THREE.Vector3()];
+    // +1: hand up scrolls the grid up (toward the first items); -1 flips it
+    this.galleryScrollSign = 1;
+    this.lastPlayPauseToggle = 0;
+    this.clapHistory = [];
+    this.lastClap = 0;
+    this.toast = null;
+    this.tmpA = new THREE.Vector3();
+    this.tmpB = new THREE.Vector3();
+    this.tmpC = new THREE.Vector3();
+    this.tmpQuat = new THREE.Quaternion();
+    this.tmpScale = new THREE.Vector3();
+    this.handModels = [null, null];
+    this.beams = [null, null];
+    this.jointMaterial = new THREE.MeshBasicMaterial({ color: 0xe6f6ff });
+    this.boneMaterial = new THREE.MeshBasicMaterial({ color: 0x8fcdea });
+    this.jointMatrix = new THREE.Matrix4();
+    this.jointScale = new THREE.Vector3();
+    this.unitY = new THREE.Vector3(0, 1, 0);
+    this.jointPositions = {};
+    this.jointRadii = {};
+  }
+
+  createHandHint() {
+    const canvas = document.createElement('canvas');
+
+    canvas.width = 1536;
+    canvas.height = 240;
+    const ctx = canvas.getContext('2d');
+
+    // Dark rounded backing so the text stays readable over bright video
+    ctx.fillStyle = 'rgba(10, 10, 10, 0.72)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(0, 0, canvas.width, canvas.height, 48);
+    } else {
+      ctx.rect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fill();
+
+    ctx.font = 'bold 40px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 8;
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillStyle = '#ffffff';
+    [
+      'Pinch a button to press it  •  Pinch empty air to show / hide',
+      'Thumb + middle finger: tap = play / pause  •  hold + swipe ← → seek, ↑ ↓ scroll',
+      'Hold both palms together to lock / unlock'
+    ].forEach((line, k) => {
+      ctx.strokeText(line, 768, 48 + k * 72);
+      ctx.fillText(line, 768, 48 + k * 72);
+    });
+
+    this.handHintTexture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({ map: this.handHintTexture, transparent: true });
+
+    this.handHint = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.406), material);
+    this.handHint.name = 'hand-hint';
+    this.handHint.position.set(0, -0.55, 0.01);
+    this.handHint.visible = false;
+    this.hudGroup.add(this.handHint);
+
+    // "?" toggles the gesture cheat-sheet (only offered when hands are in use)
+    this.helpBtn = this.createButton('?', 1.12, 0.45, 'help');
+    this.helpBtn.visible = false;
+    this.hudGroup.add(this.helpBtn);
+  }
+
+  setupHandVisuals() {
+    const allLayers = (obj) => {
+      obj.layers.set(0);
+      obj.layers.enable(1);
+      obj.layers.enable(2);
+    };
+    const sphere = new THREE.SphereGeometry(1, 10, 8);
+    const bone = new THREE.CylinderGeometry(1, 1, 1, 8, 1);
+
+    this.beamGeometry = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+    this.beamGeometry.rotateX(-Math.PI / 2);
+    this.beamGeometry.translate(0, 0, -0.5);
+
+    for (let i = 0; i < 2; i++) {
+      // Three's hand group only gets joint poses; it must be in the scene for
+      // the joints to update. The visible hand is drawn separately (below)
+      // from the joint world positions every frame, because meshes parented
+      // to joints keep a stale world matrix (joints have matrixAutoUpdate off).
+      const hand = this.renderer.xr.getHand(i);
+
+      this.scene.add(hand);
+      this.hands[i] = hand;
+
+      const joints = new THREE.InstancedMesh(sphere, this.jointMaterial, HAND_JOINTS.length);
+      const bones = new THREE.InstancedMesh(bone, this.boneMaterial, HAND_BONES.length);
+
+      [joints, bones].forEach((m) => {
+        m.frustumCulled = false;
+        m.visible = false;
+        m.name = 'hand-model';
+        m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        allLayers(m);
+        this.scene.add(m);
+      });
+      this.handModels[i] = { joints, bones };
+
+      // Pointer beam (smoothed ray, always shown for tracked hands)
+      const beam = new THREE.Mesh(this.beamGeometry, new THREE.MeshBasicMaterial({
+        color: 0x66ddff,
+        transparent: true,
+        opacity: 0.3,
+        depthTest: false,
+        depthWrite: false
+      }));
+
+      beam.name = `hand-beam-${i}`;
+      beam.renderOrder = 996;
+      beam.frustumCulled = false;
+      beam.visible = false;
+      allLayers(beam);
+      this.scene.add(beam);
+      this.beams[i] = beam;
+
+      // Cursor on whatever the beam hits: ring + centre dot, constant angular size
+      const cursor = new THREE.Mesh(
+        new THREE.RingGeometry(0.035, 0.055, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.95,
+          side: THREE.DoubleSide,
+          depthTest: false
+        })
+      );
+      const dot = new THREE.Mesh(
+        new THREE.CircleGeometry(0.02, 16),
+        new THREE.MeshBasicMaterial({
+          color: 0x66ddff,
+          transparent: true,
+          opacity: 0.95,
+          side: THREE.DoubleSide,
+          depthTest: false
+        })
+      );
+
+      cursor.add(dot);
+      dot.renderOrder = 999;
+      cursor.name = `hand-cursor-${i}`;
+      cursor.renderOrder = 998;
+      cursor.visible = false;
+      allLayers(cursor);
+      allLayers(dot);
+      this.scene.add(cursor);
+      this.handCursors[i] = cursor;
+    }
+  }
+
+  onInputSourceConnected(index, source) {
+    this.inputSources[index] = source || null;
+    this.handRays[index].init = false;
+    this.pinching[index] = false;
+    if (source && source.hand && !this.handModeAnnounced && this.handGesturesEnabled) {
+      this.handModeAnnounced = true;
+      this.handAnnouncePending = true;
+    }
+  }
+
+  controllerIndex(controller) {
+    if (controller === this.controller0) {
+      return 0;
+    }
+    if (controller === this.controller1) {
+      return 1;
+    }
+    return -1;
+  }
+
+  isHandSource(index) {
+    return index >= 0 && !!(this.inputSources[index] && this.inputSources[index].hand);
+  }
+
+  anyHandActive() {
+    return this.isHandSource(0) || this.isHandSource(1);
+  }
+
+  // Point the shared raycaster along a controller's ray. Hands use the smoothed
+  // ray; controllers use their raw pose exactly as before.
+  aimRaycaster(controller, raycaster = this.raycaster) {
+    const idx = this.controllerIndex(controller);
+    const hr = this.isHandSource(idx) ? this.handRays[idx] : null;
+
+    if (hr && hr.init) {
+      raycaster.ray.origin.copy(hr.origin);
+      raycaster.ray.direction.set(0, 0, -1).applyQuaternion(hr.quat);
+      return;
+    }
+    this.tempMatrix = this.tempMatrix || new THREE.Matrix4();
+    this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+  }
+
+  isWorldVisible(object) {
+    for (let o = object; o; o = o.parent) {
+      if (!o.visible) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Intersect the HUD from the current raycaster ray. Raycaster ignores
+  // `visible`, so for hands (which tap empty air to toggle the HUD) hidden
+  // buttons must not swallow the pinch.
+  pickInteractive(controller) {
+    const hits = this.raycaster.intersectObjects(this.interactiveElements);
+
+    if (!this.isHandSource(this.controllerIndex(controller))) {
+      return hits;
+    }
+    const visible = hits.filter((h) => this.isWorldVisible(h.object));
+
+    if (visible.length > 0) {
+      return visible;
+    }
+    // Magnetism: a pinch that lands just outside a button still counts, so
+    // small targets (like the mono toggle) are easy to hit with a shaky hand.
+    const ray = this.raycaster.ray;
+    const margin = 0.05;
+    let best = null;
+
+    for (const el of this.interactiveElements) {
+      if (!this.isWorldVisible(el)) {
+        continue;
+      }
+      el.updateWorldMatrix(true, false);
+      const normal = this.tmpA.set(0, 0, 1).transformDirection(el.matrixWorld);
+      const center = this.tmpB.setFromMatrixPosition(el.matrixWorld);
+      const denom = normal.dot(ray.direction);
+
+      if (Math.abs(denom) < 1e-4) {
+        continue;
+      }
+      const t = normal.dot(this.tmpC.copy(center).sub(ray.origin)) / denom;
+
+      if (t <= 0) {
+        continue;
+      }
+      const point = ray.origin.clone().addScaledVector(ray.direction, t);
+      const local = el.worldToLocal(point.clone());
+
+      if (!el.geometry.boundingBox) {
+        el.geometry.computeBoundingBox();
+      }
+      const bb = el.geometry.boundingBox;
+      const dx = Math.max(bb.min.x - local.x, 0, local.x - bb.max.x);
+      const dy = Math.max(bb.min.y - local.y, 0, local.y - bb.max.y);
+      const d = Math.hypot(dx, dy);
+
+      if (d <= margin && (!best || d < best.d)) {
+        best = { d, hit: { object: el, point, distance: t } };
+      }
+    }
+    return best ? [best.hit] : [];
+  }
+
+  // True if the pinch that is ending moved the beam enough to count as a drag
+  // rather than a tap (so dragging off a thumbnail doesn't select it).
+  isSelectDrag(controller) {
+    const idx = this.controllerIndex(controller);
+
+    if (!this.isHandSource(idx)) {
+      return false;
+    }
+    this.aimRaycaster(controller, this.dragCheckRaycaster || (this.dragCheckRaycaster = new THREE.Raycaster()));
+    return this.dragCheckRaycaster.ray.direction.angleTo(this.selectStartDirs[idx]) > 0.07;
+  }
+
+  // Nearest visible HUD / gallery surface under the ray (for the cursor only).
+  pickSurface() {
+    const roots = [];
+
+    if (this.isVisible) {
+      roots.push(this.hudGroup);
+    }
+    if (this.vrGallery && this.vrGallery.isVisible && this.vrGallery.galleryGroup) {
+      roots.push(this.vrGallery.galleryGroup);
+    }
+    if (!roots.length) {
+      return null;
+    }
+    return this.raycaster.intersectObjects(roots, true)
+      .find((h) => h.object.isMesh && this.isWorldVisible(h.object)) || null;
+  }
+
+  updateHandRays() {
+    for (let i = 0; i < 2; i++) {
+      const controller = i === 0 ? this.controller0 : this.controller1;
+      const hr = this.handRays[i];
+
+      if (!controller || !this.isHandSource(i) || !controller.visible) {
+        hr.init = false;
+        continue;
+      }
+      controller.matrixWorld.decompose(this.tmpA, this.tmpQuat, this.tmpScale);
+      if (!hr.init) {
+        hr.origin.copy(this.tmpA);
+        hr.quat.copy(this.tmpQuat);
+        hr.init = true;
+        continue;
+      }
+      // Heavy smoothing for slow/precise aiming, light when sweeping fast
+      const alpha = Math.min(1, 0.08 + hr.quat.angleTo(this.tmpQuat) * 10);
+
+      hr.quat.slerp(this.tmpQuat, alpha);
+      hr.origin.lerp(this.tmpA, alpha);
+    }
+  }
+
+  updateHandVisuals() {
+    const tint = this.controlsLocked;
+
+    if (!this.showHandModels) {
+      for (const model of this.handModels) {
+        if (model && model.joints.visible) {
+          model.joints.visible = false;
+          model.bones.visible = false;
+        }
+      }
+      return;
+    }
+
+    this.jointMaterial.color.setHex(tint ? 0xffd9a0 : 0xe6f6ff);
+    this.boneMaterial.color.setHex(tint ? 0xe0922f : 0x8fcdea);
+
+    for (let i = 0; i < 2; i++) {
+      const model = this.handModels[i];
+      const hand = this.hands[i];
+
+      if (!model) {
+        continue;
+      }
+      if (!hand || !this.isHandSource(i)) {
+        model.joints.visible = false;
+        model.bones.visible = false;
+        continue;
+      }
+
+      let tracked = 0;
+
+      for (const name of HAND_JOINTS) {
+        const joint = hand.joints[name];
+
+        if (joint && joint.visible) {
+          const pos = this.jointPositions[name] || (this.jointPositions[name] = new THREE.Vector3());
+
+          joint.getWorldPosition(pos);
+          this.jointRadii[name] = Math.max(0.006, joint.jointRadius || 0.008);
+          tracked++;
+        } else {
+          delete this.jointPositions[name];
+        }
+      }
+      model.joints.visible = model.bones.visible = tracked > 0;
+      if (!tracked) {
+        continue;
+      }
+
+      HAND_JOINTS.forEach((name, k) => {
+        const pos = this.jointPositions[name];
+
+        if (pos) {
+          this.jointScale.setScalar(this.jointRadii[name] * 1.1);
+          this.jointMatrix.compose(pos, this.tmpQuat.identity(), this.jointScale);
+        } else {
+          this.jointMatrix.makeScale(0, 0, 0);
+        }
+        model.joints.setMatrixAt(k, this.jointMatrix);
+      });
+      HAND_BONES.forEach(([a, b], k) => {
+        const pa = this.jointPositions[a];
+        const pb = this.jointPositions[b];
+
+        if (pa && pb) {
+          const length = pa.distanceTo(pb);
+
+          this.tmpA.copy(pb).sub(pa);
+          this.tmpQuat.setFromUnitVectors(this.unitY, this.tmpA.normalize());
+          this.tmpB.copy(pa).add(pb).multiplyScalar(0.5);
+          this.jointScale.set(
+            Math.min(this.jointRadii[a], this.jointRadii[b]) * 0.8,
+            Math.max(0.0001, length),
+            Math.min(this.jointRadii[a], this.jointRadii[b]) * 0.8
+          );
+          this.jointMatrix.compose(this.tmpB, this.tmpQuat, this.jointScale);
+        } else {
+          this.jointMatrix.makeScale(0, 0, 0);
+        }
+        model.bones.setMatrixAt(k, this.jointMatrix);
+      });
+      model.joints.instanceMatrix.needsUpdate = true;
+      model.bones.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  // World position of a joint; false when the joint isn't currently tracked.
+  getJointPosition(index, name, out) {
+    const hand = this.hands[index];
+    const joint = hand && hand.joints && hand.joints[name];
+
+    if (!joint || !joint.visible) {
+      return false;
+    }
+    joint.getWorldPosition(out);
+    return true;
+  }
+
+  getPalmPosition(index, out) {
+    if (!this.getJointPosition(index, 'wrist', out)) {
+      return false;
+    }
+    if (this.getJointPosition(index, 'middle-finger-phalanx-proximal', this.tmpC)) {
+      out.add(this.tmpC).multiplyScalar(0.5);
+    }
+    return true;
+  }
+
+  updateHandGestures(now) {
+    if (!this.handGesturesEnabled || !this.anyHandActive()) {
+      return;
+    }
+
+    this.detectClap(now);
+
+    if (this.controlsLocked) {
+      return;
+    }
+
+    // Thumb + middle finger (index pinch stays "select"):
+    //   quick tap  = play / pause
+    //   hold+swipe = left/right seeks, up/down scrolls the gallery
+    for (let i = 0; i < 2; i++) {
+      const state = this.midPinch[i];
+
+      if (!this.isHandSource(i) ||
+          !this.getJointPosition(i, 'thumb-tip', this.tmpA) ||
+          !this.getJointPosition(i, 'middle-finger-tip', this.tmpB) ||
+          !this.getJointPosition(i, 'index-finger-tip', this.tmpC)) {
+        state.down = false;
+        state.since = 0;
+        continue;
+      }
+      const middleDist = this.tmpA.distanceTo(this.tmpB);
+      const indexDist = this.tmpA.distanceTo(this.tmpC);
+      const point = this.tmpA.add(this.tmpB).multiplyScalar(0.5);
+
+      if (!state.down) {
+        if (middleDist < 0.018 && indexDist > 0.045) {
+          if (!state.since) {
+            state.since = now;
+          } else if (now - state.since > 90) {
+            this.beginMiddleSwipe(state, point, now);
+          }
+        } else {
+          state.since = 0;
+        }
+      } else if (middleDist > 0.03) {
+        this.endMiddleSwipe(state, point, now);
+      } else {
+        this.updateMiddleSwipe(state, point, now);
+      }
+    }
+  }
+
+  beginMiddleSwipe(state, point, now) {
+    state.down = true;
+    state.moved = false;
+    state.axis = null;
+    state.start.copy(point);
+    state.startedAt = now;
+    state.startTime = this.player.currentTime() || 0;
+    state.lastSeek = 0;
+    state.lastScrollY = point.y;
+
+    // "Right" for this gesture = the way the viewer is facing, flattened
+    const xrCamera = this.renderer.xr.getCamera();
+    const fwd = new THREE.Vector3(0, 0, -1);
+
+    xrCamera.matrixWorld.decompose(this.tmpB, this.tmpQuat, this.tmpScale);
+    fwd.applyQuaternion(this.tmpQuat);
+    fwd.y = 0;
+    if (fwd.lengthSq() < 0.0001) {
+      fwd.set(0, 0, -1);
+    }
+    fwd.normalize();
+    state.right.set(-fwd.z, 0, fwd.x);
+  }
+
+  updateMiddleSwipe(state, point, now) {
+    const dx = this.tmpC.copy(point).sub(state.start).dot(state.right);
+    const dy = point.y - state.start.y;
+    const galleryOpen = !!(this.vrGallery && this.vrGallery.isVisible);
+
+    if (!state.moved) {
+      if (Math.hypot(dx, dy) < 0.03) {
+        return;
+      }
+      state.moved = true;
+      // Lock to the dominant direction so a wobbly swipe doesn't do both
+      state.axis = galleryOpen ? 'v' : (Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v');
+      if (this.hideTimeout) {
+        clearTimeout(this.hideTimeout);
+        this.hideTimeout = null;
+      }
+      if (!this.isVisible && !galleryOpen && state.axis === 'h') {
+        this.show();
+      }
+    }
+
+    if (state.axis === 'h' && !galleryOpen) {
+      const duration = this.player.duration();
+
+      if (!duration || !isFinite(duration) || now - state.lastSeek < 100) {
+        return;
+      }
+      // About 0.4 m of arm travel covers a fifth of the video, bounded for very short/long ones
+      const secondsPerMeter = Math.max(30, Math.min(1800, duration / 2));
+      const target = Math.max(0, Math.min(duration, state.startTime + dx * secondsPerMeter));
+
+      state.lastSeek = now;
+      this.player.currentTime(target);
+    } else if (state.axis === 'v' && galleryOpen) {
+      const step = point.y - state.lastScrollY;
+
+      state.lastScrollY = point.y;
+      // 1:1 with the hand regardless of HUD scale (gallery units are scaled)
+      this.vrGallery.handleScroll(step / this.hudGroup.scale.x * this.galleryScrollSign);
+    }
+  }
+
+  endMiddleSwipe(state, point, now) {
+    const wasTap = !state.moved && now - state.startedAt < 500;
+
+    state.down = false;
+    state.since = 0;
+    if (wasTap && now - this.lastPlayPauseToggle > 400) {
+      this.lastPlayPauseToggle = now;
+      const wasPaused = this.player.paused();
+
+      if (wasPaused) {
+        this.player.play();
+      } else {
+        this.player.pause();
+      }
+      this.showToast(wasPaused ? '▶' : '⏸', {
+        width: 0.07,
+        height: 0.07,
+        canvasWidth: 128,
+        duration: 700,
+        position: point.clone().add(new THREE.Vector3(0, 0.09, 0))
+      });
+    }
+    this.resetAutoHideTimer();
+  }
+
+  // Lock / unlock: hold both palms together (~0.45 s), or clap quickly.
+  // Tracking usually drops while the hands overlap, so a short loss of
+  // tracking right after they were close still counts as "together".
+  detectClap(now) {
+    const st = this.clapState;
+
+    if (!this.isHandSource(0) || !this.isHandSource(1)) {
+      this.clapHistory.length = 0;
+      st.since = 0;
+      st.armed = true;
+      return;
+    }
+    const left = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const busy = this.pinching[0] || this.pinching[1] || this.midPinch[0].down || this.midPinch[1].down;
+
+    if (!this.getPalmPosition(0, left) || !this.getPalmPosition(1, right)) {
+      if (st.since && st.armed && st.lastD < 0.2 && now - st.lastSeen < 350 && now - st.since > 450) {
+        this.triggerClap(now);
+      } else if (now - st.lastSeen >= 350) {
+        st.since = 0;
+      }
+      return;
+    }
+    const dist = left.distanceTo(right);
+
+    st.lastD = dist;
+    st.lastSeen = now;
+
+    if (dist > 0.26) {
+      st.armed = true;
+      st.since = 0;
+    } else if (dist < 0.14 && st.armed && !busy) {
+      if (!st.since) {
+        st.since = now;
+      } else if (now - st.since > 450) {
+        this.triggerClap(now);
+        return;
+      }
+    } else if (dist > 0.17) {
+      st.since = 0;
+    }
+
+    // Fast clap: closing quickly from clearly apart
+    this.clapHistory.push({ t: now, d: dist });
+    while (this.clapHistory.length && now - this.clapHistory[0].t > 600) {
+      this.clapHistory.shift();
+    }
+    let apart = this.clapHistory[0];
+
+    for (const h of this.clapHistory) {
+      if (h.d > apart.d) {
+        apart = h;
+      }
+    }
+    const dt = (now - apart.t) / 1000;
+
+    if (st.armed && !busy && dist < 0.16 && apart.d > 0.3 && dt > 0.03 && (apart.d - dist) / dt > 0.9) {
+      this.triggerClap(now);
+    }
+  }
+
+  triggerClap(now) {
+    this.lastClap = now;
+    this.clapHistory.length = 0;
+    this.clapState.armed = false; // must separate the hands before the next toggle
+    this.clapState.since = 0;
+    this.toggleLock();
+  }
+
+  isLocked() {
+    return this.controlsLocked;
+  }
+
+  toggleLock() {
+    if (this.controlsLocked) {
+      this.unlockControls();
+    } else {
+      this.lockControls();
+    }
+  }
+
+  lockControls() {
+    if (this.controlsLocked) {
+      return;
+    }
+    this.controlsLocked = true;
+    this.gestureDrag = null;
+    this.isDraggingOrientation = false;
+    this.isDraggingScrub = false;
+    this.draggingController = null;
+    if (this.hideTimeout) {
+      clearTimeout(this.hideTimeout);
+      this.hideTimeout = null;
+    }
+    this.hide();
+    this.showToast('🔒 Locked — hold palms together to unlock');
+    if (this.onLockChange) {
+      this.onLockChange(true);
+    }
+  }
+
+  unlockControls() {
+    if (!this.controlsLocked) {
+      return;
+    }
+    this.controlsLocked = false;
+    this.showToast('🔓 Unlocked');
+    if (this.onLockChange) {
+      this.onLockChange(false);
+    }
+    this.show();
+    this.resetAutoHideTimer();
+  }
+
+  // Small floating message in front of the viewer; independent of the HUD so
+  // it shows while the HUD is hidden/locked.
+  showToast(text, options = {}) {
+    if (!this.isInXRSession) {
+      return;
+    }
+    this.removeToast();
+
+    const height = options.height || 0.055;
+    const canvas = document.createElement('canvas');
+    let ctx = canvas.getContext('2d');
+    const fontPx = 56;
+    const canvasHeight = 100;
+
+    canvas.height = canvasHeight;
+    if (options.canvasWidth) {
+      canvas.width = canvas.height = options.canvasWidth; // square glyph
+    } else {
+      // Size the pill to the text so nothing is clipped at the sides
+      ctx.font = `${fontPx}px Arial`;
+      canvas.width = Math.ceil(ctx.measureText(text).width) + 90;
+    }
+    const width = options.canvasWidth ? height : height * canvas.width / canvasHeight;
+
+    ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(20, 20, 20, 0.8)';
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(0, 0, canvas.width, canvas.height, canvas.height / 2);
+    } else {
+      ctx.rect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = options.canvasWidth ? `${Math.round(canvas.height * 0.55)}px Arial` : `${fontPx}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 3);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+
+    mesh.renderOrder = 999;
+    mesh.frustumCulled = false;
+    mesh.layers.set(0);
+    mesh.layers.enable(1);
+    mesh.layers.enable(2);
+
+    const xrCamera = this.renderer.xr.getCamera();
+    const head = new THREE.Vector3().setFromMatrixPosition(xrCamera.matrixWorld);
+
+    if (options.position) {
+      mesh.position.copy(options.position);
+    } else {
+      // Low in the field of view, well inside arm's reach, so it never sits
+      // on top of what you're watching.
+      xrCamera.matrixWorld.decompose(this.tmpA, this.tmpQuat, this.tmpScale);
+      const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(this.tmpQuat);
+
+      dir.y = 0;
+      if (dir.lengthSq() < 0.0001) {
+        dir.set(0, 0, -1);
+      }
+      dir.normalize();
+      mesh.position.copy(head).addScaledVector(dir, 0.7);
+      mesh.position.y = head.y - 0.32;
+    }
+    mesh.lookAt(head);
+
+    this.scene.add(mesh);
+    this.toast = { mesh, texture, until: performance.now() + (options.duration || 1400) };
+  }
+
+  removeToast() {
+    if (!this.toast) {
+      return;
+    }
+    this.scene.remove(this.toast.mesh);
+    this.toast.mesh.geometry.dispose();
+    this.toast.mesh.material.dispose();
+    this.toast.texture.dispose();
+    this.toast = null;
+  }
+
+  updateToast(now) {
+    if (!this.toast) {
+      return;
+    }
+    const remaining = this.toast.until - now;
+
+    if (remaining <= 0) {
+      this.removeToast();
+    } else if (remaining < 300) {
+      this.toast.mesh.material.opacity = remaining / 300;
+    }
+  }
+
+  // Pinch on empty space: a quick tap toggles the HUD, a horizontal drag seeks.
+  beginGestureDrag(controller) {
+    this.aimRaycaster(controller);
+    const dir = this.raycaster.ray.direction;
+
+    const gallery = this.vrGallery && this.vrGallery.isVisible ? this.vrGallery : null;
+
+    this.gestureDrag = {
+      controller,
+      gallery,
+      startYaw: Math.atan2(dir.x, -dir.z),
+      startTime: this.player.currentTime() || 0,
+      startedAt: performance.now(),
+      lastSeek: 0,
+      moved: false
+    };
+  }
+
+  updateGestureDrag() {
+    const gd = this.gestureDrag;
+
+    if (!gd) {
+      return;
+    }
+    if (this.controlsLocked) {
+      this.gestureDrag = null;
+      return;
+    }
+    if (gd.gallery) {
+      return; // gallery open: scrolling is the thumb + middle finger swipe, not index pinch
+    }
+    this.aimRaycaster(gd.controller);
+
+    const dir = this.raycaster.ray.direction;
+    let delta = Math.atan2(dir.x, -dir.z) - gd.startYaw;
+
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+
+    const deadZone = 0.05; // ~3 degrees before a tap becomes a drag
+
+    if (!gd.moved) {
+      if (Math.abs(delta) < deadZone) {
+        return;
+      }
+      gd.moved = true;
+      if (this.hideTimeout) {
+        clearTimeout(this.hideTimeout);
+        this.hideTimeout = null;
+      }
+      if (!this.isVisible) {
+        this.show();
+      }
+    }
+
+    const duration = this.player.duration();
+    const now = performance.now();
+
+    if (!duration || !isFinite(duration) || now - gd.lastSeek < 100) {
+      return;
+    }
+    // Longer videos seek faster per degree of hand sweep
+    const secondsPerRadian = Math.max(30, Math.min(600, duration / 6));
+    const effective = delta - Math.sign(delta) * deadZone;
+    const target = Math.max(0, Math.min(duration, gd.startTime + effective * secondsPerRadian));
+
+    gd.lastSeek = now;
+    this.player.currentTime(target);
+  }
+
+  endGestureDrag() {
+    const gd = this.gestureDrag;
+
+    this.gestureDrag = null;
+    if (gd && !gd.gallery && !gd.moved && performance.now() - gd.startedAt < 450) {
+      if (this.isVisible) {
+        this.hide();
+      } else {
+        this.show();
+        this.resetAutoHideTimer();
+      }
+    }
+  }
+
   setupInteraction() {
     // For VR controllers and hands
     if (this.renderer.xr) {
@@ -770,6 +1717,8 @@ class VRHUD {
       const controller0 = this.renderer.xr.getController(0);
       const controllerGrip0 = this.renderer.xr.getControllerGrip(0);
       if (controller0) {
+        controller0.addEventListener('connected', (e) => this.onInputSourceConnected(0, e.data));
+        controller0.addEventListener('disconnected', () => this.onInputSourceConnected(0, null));
         controller0.addEventListener('selectstart', this.onSelectStart);
         controller0.addEventListener('selectend', this.onSelectEnd);
         controller0.addEventListener('select', this.onSelect);
@@ -812,6 +1761,8 @@ class VRHUD {
       const controllerGrip1 = this.renderer.xr.getControllerGrip(1);
 
       if (controller1) {
+        controller1.addEventListener('connected', (e) => this.onInputSourceConnected(1, e.data));
+        controller1.addEventListener('disconnected', () => this.onInputSourceConnected(1, null));
         controller1.addEventListener('selectstart', this.onSelectStart);
         controller1.addEventListener('selectend', this.onSelectEnd);
         controller1.addEventListener('select', this.onSelect);
@@ -848,6 +1799,8 @@ class VRHUD {
         this.controllerGrip1 = controllerGrip1;
         this.ray1 = ray;
       }
+
+      this.setupHandVisuals();
     }
 
     // For mouse/touch in non-VR mode
@@ -954,14 +1907,25 @@ class VRHUD {
 
   onSelectStart(event) {
     const controller = event.target;
+    const idx = this.controllerIndex(controller);
 
-    this.tempMatrix = new THREE.Matrix4();
-    this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+    if (idx >= 0) {
+      this.pinching[idx] = true;
+    }
+    if (this.controlsLocked) {
+      return;
+    }
 
-    this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+    this.aimRaycaster(controller);
+    if (idx >= 0) {
+      this.selectStartDirs[idx].copy(this.raycaster.ray.direction);
+    }
 
-    const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+    const intersects = this.pickInteractive(controller);
+
+    if (intersects.length === 0 && this.handGesturesEnabled && this.isHandSource(idx) && !this.gestureDrag) {
+      this.beginGestureDrag(controller);
+    }
 
     if (intersects.length > 0) {
       const obj = intersects[0].object;
@@ -990,6 +1954,18 @@ class VRHUD {
   }
 
   onSelectEnd(event) {
+    const idx = this.controllerIndex(event.target);
+
+    if (idx >= 0) {
+      this.pinching[idx] = false;
+    }
+    if (this.gestureDrag && this.gestureDrag.controller === event.target) {
+      this.endGestureDrag();
+    }
+    // The other hand releasing must not cancel this hand's drag
+    if (this.draggingController && this.draggingController !== event.target) {
+      return;
+    }
     this.isDraggingOrientation = false;
     this.isDraggingScrub = false;
     this.draggingController = null;
@@ -1001,11 +1977,10 @@ class VRHUD {
   onSelect(event) {
     const controller = event.target;
 
-    this.tempMatrix = new THREE.Matrix4();
-    this.tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-    this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+    if (this.controlsLocked) {
+      return;
+    }
+    this.aimRaycaster(controller);
 
     // Orientation dragging is handled by updateControllerDragging() using direction tracking
     // Don't handle it here to avoid conflicts
@@ -1030,7 +2005,7 @@ class VRHUD {
     }
 
     // Regular button clicks
-    const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+    const intersects = this.pickInteractive(controller);
 
     if (intersects.length > 0) {
       this.handleInteraction(intersects[0].object, intersects[0].point);
@@ -1038,6 +2013,9 @@ class VRHUD {
   }
 
   onSqueezeStart(event) {
+    if (this.controlsLocked) {
+      return;
+    }
     // Grip squeeze toggles the HUD visibility
     if (this.hudGroup) {
       if (this.isVisible) {
@@ -1126,6 +2104,10 @@ class VRHUD {
 
     case 'projection-scroll':
       this.scrollProjectionMenu(object.userData.scrollDir || 0);
+      break;
+
+    case 'help':
+      this.helpVisible = !this.helpVisible;
       break;
 
     case 'favorite':
@@ -1331,6 +2313,32 @@ class VRHUD {
   }
 
   update() {
+    const now = performance.now();
+
+    this.updateToast(now);
+    if (this.isInXRSession) {
+      this.updateHandRays();
+      this.updateHandVisuals();
+      this.updateHandGestures(now);
+      this.updateGestureDrag();
+      if (this.handHint) {
+        this.handHint.visible = this.helpVisible && this.anyHandActive();
+      }
+      if (this.helpBtn) {
+        this.helpBtn.visible = this.anyHandActive();
+      }
+      if (this.handAnnouncePending && !this.controlsLocked) {
+        // First time hands show up: surface the HUD (and its hint) so the user
+        // can learn the gestures without ever touching a controller.
+        this.handAnnouncePending = false;
+        this.show();
+        if (this.autoHideDelay > 0) {
+          clearTimeout(this.hideTimeout);
+          this.hideTimeout = setTimeout(() => this.hide(), Math.max(this.autoHideDelay, 12000));
+        }
+      }
+    }
+
     // Poll gamepad inputs (joysticks, buttons)
     this.pollGamepads();
 
@@ -1379,12 +2387,12 @@ class VRHUD {
 
     // Position HUD at a FIXED world position - use constant height, not camera height
     // This prevents any per-eye differences that could cause double vision
-    const fixedHeight = 0.7; // Fixed height above floor level
+    const fixedHeight = this.hudAnchorY; // Fixed in space, set from head height when shown
 
     this.hudGroup.position.set(
-      forwardXZ.x * this.hudDistance,
+      forwardXZ.x * this.effectiveHudDistance,
       fixedHeight,
-      forwardXZ.y * this.hudDistance
+      forwardXZ.y * this.effectiveHudDistance
     );
 
     // Make HUD face the origin (where user is standing)
@@ -1401,11 +2409,7 @@ class VRHUD {
 
     const controller = this.draggingController;
 
-    this.tempMatrix = this.tempMatrix || new THREE.Matrix4();
-    this.tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-    this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+    this.aimRaycaster(controller);
 
     // Handle orientation dragging with 1:1 cursor tracking
     if (this.isDraggingOrientation) {
@@ -1489,65 +2493,98 @@ class VRHUD {
     for (let i = 0; i < controllers.length; i++) {
       const controller = controllers[i];
       const ray = rays[i];
+      const cursor = this.handCursors[i];
 
+      if (cursor) {
+        cursor.visible = false;
+      }
+      if (this.beams[i]) {
+        this.beams[i].visible = false;
+      }
       if (!controller || !ray) {
         continue;
       }
 
-      // Only show rays when in XR session
-      if (!this.isInXRSession) {
+      // Only show rays when in XR session, and never while controls are locked
+      if (!this.isInXRSession || this.controlsLocked) {
         ray.visible = false;
         continue;
       }
 
-      // Perform raycast from controller
-      this.tempMatrix = new THREE.Matrix4();
-      this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+      const isHand = this.isHandSource(i);
+      const beam = this.beams[i];
 
-      this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-      this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
-
-      // Always show ray in XR, adjust length based on intersection
-      ray.visible = true;
+      this.aimRaycaster(controller);
 
       // Check for intersections with HUD elements (if visible)
-      if (this.isVisible) {
-        const intersects = this.raycaster.intersectObjects(this.interactiveElements);
+      const intersects = (this.isVisible || isHand) ? this.pickInteractive(controller) : [];
 
-        if (intersects.length > 0) {
-          // Shorten ray to intersection point and make it brighter
-          const distance = intersects[0].distance;
-          const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -distance)];
+      if (isHand) {
+        // Hands: a beam along the smoothed ray plus a cursor on whatever it
+        // hits (buttons, the panel behind them, or the gallery grid).
+        ray.visible = false;
 
-          ray.geometry.setFromPoints(points);
-          ray.material.opacity = 0.8; // Brighter when hitting UI
+        const hr = this.handRays[i];
 
-          // Highlight the element being pointed at by controller
-          const obj = intersects[0].object;
+        const controlsShown = this.isVisible || !!(this.vrGallery && this.vrGallery.isVisible);
 
-          if (obj.userData.baseColor !== undefined) {
-            obj.material.color.setHex(obj.userData.hoverColor || 0x00ffff);
-            obj.userData.controllerHighlighted = true;
+        if (!hr.init || !beam || !controlsShown) {
+          if (beam) {
+            beam.visible = false;
           }
         } else {
-          // Default length and dimmer when not hitting anything
-          const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)];
+          const surface = this.pickSurface();
+          const candidates = [intersects[0], surface].filter(Boolean).sort((x, y) => x.distance - y.distance);
+          const best = candidates[0] || null;
+          const length = best ? best.distance : 2.5;
+          const pinching = this.pinching[i];
+          const radius = (0.0018 + length * 0.0016) * (pinching ? 1.6 : 1);
 
-          ray.geometry.setFromPoints(points);
-          ray.material.opacity = 0.3; // Dimmer when not hitting UI
+          beam.visible = true;
+          beam.position.copy(hr.origin).addScaledVector(this.raycaster.ray.direction, 0.04);
+          beam.quaternion.copy(hr.quat);
+          beam.scale.set(radius, radius, Math.max(0.02, length - 0.04));
+          beam.material.color.setHex(pinching ? 0x00ff88 : 0x66ddff);
+          beam.material.opacity = pinching ? 0.95 : (best ? 0.75 : 0.3);
+
+          if (best && cursor) {
+            cursor.visible = true;
+            cursor.position.copy(best.point);
+            best.object.getWorldQuaternion(cursor.quaternion);
+            cursor.scale.setScalar(Math.max(0.35, best.distance * 0.4) * (pinching ? 0.6 : 1));
+            cursor.material.color.setHex(pinching ? 0x00ff88 : 0xffffff);
+            cursor.children[0].material.color.setHex(pinching ? 0x00ff88 : 0x66ddff);
+          }
         }
       } else {
-        // HUD hidden - show dim ray at default length
-        const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)];
+        // Always show ray in XR, adjust length based on intersection
+        ray.visible = true;
+      }
 
-        ray.geometry.setFromPoints(points);
+      if (intersects.length > 0) {
+        if (!isHand) {
+          // Shorten ray to intersection point and make it brighter
+          ray.geometry.setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -intersects[0].distance)]);
+          ray.material.opacity = 0.8; // Brighter when hitting UI
+        }
+
+        // Highlight the element being pointed at
+        const obj = intersects[0].object;
+
+        if (obj.userData.baseColor !== undefined) {
+          obj.material.color.setHex(obj.userData.hoverColor || 0x00ffff);
+          obj.userData.controllerHighlighted = true;
+        }
+      } else if (!isHand) {
+        // Default length and dimmer when not hitting anything
+        ray.geometry.setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)]);
         ray.material.opacity = 0.3;
       }
     }
   }
 
   pollGamepads() {
-    if (!this.isInXRSession) {
+    if (!this.isInXRSession || this.controlsLocked) {
       return;
     }
 
@@ -1640,9 +2677,18 @@ class VRHUD {
   }
 
   show(force = false) {
+    if (this.controlsLocked) {
+      return;
+    }
     // Only show if in XR session or forced
     if (!this.isInXRSession && !force) {
       return;
+    }
+    if (!this.isVisible && this.isInXRSession) {
+      const head = this.renderer.xr.getCamera().matrixWorld.elements[13];
+
+      // ~30cm below eye level: below the video's line of sight, easy to reach
+      this.hudAnchorY = head > 0.3 ? Math.max(0.5, Math.min(2.5, head - 0.3)) : 1.2;
     }
     this.isVisible = true;
     this.hudGroup.visible = true;
@@ -1706,6 +2752,37 @@ class VRHUD {
 
     this.scene.remove(this.hudGroup);
     this.camera.remove(this.cursor);
+    this.removeToast();
+    this.hands.forEach((hand) => hand && this.scene.remove(hand));
+    this.handCursors.forEach((cursor) => {
+      if (cursor) {
+        this.scene.remove(cursor);
+        cursor.geometry.dispose();
+        cursor.material.dispose();
+      }
+    });
+    this.handModels.forEach((model) => {
+      if (model) {
+        this.scene.remove(model.joints);
+        this.scene.remove(model.bones);
+        model.joints.dispose();
+        model.bones.dispose();
+      }
+    });
+    this.beams.forEach((beam) => {
+      if (beam) {
+        this.scene.remove(beam);
+        beam.material.dispose();
+      }
+    });
+    if (this.beamGeometry) {
+      this.beamGeometry.dispose();
+    }
+    this.jointMaterial.dispose();
+    this.boneMaterial.dispose();
+    if (this.handHintTexture) {
+      this.handHintTexture.dispose();
+    }
 
     // Clean up textures
     if (this.timeTexture) {

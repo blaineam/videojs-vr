@@ -32,6 +32,9 @@ const defaults = {
   enableVRGallery: true,
   showHUDOnStart: true,
   hudAutoHideDelay: 5000, // ms before HUD auto-hides (0 to disable)
+  hudNearDistance: 1.0, // Metres: in VR the HUD is drawn this close (scaled down), nearer than video content, so stereo depth doesn't fight it. 0 = use hudDistance.
+  handGestures: true, // Hand-tracking gestures (tap air, drag to seek, middle pinch, clap to lock)
+  onLockChange: null, // Called with true/false when controls are locked/unlocked
   // Callbacks for navigation
   onNext: null,
   onPrevious: null,
@@ -728,8 +731,11 @@ void main() {
 
         this.movieScreenLeft = new THREE.Mesh(leftGeometry, leftMaterial);
         this.movieScreenLeft.scale.x = -1;
-        this.movieScreenLeft.layers.enable(0);
-        this.movieScreenLeft.layers.enable(1);
+        // Layer 1 only: layer 0 is rendered by BOTH eyes in WebXR, which put
+        // the left image in the right eye on top of the right image (ghosting).
+        // The flat (non-XR) camera gets layer 1 via camera.layers below.
+        this.movieScreenLeft.layers.set(1);
+        this.camera.layers.enable(1);
         this.scene.add(this.movieScreenLeft);
 
         const rightGeometry = buildSphere();
@@ -1116,9 +1122,10 @@ void main() {
         // .set() clears all layers first then enables the specified one
         leftMesh.layers.set(1);
         leftMesh.layers.enable(2); // Add layer 2 for right eye
-        // Hide right eye mesh completely - set to layer 0 only (not visible in VR)
-        rightMesh.layers.set(0);
-        this.log('Mono enabled: left mesh on layers 1+2, right mesh on layer 0');
+        // Hide right eye mesh completely. Layer 0 is rendered by both eyes in
+        // WebXR, so it must be cleared entirely rather than set to 0.
+        rightMesh.layers.disableAll();
+        this.log('Mono enabled: left mesh on layers 1+2, right mesh hidden');
       } else {
         // Restore stereoscopic - use .set() for definitive layer assignment
         // This immediately sets the layer mask without any race conditions
@@ -1217,7 +1224,9 @@ void main() {
 
     this.reset();
 
-    this.camera = new THREE.PerspectiveCamera(75, this.player_.currentWidth() / this.player_.currentHeight(), 1, 1000);
+    this.camera = // near = 5cm: WebXR uses this as the session's near plane, and the old value of 1 clipped
+    // everything within a metre of the viewer (hands, controllers, close UI).
+    new THREE.PerspectiveCamera(75, this.player_.currentWidth() / this.player_.currentHeight(), 0.05, 1000);
     // Store vector representing the direction in which the camera is looking, in world space.
     this.cameraVector = new THREE.Vector3();
 
@@ -1749,6 +1758,14 @@ void main() {
       hudHeight: this.options_.hudHeight,
       hudScale: this.options_.hudScale,
       hudDistance: this.options_.hudDistance,
+      handGestures: this.options_.handGestures,
+      hudNearDistance: this.options_.hudNearDistance,
+      onLockChange: (locked) => {
+        if (this.options_.onLockChange) {
+          this.options_.onLockChange(locked);
+        }
+        this.trigger('vr-controls-lock', { locked });
+      },
       onNext: () => {
         if (this.options_.onNext) {
           this.options_.onNext();

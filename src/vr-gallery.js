@@ -868,11 +868,19 @@ class VRGallery {
     if (this.selectionCooldown) return; // Don't select during cooldown after opening
 
     const controller = event.target;
-    const tempMatrix = new THREE.Matrix4();
-    tempMatrix.identity().extractRotation(controller.matrixWorld);
 
-    this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    if (this.vrHUD && this.vrHUD.controlsLocked) return;
+    if (this.vrHUD && this.vrHUD.isSelectDrag && this.vrHUD.isSelectDrag(controller)) return;
+    if (this.vrHUD && this.vrHUD.aimRaycaster) {
+      // Hands use the HUD's smoothed ray so the gallery matches the beam
+      this.vrHUD.aimRaycaster(controller, this.raycaster);
+    } else {
+      const tempMatrix = new THREE.Matrix4();
+
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+    }
 
     // Check close button
     const closeIntersects = this.raycaster.intersectObjects(
@@ -1067,8 +1075,11 @@ class VRGallery {
       // HUD panel height = 0.6, so HUD top is at hudPos.y + 0.3
       // Gallery frameHeight = ~1.54, so we need gallery center at hudPos.y + 0.3 + 0.1 (gap) + frameHeight/2
       // This equals hudPos.y + 0.3 + 0.1 + 0.77 = hudPos.y + 1.17
+      const hudScale = this.vrHUD.hudGroup.scale.x;
+
+      this.galleryGroup.scale.setScalar(hudScale);
       this.galleryGroup.position.copy(hudPos);
-      this.galleryGroup.position.y += 1.2;  // Position so bottom is just above HUD top
+      this.galleryGroup.position.y += 1.2 * hudScale;  // Position so bottom is just above HUD top
 
       // Match HUD orientation
       this.galleryGroup.quaternion.copy(hudQuat);
